@@ -32,3 +32,16 @@ export function generateConcentricRings({ numPoints = 300, noise = 0.2 } = {}) {
 
   return points;
 }
+
+/**
+ * Returns a new array with the same elements in random order (Fisher-Yates).
+ * Used to split a generated dataset into train/test subsets without bias.
+ */
+export function shuffleArray(items) {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}

@@ -178,8 +178,12 @@ export function compileModel(model, { learningRate = DEFAULT_LEARNING_RATE } = {
  * @param {number} [options.batchSize=32]
  * @param {Function} [options.onEpochEnd] - Forwarded to tf.js as the
  *   `onEpochEnd(epoch, logs)` fit callback, useful for progress reporting.
- * @returns {Promise<{history: Object, finalMetrics: {loss: number, accuracy: number}}>}
- *   `history` holds the per-epoch arrays tf.js records (loss, acc, ...).
+ * @param {{xs: tf.Tensor2D, ys: tf.Tensor2D}} [options.validationData] - A
+ *   held-out set evaluated after every epoch (tf.js's `val_loss`/`val_acc`),
+ *   for tracking train-vs-test performance as training progresses.
+ * @returns {Promise<{history: Object, finalMetrics: {loss: number, accuracy: number, valLoss: (number|undefined), valAccuracy: (number|undefined)}}>}
+ *   `history` holds the per-epoch arrays tf.js records (loss, acc, and
+ *   val_loss/val_acc when `validationData` is given).
  */
 export async function trainModel(model, xs, ys, options = {}) {
   const {
@@ -187,6 +191,7 @@ export async function trainModel(model, xs, ys, options = {}) {
     learningRate = DEFAULT_LEARNING_RATE,
     batchSize = DEFAULT_BATCH_SIZE,
     onEpochEnd,
+    validationData,
   } = options;
 
   compileModel(model, { learningRate });
@@ -195,19 +200,25 @@ export async function trainModel(model, xs, ys, options = {}) {
     epochs,
     batchSize,
     shuffle: true,
+    validationData: validationData ? [validationData.xs, validationData.ys] : undefined,
     callbacks: onEpochEnd ? { onEpochEnd } : undefined,
   });
 
   const lastEpoch = epochs - 1;
   const accuracyKey = "acc" in history ? "acc" : "accuracy";
 
-  return {
-    history,
-    finalMetrics: {
-      loss: history.loss[lastEpoch],
-      accuracy: history[accuracyKey][lastEpoch],
-    },
+  const finalMetrics = {
+    loss: history.loss[lastEpoch],
+    accuracy: history[accuracyKey][lastEpoch],
   };
+
+  if (validationData) {
+    const valAccuracyKey = "val_acc" in history ? "val_acc" : "val_accuracy";
+    finalMetrics.valLoss = history.val_loss[lastEpoch];
+    finalMetrics.valAccuracy = history[valAccuracyKey][lastEpoch];
+  }
+
+  return { history, finalMetrics };
 }
 
 /**

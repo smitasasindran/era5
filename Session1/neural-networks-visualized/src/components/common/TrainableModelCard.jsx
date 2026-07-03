@@ -1,45 +1,10 @@
-import { FiCheckCircle, FiInfo, FiLoader } from "react-icons/fi";
+import { FiInfo } from "react-icons/fi";
 
 import Card from "./Card";
 import PrimaryButton from "./PrimaryButton";
 import DecisionBoundaryPlot from "./DecisionBoundaryPlot";
-
-const STATUS_STYLES = {
-  idle: "bg-slate-800 text-slate-400",
-  training: "bg-accent-500/15 text-accent-300",
-  completed: "bg-emerald-500/15 text-emerald-300",
-  error: "bg-red-500/15 text-red-300",
-};
-
-const STATUS_LABELS = {
-  idle: "Idle",
-  training: "Training…",
-  completed: "Completed",
-  error: "Error",
-};
-
-function StatusBadge({ status }) {
-  return (
-    <span
-      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${STATUS_STYLES[status]}`}
-    >
-      {status === "training" && <FiLoader className="h-3.5 w-3.5 animate-spin" />}
-      {status === "completed" && <FiCheckCircle className="h-3.5 w-3.5" />}
-      {STATUS_LABELS[status]}
-    </span>
-  );
-}
-
-function StatBlock({ label, value, size = "lg" }) {
-  return (
-    <div>
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
-      <p className={size === "lg" ? "text-2xl font-bold text-slate-100" : "text-lg font-bold text-slate-100"}>
-        {value}
-      </p>
-    </div>
-  );
-}
+import StatusBadge from "./StatusBadge";
+import StatBlock from "./StatBlock";
 
 /**
  * Compact card for a single trainable model: icon/title/architecture with a

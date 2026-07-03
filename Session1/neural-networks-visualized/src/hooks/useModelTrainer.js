@@ -13,7 +13,10 @@ const DEFAULT_BOUNDARY_RESOLUTION = 60;
  * lives entirely here so experiment pages stay thin views.
  *
  * Multiple independent instances of this hook can share the same
- * `dataset` reference to train and compare several architectures fairly.
+ * `dataset` reference to train and compare several architectures fairly
+ * (e.g. Activation Functions, Network Depth), or share the same
+ * `validationDataset` while each getting a different `dataset` to compare
+ * training-set sizes fairly (e.g. Generalization).
  *
  * @param {Object} options
  * @param {Array<{x: number, y: number, label: number}>} options.dataset
@@ -22,6 +25,9 @@ const DEFAULT_BOUNDARY_RESOLUTION = 60;
  * @param {number} options.learningRate
  * @param {number} options.batchSize
  * @param {number} [options.boundaryResolution=60]
+ * @param {Array<{x: number, y: number, label: number}>} [options.validationDataset] -
+ *   Optional fixed held-out set. When given, training also reports
+ *   `validationMetrics` and per-epoch `history.val_loss`/`val_acc`.
  */
 export function useModelTrainer({
   dataset,
@@ -30,9 +36,12 @@ export function useModelTrainer({
   learningRate,
   batchSize,
   boundaryResolution = DEFAULT_BOUNDARY_RESOLUTION,
+  validationDataset,
 }) {
   const [status, setStatus] = useState("idle"); // "idle" | "training" | "completed" | "error"
   const [metrics, setMetrics] = useState(null); // { loss, accuracy }
+  const [validationMetrics, setValidationMetrics] = useState(null); // { loss, accuracy } on validationDataset
+  const [history, setHistory] = useState(null); // per-epoch { loss, acc, val_loss?, val_acc? }
   const [boundary, setBoundary] = useState(null); // { x, y, z } grid for DecisionBoundaryPlot
   const [error, setError] = useState(null);
 
@@ -49,14 +58,16 @@ export function useModelTrainer({
     disposeModel();
     setStatus("idle");
     setMetrics(null);
+    setValidationMetrics(null);
+    setHistory(null);
     setBoundary(null);
     setError(null);
   }, [disposeModel]);
 
-  // Any config change (new dataset or hyperparameters) makes a previously
-  // trained model and its boundary stale.
+  // Any config change (new dataset, validation set, or hyperparameters)
+  // makes a previously trained model and its boundary stale.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(reset, [dataset, epochs, learningRate, batchSize]);
+  useEffect(reset, [dataset, validationDataset, epochs, learningRate, batchSize]);
 
   // Free the model on unmount. If a training run is still in flight, ask it
   // to stop at the next epoch boundary instead of disposing under it.
@@ -81,12 +92,16 @@ export function useModelTrainer({
     modelRef.current = model;
 
     const { xs, ys } = datasetToTensors({ points: dataset });
+    const validationTensors = validationDataset
+      ? datasetToTensors({ points: validationDataset })
+      : null;
 
     try {
-      const { finalMetrics } = await trainModel(model, xs, ys, {
+      const { history: fitHistory, finalMetrics } = await trainModel(model, xs, ys, {
         epochs,
         learningRate,
         batchSize,
+        validationData: validationTensors ?? undefined,
         onEpochEnd: () => {
           if (!isMountedRef.current) {
             model.stopTraining = true;
@@ -103,6 +118,10 @@ export function useModelTrainer({
       if (isMountedRef.current) {
         setMetrics(finalMetrics);
         setBoundary(nextBoundary);
+        setHistory(fitHistory);
+        if (finalMetrics.valLoss !== undefined) {
+          setValidationMetrics({ loss: finalMetrics.valLoss, accuracy: finalMetrics.valAccuracy });
+        }
         setStatus("completed");
       }
     } catch (err) {
@@ -112,9 +131,29 @@ export function useModelTrainer({
       }
     } finally {
       disposeTensors({ xs, ys });
+      if (validationTensors) disposeTensors(validationTensors);
       isTrainingRef.current = false;
     }
-  }, [dataset, epochs, learningRate, batchSize, createModel, boundaryResolution, disposeModel]);
+  }, [
+    dataset,
+    validationDataset,
+    epochs,
+    learningRate,
+    batchSize,
+    createModel,
+    boundaryResolution,
+    disposeModel,
+  ]);
 
-  return { status, metrics, boundary, error, train, reset, isTraining: status === "training" };
+  return {
+    status,
+    metrics,
+    validationMetrics,
+    history,
+    boundary,
+    error,
+    train,
+    reset,
+    isTraining: status === "training",
+  };
 }

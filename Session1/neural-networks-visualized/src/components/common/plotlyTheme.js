@@ -67,10 +67,12 @@ export function buildLabeledScatterTraces(points, { colors = CATEGORY_COLORS, se
 }
 
 /**
- * Shared dark-themed Plotly layout for 2D point plots: equal-aspect axes,
- * transparent background, muted grid.
+ * Shared dark-themed Plotly layout: transparent background, muted grid.
+ * `equalAspect` (default true) locks a 1:1 x/y scale, appropriate for
+ * spatial 2D point plots — turn it off for charts where the axes have
+ * unrelated units (e.g. loss vs. epoch).
  */
-export function basePlotlyLayout({ height = 420, xLabel = "x", yLabel = "y" } = {}) {
+export function basePlotlyLayout({ height = 420, xLabel = "x", yLabel = "y", equalAspect = true } = {}) {
   return {
     autosize: true,
     height,
@@ -82,8 +84,7 @@ export function basePlotlyLayout({ height = 420, xLabel = "x", yLabel = "y" } = 
       title: xLabel,
       zeroline: false,
       showgrid: false,
-      scaleanchor: "y",
-      scaleratio: 1,
+      ...(equalAspect ? { scaleanchor: "y", scaleratio: 1 } : {}),
     },
     yaxis: { title: yLabel, zeroline: false, showgrid: false },
     legend: { orientation: "h", y: -0.15 },
