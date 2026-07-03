@@ -1,5 +1,14 @@
-import { useMemo, useState } from "react";
-import { FiCheck, FiCpu, FiHelpCircle, FiRefreshCw, FiTarget, FiTrash2, FiTrendingDown } from "react-icons/fi";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  FiCheck,
+  FiCpu,
+  FiHelpCircle,
+  FiPlay,
+  FiRefreshCw,
+  FiTarget,
+  FiTrash2,
+  FiTrendingDown,
+} from "react-icons/fi";
 
 import ExperimentLayout from "../components/layout/ExperimentLayout";
 import Card from "../components/common/Card";
@@ -20,6 +29,8 @@ const STATUS_LABELS = {
   completed: "Completed",
   error: "Error",
 };
+
+const REPLAY_FRAME_MS = 120;
 
 function PlotPlaceholder({ height = 300 }) {
   return (
@@ -46,8 +57,7 @@ function EmbeddingPage() {
     setBatchSize,
     status,
     metrics,
-    initialEmbeddings2D,
-    embeddings2D,
+    embeddingHistory,
     rawEmbeddings,
     error,
     train,
@@ -57,13 +67,58 @@ function EmbeddingPage() {
 
   const [selectedWord, setSelectedWord] = useState("cat");
 
+  // Which frame of embeddingHistory to display: null means "follow the
+  // latest frame live"; a number means the user (or the replay animation)
+  // has pinned it to a specific epoch.
+  const [manualIndex, setManualIndex] = useState(null);
+  const [isReplaying, setIsReplaying] = useState(false);
+  const replayIntervalRef = useRef(null);
+
+  const latestIndex = embeddingHistory.length - 1;
+  const displayedIndex = manualIndex === null ? latestIndex : manualIndex;
+  const currentFrame = displayedIndex >= 0 ? embeddingHistory[displayedIndex] : null;
+
+  // A fresh training run should always start out following the live frame.
+  useEffect(() => {
+    if (isTraining) setManualIndex(null);
+  }, [isTraining]);
+
+  useEffect(() => {
+    return () => {
+      if (replayIntervalRef.current) clearInterval(replayIntervalRef.current);
+    };
+  }, []);
+
+  const handleReplay = () => {
+    if (embeddingHistory.length < 2 || isTraining) return;
+    if (replayIntervalRef.current) clearInterval(replayIntervalRef.current);
+
+    setIsReplaying(true);
+    setManualIndex(0);
+    let frame = 0;
+    replayIntervalRef.current = setInterval(() => {
+      frame += 1;
+      if (frame > latestIndex) {
+        clearInterval(replayIntervalRef.current);
+        replayIntervalRef.current = null;
+        setIsReplaying(false);
+        return;
+      }
+      setManualIndex(frame);
+    }, REPLAY_FRAME_MS);
+  };
+
   const neighbors = useMemo(
     () => (rawEmbeddings ? findNearestNeighbors(selectedWord, VOCABULARY, rawEmbeddings, 3) : []),
     [selectedWord, rawEmbeddings],
   );
 
-  const trainedPoints = embeddings2D ? toEmbeddingPoints(embeddings2D) : null;
-  const beforePoints = initialEmbeddings2D ? toEmbeddingPoints(initialEmbeddings2D) : null;
+  const currentPoints = currentFrame ? toEmbeddingPoints(currentFrame.points) : null;
+  const beforePoints = embeddingHistory[0] ? toEmbeddingPoints(embeddingHistory[0].points) : null;
+  const afterPoints =
+    latestIndex >= 0 && status === "completed" ? toEmbeddingPoints(embeddingHistory[latestIndex].points) : null;
+
+  const scrubberDisabled = isTraining || isReplaying || embeddingHistory.length < 2;
 
   return (
     <ExperimentLayout
@@ -180,15 +235,43 @@ function EmbeddingPage() {
 
           {status === "error" && <p className="text-sm text-red-400">{error}</p>}
 
-          {trainedPoints ? (
+          {currentPoints ? (
             <EmbeddingScatterPlot
-              points={trainedPoints}
+              points={currentPoints}
               selectedWord={selectedWord}
               onSelectWord={setSelectedWord}
               height={440}
             />
           ) : (
             <PlotPlaceholder height={440} />
+          )}
+
+          {embeddingHistory.length > 0 && (
+            <div className="flex items-center gap-3">
+              <SecondaryButton icon={FiPlay} onClick={handleReplay} disabled={scrubberDisabled}>
+                Replay
+              </SecondaryButton>
+              <input
+                type="range"
+                min={0}
+                max={Math.max(latestIndex, 0)}
+                step={1}
+                value={Math.max(displayedIndex, 0)}
+                onChange={(event) => setManualIndex(Number(event.target.value))}
+                disabled={scrubberDisabled}
+                className="flex-1 accent-accent-500 disabled:cursor-not-allowed disabled:opacity-50"
+              />
+              <span className="w-28 shrink-0 text-right text-xs text-slate-400">
+                Epoch {currentFrame ? currentFrame.epoch : 0} / {epochs}
+              </span>
+            </div>
+          )}
+
+          {isTraining && (
+            <p className="text-xs text-slate-500">
+              Watch the words drift — at epoch 0 they're scattered randomly, with no notion of
+              category at all.
+            </p>
           )}
 
           <div>
@@ -216,7 +299,8 @@ function EmbeddingPage() {
           {rawEmbeddings && (
             <div className="rounded-lg border border-slate-800 bg-slate-950/50 px-4 py-3">
               <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                Nearest neighbors of "{selectedWord}" ({getCategoryOf(selectedWord)})
+                Nearest neighbors of "{selectedWord}" ({getCategoryOf(selectedWord)}), based on the
+                final trained embeddings
               </p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {neighbors.map((neighbor) => (
@@ -250,7 +334,7 @@ function EmbeddingPage() {
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
               After Training
             </p>
-            {trainedPoints ? <EmbeddingScatterPlot points={trainedPoints} height={300} /> : <PlotPlaceholder />}
+            {afterPoints ? <EmbeddingScatterPlot points={afterPoints} height={300} /> : <PlotPlaceholder />}
           </div>
         </div>
         <p className="mt-3 text-xs text-slate-500">

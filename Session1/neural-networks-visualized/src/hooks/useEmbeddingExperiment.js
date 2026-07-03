@@ -8,7 +8,7 @@ import {
   extractEmbeddings,
 } from "../ml/embeddingModel";
 import { disposeTensors } from "../ml/binaryClassifier";
-import { projectTo2D } from "../ml/pca";
+import { projectTo2DContinuous } from "../ml/pca";
 
 const DEFAULT_NUM_SENTENCES = 60;
 const DEFAULT_EPOCHS = 150;
@@ -16,16 +16,31 @@ const DEFAULT_LEARNING_RATE = 0.05;
 const DEFAULT_BATCH_SIZE = 16;
 const EMBEDDING_DIM = 4;
 
+// How many snapshots to capture across a training run, at most. Capping
+// this keeps the animation smooth (bounded re-renders) regardless of how
+// many epochs the user configures.
+const MAX_SNAPSHOTS = 60;
+
+// Each captured frame gets a small artificial pause. Training itself
+// finishes in well under a second at this model's size, which is too fast
+// to actually watch the embeddings move — this deliberately paces the
+// animation to a speed a person can follow, purely for visibility.
+const FRAME_PACING_MS = 40;
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /**
  * Controller hook for the Embeddings experiment. Generates a synthetic
  * sentence corpus, trains a tiny Embedding → Softmax next-token-prediction
- * model on it, and exposes both the pre-training (randomly initialized)
- * and post-training embedding spaces — projected to 2D via PCA — so the
- * page can show the "before vs after" comparison that is this chapter's
- * proof. Mirrors the shape of `useModelTrainer` (status machine,
- * duplicate-run guard, tensor/model disposal) but is otherwise a separate
- * pipeline since next-token prediction is a different ML task from binary
- * classification.
+ * model on it, and captures the embedding space's 2D (PCA) projection at
+ * a sequence of points throughout training — not just before/after — so
+ * the page can animate words drifting into their category clusters as
+ * training progresses. Mirrors the shape of `useModelTrainer` (status
+ * machine, duplicate-run guard, tensor/model disposal) but is otherwise a
+ * separate pipeline since next-token prediction is a different ML task
+ * from binary classification.
  */
 export function useEmbeddingExperiment() {
   // --- Shared corpus -------------------------------------------------
@@ -52,8 +67,10 @@ export function useEmbeddingExperiment() {
   // --- Training lifecycle ------------------------------------------------
   const [status, setStatus] = useState("idle"); // "idle" | "training" | "completed" | "error"
   const [metrics, setMetrics] = useState(null); // { loss, accuracy }
-  const [initialEmbeddings2D, setInitialEmbeddings2D] = useState(null); // before training
-  const [embeddings2D, setEmbeddings2D] = useState(null); // after training
+  // Sequence of { epoch, points } snapshots — points[i] is the 2D position
+  // of VOCABULARY[i] at that epoch. embeddingHistory[0] is epoch 0 (random
+  // init); the last entry is the final trained state.
+  const [embeddingHistory, setEmbeddingHistory] = useState([]);
   const [rawEmbeddings, setRawEmbeddings] = useState(null); // full-dim, for nearest-neighbor lookups
   const [error, setError] = useState(null);
 
@@ -70,8 +87,7 @@ export function useEmbeddingExperiment() {
     disposeModel();
     setStatus("idle");
     setMetrics(null);
-    setInitialEmbeddings2D(null);
-    setEmbeddings2D(null);
+    setEmbeddingHistory([]);
     setRawEmbeddings(null);
     setError(null);
   }, [disposeModel]);
@@ -98,14 +114,28 @@ export function useEmbeddingExperiment() {
     disposeModel();
     setStatus("training");
     setError(null);
+    setEmbeddingHistory([]);
 
     const model = createEmbeddingModel({ vocabSize: VOCABULARY.length, embeddingDim: EMBEDDING_DIM });
     modelRef.current = model;
 
-    // Capture the untrained (randomly initialized) embedding space first,
-    // so the UI can show a genuine before-vs-after comparison.
-    const initialRaw = extractEmbeddings(model);
-    const initial2D = projectTo2D(initialRaw);
+    const history = [];
+    let previousBasis = null;
+
+    const captureFrame = async (epoch) => {
+      const raw = extractEmbeddings(model);
+      const { points, basis } = projectTo2DContinuous(raw, previousBasis);
+      previousBasis = basis;
+      history.push({ epoch, points });
+      if (isMountedRef.current) setEmbeddingHistory([...history]);
+      await sleep(FRAME_PACING_MS);
+    };
+
+    // Epoch 0: capture the untrained (randomly initialized) embedding
+    // space, so the animation starts from a genuine "word soup".
+    await captureFrame(0);
+
+    const snapshotInterval = Math.max(1, Math.round(epochs / MAX_SNAPSHOTS));
 
     const bigramIndices = bigramsToIndices(corpus.bigrams);
     const { xs, ys } = bigramIndicesToTensors(bigramIndices, VOCABULARY.length);
@@ -115,21 +145,21 @@ export function useEmbeddingExperiment() {
         epochs,
         learningRate,
         batchSize,
-        onEpochEnd: () => {
+        onEpochEnd: async (epoch) => {
           if (!isMountedRef.current) {
             model.stopTraining = true;
+            return;
+          }
+          const isLastEpoch = epoch === epochs - 1;
+          if ((epoch + 1) % snapshotInterval === 0 || isLastEpoch) {
+            await captureFrame(epoch + 1);
           }
         },
       });
 
-      const trainedRaw = extractEmbeddings(model);
-      const trained2D = projectTo2D(trainedRaw);
-
       if (isMountedRef.current) {
         setMetrics(finalMetrics);
-        setInitialEmbeddings2D(initial2D);
-        setEmbeddings2D(trained2D);
-        setRawEmbeddings(trainedRaw);
+        setRawEmbeddings(extractEmbeddings(model));
         setStatus("completed");
       }
     } catch (err) {
@@ -159,8 +189,7 @@ export function useEmbeddingExperiment() {
     // training
     status,
     metrics,
-    initialEmbeddings2D,
-    embeddings2D,
+    embeddingHistory,
     rawEmbeddings,
     error,
     train,
