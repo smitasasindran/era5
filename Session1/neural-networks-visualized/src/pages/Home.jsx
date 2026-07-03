@@ -10,8 +10,7 @@ const experiments = [
         to: "/activations",
         icon: FiActivity,
         title: "Activation Functions",
-        description:
-            "Compare ReLU, Sigmoid, Tanh and more — see how each one shapes a network's decision boundary.",
+        description: "See why a linear model can't bend its boundary, but a ReLU network can.",
     },
     {
         to: "/depth",
