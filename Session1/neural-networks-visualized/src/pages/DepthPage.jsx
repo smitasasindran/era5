@@ -8,6 +8,8 @@ import TrainableModelCard from "../components/common/TrainableModelCard";
 import ComparisonTable from "../components/common/ComparisonTable";
 import IconList from "../components/common/IconList";
 import MatrixCollapseDiagram from "../components/common/MatrixCollapseDiagram";
+import NeuronCountControl from "../components/common/NeuronCountControl";
+import LayerCountControl from "../components/common/LayerCountControl";
 import { useDepthExperiment } from "../hooks/useDepthExperiment";
 
 function DepthPage() {
@@ -25,6 +27,16 @@ function DepthPage() {
     setLearningRate,
     batchSize,
     setBatchSize,
+    linearHiddenUnits,
+    setLinearHiddenUnits,
+    fiveLinearHiddenUnits,
+    setFiveLinearHiddenUnits,
+    fiveLinearNumLayers,
+    setFiveLinearNumLayers,
+    fiveReluHiddenUnits,
+    setFiveReluHiddenUnits,
+    fiveReluNumLayers,
+    setFiveReluNumLayers,
     linear,
     fiveLinear,
     fiveRelu,
@@ -86,8 +98,15 @@ function DepthPage() {
           layout="stacked"
           icon={FiTrendingUp}
           title="Single Linear Layer"
-          architecture="Dense(1) → Sigmoid"
-          insight="A single linear layer can only draw a straight boundary."
+          architecture={`Dense(${linearHiddenUnits}) → Dense(1) → Sigmoid`}
+          insight="A single linear layer can only draw a straight boundary — no number of neurons changes that."
+          controls={
+            <NeuronCountControl
+              value={linearHiddenUnits}
+              onChange={setLinearHiddenUnits}
+              disabled={isAnyTraining}
+            />
+          }
           dataset={dataset}
           status={linear.status}
           metrics={linear.metrics}
@@ -101,8 +120,22 @@ function DepthPage() {
           layout="stacked"
           icon={FiLayers}
           title="Five Linear Layers"
-          architecture="5 × Dense (no activation) → Sigmoid"
-          insight="Five layers, zero activations between them — still just a straight line."
+          architecture={`${fiveLinearNumLayers} × Dense(${fiveLinearHiddenUnits}) (no activation) → Sigmoid`}
+          insight="More layers, more neurons, zero activations between them — still just a straight line."
+          controls={
+            <>
+              <LayerCountControl
+                value={fiveLinearNumLayers}
+                onChange={setFiveLinearNumLayers}
+                disabled={isAnyTraining}
+              />
+              <NeuronCountControl
+                value={fiveLinearHiddenUnits}
+                onChange={setFiveLinearHiddenUnits}
+                disabled={isAnyTraining}
+              />
+            </>
+          }
           dataset={dataset}
           status={fiveLinear.status}
           metrics={fiveLinear.metrics}
@@ -116,8 +149,22 @@ function DepthPage() {
           layout="stacked"
           icon={FiZap}
           title="Five Layers + ReLU"
-          architecture="4 × (Dense → ReLU) → Dense → Sigmoid"
+          architecture={`${fiveReluNumLayers - 1} × (Dense(${fiveReluHiddenUnits}) → ReLU) → Dense(1) → Sigmoid`}
           insight="ReLU between every layer lets the network bend its boundary around the rings."
+          controls={
+            <>
+              <LayerCountControl
+                value={fiveReluNumLayers}
+                onChange={setFiveReluNumLayers}
+                disabled={isAnyTraining}
+              />
+              <NeuronCountControl
+                value={fiveReluHiddenUnits}
+                onChange={setFiveReluHiddenUnits}
+                disabled={isAnyTraining}
+              />
+            </>
+          }
           dataset={dataset}
           status={fiveRelu.status}
           metrics={fiveRelu.metrics}
@@ -132,13 +179,22 @@ function DepthPage() {
         <ComparisonTable
           rows={[
             { model: "One Layer", boundary: "Straight line", accuracy: accuracyOf(linear) },
-            { model: "Five Linear Layers", boundary: "Straight line", accuracy: accuracyOf(fiveLinear) },
-            { model: "Five Layers + ReLU", boundary: "Nonlinear boundary", accuracy: accuracyOf(fiveRelu) },
+            {
+              model: `${fiveLinearNumLayers} Linear Layers`,
+              boundary: "Straight line",
+              accuracy: accuracyOf(fiveLinear),
+            },
+            {
+              model: `${fiveReluNumLayers} Layers + ReLU`,
+              boundary: "Nonlinear boundary",
+              accuracy: accuracyOf(fiveRelu),
+            },
           ]}
         />
         <p className="mt-3 text-sm leading-relaxed text-slate-400">
-          The first two models learn almost identical decision boundaries despite one having five
-          times as many layers. Only adding ReLU changes what the network is capable of learning.
+          The first two models learn almost identical decision boundaries no matter how many linear
+          layers or neurons the middle one has. Only adding ReLU changes what the network is capable
+          of learning.
         </p>
       </Card>
 

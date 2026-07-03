@@ -13,19 +13,27 @@ const DEFAULT_BATCH_SIZE = 32;
  * output (logistic regression). The model is left uncompiled — `trainModel`
  * and `evaluate` compile it on first use.
  *
+ * Passing `hiddenUnits` inserts one linear (no-activation) hidden layer
+ * before the output — useful for demonstrating that widening a purely
+ * linear layer doesn't add expressive power either: the composition of two
+ * linear layers is still just one linear transformation, regardless of the
+ * hidden layer's width. Omitting it keeps the original single-layer form.
+ *
  * @param {Object} [options]
  * @param {number} [options.inputDim=2] - Number of input features.
+ * @param {number} [options.hiddenUnits] - Optional width of an inserted linear hidden layer.
  * @returns {tf.Sequential} An uncompiled Sequential model.
  */
-export function createLinearModel({ inputDim = 2 } = {}) {
+export function createLinearModel({ inputDim = 2, hiddenUnits } = {}) {
   const model = tf.sequential();
-  model.add(
-    tf.layers.dense({
-      units: 1,
-      inputShape: [inputDim],
-      activation: "sigmoid",
-    }),
-  );
+
+  if (hiddenUnits) {
+    model.add(tf.layers.dense({ units: hiddenUnits, inputShape: [inputDim], activation: "linear" }));
+    model.add(tf.layers.dense({ units: 1, activation: "sigmoid" }));
+  } else {
+    model.add(tf.layers.dense({ units: 1, inputShape: [inputDim], activation: "sigmoid" }));
+  }
+
   return model;
 }
 
@@ -58,70 +66,67 @@ export function createHiddenLayerModel({ inputDim = 2, hiddenUnits = 8 } = {}) {
   return model;
 }
 
-/**
- * Creates a 5-layer binary classifier with NO activation between its Dense
- * layers (each defaults to identity/"linear"). This exists to demonstrate
- * that stacking linear layers does not add expressive power: composing N
- * linear transformations is itself just one linear transformation, so this
- * model should perform close to `createLinearModel`, not better, despite
- * having 5x the layers.
- *
- * @param {Object} [options]
- * @param {number} [options.inputDim=2] - Number of input features.
- * @param {number} [options.hiddenUnits=8] - Width of each hidden layer.
- * @returns {tf.Sequential} An uncompiled Sequential model.
- */
-export function createFiveLayerLinearModel({ inputDim = 2, hiddenUnits = 8 } = {}) {
+// Shared by createFiveLayerLinearModel/createFiveLayerReLUModel: builds
+// `numLayers` total Dense layers (hidden layers using `activation`, plus a
+// final sigmoid output layer) — the two factories differ only in whether
+// that hidden activation is "linear" or "relu".
+function buildDenseStack({ inputDim, hiddenUnits, numLayers, hiddenActivation }) {
   const model = tf.sequential();
-  model.add(
-    tf.layers.dense({
-      units: hiddenUnits,
-      inputShape: [inputDim],
-      activation: "linear",
-    }),
-  );
-  for (let i = 0; i < 3; i++) {
-    model.add(tf.layers.dense({ units: hiddenUnits, activation: "linear" }));
+  const hiddenLayerCount = Math.max(numLayers - 1, 0);
+
+  for (let i = 0; i < hiddenLayerCount; i++) {
+    model.add(
+      tf.layers.dense({
+        units: hiddenUnits,
+        activation: hiddenActivation,
+        ...(i === 0 ? { inputShape: [inputDim] } : {}),
+      }),
+    );
   }
+
   model.add(
     tf.layers.dense({
       units: 1,
       activation: "sigmoid",
+      ...(hiddenLayerCount === 0 ? { inputShape: [inputDim] } : {}),
     }),
   );
+
   return model;
 }
 
 /**
- * Creates the same 5-layer shape as `createFiveLayerLinearModel`, but with
- * a ReLU activation after every hidden Dense layer. Inserting these
- * nonlinearities is the only difference from `createFiveLayerLinearModel`,
- * and is what lets this model actually benefit from its depth.
+ * Creates a binary classifier with NO activation between its Dense layers
+ * (each defaults to identity/"linear"). This exists to demonstrate that
+ * stacking linear layers does not add expressive power: composing N linear
+ * transformations is itself just one linear transformation, so this model
+ * should perform close to `createLinearModel`, not better, regardless of
+ * how many layers or how wide they are.
  *
  * @param {Object} [options]
  * @param {number} [options.inputDim=2] - Number of input features.
  * @param {number} [options.hiddenUnits=8] - Width of each hidden layer.
+ * @param {number} [options.numLayers=5] - Total Dense layers, including the sigmoid output layer.
  * @returns {tf.Sequential} An uncompiled Sequential model.
  */
-export function createFiveLayerReLUModel({ inputDim = 2, hiddenUnits = 8 } = {}) {
-  const model = tf.sequential();
-  model.add(
-    tf.layers.dense({
-      units: hiddenUnits,
-      inputShape: [inputDim],
-      activation: "relu",
-    }),
-  );
-  for (let i = 0; i < 3; i++) {
-    model.add(tf.layers.dense({ units: hiddenUnits, activation: "relu" }));
-  }
-  model.add(
-    tf.layers.dense({
-      units: 1,
-      activation: "sigmoid",
-    }),
-  );
-  return model;
+export function createFiveLayerLinearModel({ inputDim = 2, hiddenUnits = 8, numLayers = 5 } = {}) {
+  return buildDenseStack({ inputDim, hiddenUnits, numLayers, hiddenActivation: "linear" });
+}
+
+/**
+ * Creates the same layer shape as `createFiveLayerLinearModel`, but with a
+ * ReLU activation after every hidden Dense layer. Inserting these
+ * nonlinearities is the only difference from `createFiveLayerLinearModel`,
+ * and is what lets this model actually benefit from its depth and width.
+ *
+ * @param {Object} [options]
+ * @param {number} [options.inputDim=2] - Number of input features.
+ * @param {number} [options.hiddenUnits=8] - Width of each hidden layer.
+ * @param {number} [options.numLayers=5] - Total Dense layers, including the sigmoid output layer.
+ * @returns {tf.Sequential} An uncompiled Sequential model.
+ */
+export function createFiveLayerReLUModel({ inputDim = 2, hiddenUnits = 8, numLayers = 5 } = {}) {
+  return buildDenseStack({ inputDim, hiddenUnits, numLayers, hiddenActivation: "relu" });
 }
 
 /**

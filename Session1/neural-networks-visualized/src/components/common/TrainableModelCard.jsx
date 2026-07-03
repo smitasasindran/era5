@@ -17,12 +17,16 @@ import StatBlock from "./StatBlock";
  * when comparing two models (e.g. Activation Functions). `layout="stacked"`
  * puts the plot on top and a compact stats row below, which reads better
  * when several narrower cards sit side by side (e.g. Network Depth).
+ *
+ * `controls`, if given, renders below the architecture line — e.g. sliders
+ * that let a visitor resize that specific model's depth/width.
  */
 function TrainableModelCard({
   icon: Icon,
   title,
   architecture,
   insight,
+  controls,
   dataset,
   status,
   metrics,
@@ -53,6 +57,8 @@ function TrainableModelCard({
         </div>
         <StatusBadge status={status} />
       </div>
+
+      {controls && <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">{controls}</div>}
 
       <div className={isStacked ? "mt-4 flex flex-col gap-4" : "mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3"}>
         <div className={isStacked ? "" : "sm:col-span-2"}>

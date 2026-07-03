@@ -64,10 +64,11 @@ export function useModelTrainer({
     setError(null);
   }, [disposeModel]);
 
-  // Any config change (new dataset, validation set, or hyperparameters)
-  // makes a previously trained model and its boundary stale.
+  // Any config change (new dataset, validation set, hyperparameters, or a
+  // different `createModel` — e.g. the architecture's layer/neuron count
+  // changed) makes a previously trained model and its boundary stale.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(reset, [dataset, validationDataset, epochs, learningRate, batchSize]);
+  useEffect(reset, [dataset, validationDataset, epochs, learningRate, batchSize, createModel]);
 
   // Free the model on unmount. If a training run is still in flight, ask it
   // to stop at the next epoch boundary instead of disposing under it.
