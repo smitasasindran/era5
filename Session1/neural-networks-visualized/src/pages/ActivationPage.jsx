@@ -31,12 +31,32 @@ function ActivationPage() {
 
   return (
     <ExperimentLayout
-      title="Activation Functions"
+      title="Why Neural Networks Need Activations"
       claim="Non-linear activations let networks learn boundaries a linear model cannot. We train two models on the exact same dataset of concentric rings and compare what they learn."
       headerActions={
         <DatasetSummaryBadge lines={[`${numPoints} points · 2 classes`, "Concentric rings with noise"]} />
       }
     >
+      <Card title="Overview">
+        <p className="mt-2 text-sm leading-relaxed text-slate-400">
+          A neural network layer without an activation function is just a linear transformation —
+          it stretches, rotates, and shifts its input, nothing more. Stack as many of these as you
+          like and the result is still just one linear transformation, capable of drawing nothing
+          more complex than a straight decision boundary.
+        </p>
+        <p className="mt-3 text-sm leading-relaxed text-slate-400">
+          An activation function is what breaks that limitation. ReLU, in particular, introduces a
+          simple "kink": it passes positive values through unchanged and zeroes out the negative
+          ones. That small nonlinearity is what lets a network bend its decision boundary instead of
+          only ever drawing straight lines.
+        </p>
+        <p className="mt-3 text-sm leading-relaxed text-slate-400">
+          Below, we train a purely linear model and a small ReLU network on the exact same dataset —
+          two concentric, noisy rings that no straight line can separate. The only difference
+          between them is that one has an activation function and one doesn't.
+        </p>
+      </Card>
+
       <DatasetTrainingSettingsCard
         numPoints={numPoints}
         setNumPoints={setNumPoints}
