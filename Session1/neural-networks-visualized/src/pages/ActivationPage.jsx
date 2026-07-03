@@ -33,7 +33,9 @@ function ActivationPage() {
     <ExperimentLayout
       title="Activation Functions"
       claim="Non-linear activations let networks learn boundaries a linear model cannot. We train two models on the exact same dataset of concentric rings and compare what they learn."
-      headerActions={<DatasetSummaryBadge numPoints={numPoints} />}
+      headerActions={
+        <DatasetSummaryBadge lines={[`${numPoints} points · 2 classes`, "Concentric rings with noise"]} />
+      }
     >
       <DatasetTrainingSettingsCard
         numPoints={numPoints}

@@ -38,7 +38,9 @@ function DepthPage() {
       title="Is Deeper Always Better?"
       subtitle="Depth Without Nonlinearity is a Lie"
       claim="If we simply make a network deeper, will it automatically become more powerful? No — five linear layers are mathematically equivalent to one. Depth only becomes useful once nonlinear activations separate those layers. We train three models on the exact same dataset to prove it."
-      headerActions={<DatasetSummaryBadge numPoints={numPoints} />}
+      headerActions={
+        <DatasetSummaryBadge lines={[`${numPoints} points · 2 classes`, "Concentric rings with noise"]} />
+      }
     >
       <Card title="Overview">
         <p className="mt-2 text-sm leading-relaxed text-slate-400">

@@ -4,6 +4,10 @@
 // Matches the app's accent (violet) and a complementary cyan.
 export const CLASS_COLORS = ["#a06aff", "#47bfff"];
 
+// Extends CLASS_COLORS with a third hue (amber, already used for callouts
+// elsewhere) for visualizations with 3+ categories, like word embeddings.
+export const CATEGORY_COLORS = ["#a06aff", "#47bfff", "#fbbf24"];
+
 /**
  * Builds one colored marker trace per distinct `label` in a set of
  * {x, y, label} points.
@@ -24,6 +28,39 @@ export function buildScatterTraces(points) {
         size: 7,
         opacity: 0.95,
         line: { width: 1, color: "#0f172a" },
+      },
+    };
+  });
+}
+
+/**
+ * Builds one trace per distinct `category` in a set of {x, y, word,
+ * category} points, labeling each marker with its word and optionally
+ * enlarging one selected word's marker (e.g. for nearest-neighbor lookups).
+ */
+export function buildLabeledScatterTraces(points, { colors = CATEGORY_COLORS, selectedWord } = {}) {
+  const categories = [...new Set(points.map((point) => point.category))].sort();
+
+  return categories.map((category, index) => {
+    const subset = points.filter((point) => point.category === category);
+    return {
+      x: subset.map((point) => point.x),
+      y: subset.map((point) => point.y),
+      text: subset.map((point) => point.word),
+      mode: "markers+text",
+      type: "scatter",
+      name: category.charAt(0).toUpperCase() + category.slice(1),
+      textposition: "top center",
+      textfont: { color: "#cbd5e1", size: 11 },
+      hoverinfo: "text",
+      marker: {
+        color: colors[index % colors.length],
+        size: subset.map((point) => (point.word === selectedWord ? 16 : 10)),
+        opacity: 0.9,
+        line: {
+          width: subset.map((point) => (point.word === selectedWord ? 2 : 1)),
+          color: subset.map((point) => (point.word === selectedWord ? "#f8fafc" : "#0f172a")),
+        },
       },
     };
   });
