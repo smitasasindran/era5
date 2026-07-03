@@ -22,8 +22,8 @@ export function buildScatterTraces(points) {
       marker: {
         color: CLASS_COLORS[index % CLASS_COLORS.length],
         size: 7,
-        opacity: 0.85,
-        line: { width: 0.5, color: "#0f172a" },
+        opacity: 0.95,
+        line: { width: 1, color: "#0f172a" },
       },
     };
   });
@@ -44,11 +44,11 @@ export function basePlotlyLayout({ height = 420, xLabel = "x", yLabel = "y" } = 
     xaxis: {
       title: xLabel,
       zeroline: false,
-      gridcolor: "#1e293b",
+      showgrid: false,
       scaleanchor: "y",
       scaleratio: 1,
     },
-    yaxis: { title: yLabel, zeroline: false, gridcolor: "#1e293b" },
+    yaxis: { title: yLabel, zeroline: false, showgrid: false },
     legend: { orientation: "h", y: -0.15 },
   };
 }

@@ -59,6 +59,72 @@ export function createHiddenLayerModel({ inputDim = 2, hiddenUnits = 8 } = {}) {
 }
 
 /**
+ * Creates a 5-layer binary classifier with NO activation between its Dense
+ * layers (each defaults to identity/"linear"). This exists to demonstrate
+ * that stacking linear layers does not add expressive power: composing N
+ * linear transformations is itself just one linear transformation, so this
+ * model should perform close to `createLinearModel`, not better, despite
+ * having 5x the layers.
+ *
+ * @param {Object} [options]
+ * @param {number} [options.inputDim=2] - Number of input features.
+ * @param {number} [options.hiddenUnits=8] - Width of each hidden layer.
+ * @returns {tf.Sequential} An uncompiled Sequential model.
+ */
+export function createFiveLayerLinearModel({ inputDim = 2, hiddenUnits = 8 } = {}) {
+  const model = tf.sequential();
+  model.add(
+    tf.layers.dense({
+      units: hiddenUnits,
+      inputShape: [inputDim],
+      activation: "linear",
+    }),
+  );
+  for (let i = 0; i < 3; i++) {
+    model.add(tf.layers.dense({ units: hiddenUnits, activation: "linear" }));
+  }
+  model.add(
+    tf.layers.dense({
+      units: 1,
+      activation: "sigmoid",
+    }),
+  );
+  return model;
+}
+
+/**
+ * Creates the same 5-layer shape as `createFiveLayerLinearModel`, but with
+ * a ReLU activation after every hidden Dense layer. Inserting these
+ * nonlinearities is the only difference from `createFiveLayerLinearModel`,
+ * and is what lets this model actually benefit from its depth.
+ *
+ * @param {Object} [options]
+ * @param {number} [options.inputDim=2] - Number of input features.
+ * @param {number} [options.hiddenUnits=8] - Width of each hidden layer.
+ * @returns {tf.Sequential} An uncompiled Sequential model.
+ */
+export function createFiveLayerReLUModel({ inputDim = 2, hiddenUnits = 8 } = {}) {
+  const model = tf.sequential();
+  model.add(
+    tf.layers.dense({
+      units: hiddenUnits,
+      inputShape: [inputDim],
+      activation: "relu",
+    }),
+  );
+  for (let i = 0; i < 3; i++) {
+    model.add(tf.layers.dense({ units: hiddenUnits, activation: "relu" }));
+  }
+  model.add(
+    tf.layers.dense({
+      units: 1,
+      activation: "sigmoid",
+    }),
+  );
+  return model;
+}
+
+/**
  * Converts a labeled 2D point dataset into training tensors.
  *
  * @param {Object} dataset

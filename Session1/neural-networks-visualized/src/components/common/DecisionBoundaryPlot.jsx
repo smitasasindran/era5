@@ -11,7 +11,10 @@ import { buildScatterTraces, basePlotlyLayout, CLASS_COLORS } from "./plotlyThem
 function DecisionBoundaryPlot({ data, boundary, height = 420, xLabel = "x", yLabel = "y" }) {
   const traces = [];
 
-  // Pushed first so Plotly draws it beneath the scatter traces.
+  // Pushed first so Plotly draws it beneath the scatter traces. A hard
+  // 2-band split at 0.5 (rather than a smooth gradient) keeps the boundary
+  // itself crisp and legible, especially for the linear model's near-flat
+  // probability surface.
   if (boundary) {
     traces.push({
       x: boundary.x,
@@ -19,12 +22,14 @@ function DecisionBoundaryPlot({ data, boundary, height = 420, xLabel = "x", yLab
       z: boundary.z,
       type: "contour",
       showscale: false,
-      opacity: 0.55,
+      opacity: 0.85,
       hoverinfo: "skip",
-      contours: { start: 0, end: 1, size: 0.05, coloring: "fill" },
+      contours: { start: 0, end: 1, size: 0.5, coloring: "fill" },
       line: { width: 0 },
       colorscale: [
         [0, CLASS_COLORS[0]],
+        [0.5, CLASS_COLORS[0]],
+        [0.5, CLASS_COLORS[1]],
         [1, CLASS_COLORS[1]],
       ],
     });

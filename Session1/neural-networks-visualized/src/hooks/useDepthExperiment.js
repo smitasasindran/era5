@@ -1,7 +1,11 @@
 import { useCallback, useMemo, useState } from "react";
 
 import { generateConcentricRings } from "../utils/datasets";
-import { createLinearModel, createHiddenLayerModel } from "../ml/binaryClassifier";
+import {
+  createLinearModel,
+  createFiveLayerLinearModel,
+  createFiveLayerReLUModel,
+} from "../ml/binaryClassifier";
 import { useModelTrainer } from "./useModelTrainer";
 
 const DEFAULT_NUM_POINTS = 300;
@@ -12,13 +16,15 @@ const DEFAULT_BATCH_SIZE = 32;
 const HIDDEN_UNITS = 8;
 
 /**
- * Controller hook for the Activation Functions experiment. Generates a
- * single shared dataset and trains a linear model and a ReLU network
- * against it — using identical hyperparameters by default — so the two
- * architectures can be compared fairly. ActivationPage stays a thin view
- * over this state.
+ * Controller hook for the Network Depth experiment. Generates a single
+ * shared dataset and trains three models against it — a single linear
+ * layer, five stacked linear layers with no activation, and five layers
+ * with ReLU between each — using identical hyperparameters by default, so
+ * the only variable between them is architecture. Mirrors
+ * `useActivationExperiment`, reusing the same `useModelTrainer` primitive
+ * three times instead of two.
  */
-export function useActivationExperiment() {
+export function useDepthExperiment() {
   // --- Shared dataset ----------------------------------------------------
   const [numPoints, setNumPoints] = useState(DEFAULT_NUM_POINTS);
   const [noise, setNoise] = useState(DEFAULT_NOISE);
@@ -27,7 +33,7 @@ export function useActivationExperiment() {
   const dataset = useMemo(
     () => generateConcentricRings({ numPoints, noise }),
     // datasetVersion has no value of its own — bumping it forces a fresh
-    // random draw with the same numPoints/noise, still shared by both models.
+    // random draw with the same numPoints/noise, still shared by all models.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [numPoints, noise, datasetVersion],
   );
@@ -36,26 +42,44 @@ export function useActivationExperiment() {
     setDatasetVersion((version) => version + 1);
   }, []);
 
-  // --- Shared hyperparameters (identical for both models by default) -----
+  // --- Shared hyperparameters (identical for all three models by default) --
   const [epochs, setEpochs] = useState(DEFAULT_EPOCHS);
   const [learningRate, setLearningRate] = useState(DEFAULT_LEARNING_RATE);
   const [batchSize, setBatchSize] = useState(DEFAULT_BATCH_SIZE);
 
-  // --- The two architectures under comparison ------------------------------
+  // --- The three architectures under comparison ---------------------------
   const createLinear = useCallback(() => createLinearModel({ inputDim: 2 }), []);
-  const createRelu = useCallback(
-    () => createHiddenLayerModel({ inputDim: 2, hiddenUnits: HIDDEN_UNITS }),
+  const createFiveLinear = useCallback(
+    () => createFiveLayerLinearModel({ inputDim: 2, hiddenUnits: HIDDEN_UNITS }),
+    [],
+  );
+  const createFiveRelu = useCallback(
+    () => createFiveLayerReLUModel({ inputDim: 2, hiddenUnits: HIDDEN_UNITS }),
     [],
   );
 
   const linear = useModelTrainer({ dataset, createModel: createLinear, epochs, learningRate, batchSize });
-  const relu = useModelTrainer({ dataset, createModel: createRelu, epochs, learningRate, batchSize });
+  const fiveLinear = useModelTrainer({
+    dataset,
+    createModel: createFiveLinear,
+    epochs,
+    learningRate,
+    batchSize,
+  });
+  const fiveRelu = useModelTrainer({
+    dataset,
+    createModel: createFiveRelu,
+    epochs,
+    learningRate,
+    batchSize,
+  });
 
   const resetResults = useCallback(() => {
     linear.reset();
-    relu.reset();
+    fiveLinear.reset();
+    fiveRelu.reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [linear.reset, relu.reset]);
+  }, [linear.reset, fiveLinear.reset, fiveRelu.reset]);
 
   return {
     // dataset
@@ -75,7 +99,8 @@ export function useActivationExperiment() {
     setBatchSize,
     // models
     linear,
-    relu,
-    isAnyTraining: linear.isTraining || relu.isTraining,
+    fiveLinear,
+    fiveRelu,
+    isAnyTraining: linear.isTraining || fiveLinear.isTraining || fiveRelu.isTraining,
   };
 }

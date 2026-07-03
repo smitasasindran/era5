@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { datasetToTensors, trainModel, disposeTensors } from "../ml/binaryClassifier";
 import { getDataBounds, computeDecisionBoundary } from "../ml/decisionBoundary";
 
-const DEFAULT_BOUNDARY_RESOLUTION = 40;
+const DEFAULT_BOUNDARY_RESOLUTION = 60;
 
 /**
  * Generic controller for training a single pluggable binary classifier
@@ -21,7 +21,7 @@ const DEFAULT_BOUNDARY_RESOLUTION = 40;
  * @param {number} options.epochs
  * @param {number} options.learningRate
  * @param {number} options.batchSize
- * @param {number} [options.boundaryResolution=40]
+ * @param {number} [options.boundaryResolution=60]
  */
 export function useModelTrainer({
   dataset,
@@ -45,15 +45,18 @@ export function useModelTrainer({
     modelRef.current = null;
   }, []);
 
-  // Any config change (new dataset or hyperparameters) makes a previously
-  // trained model and its boundary stale.
-  useEffect(() => {
+  const reset = useCallback(() => {
     disposeModel();
     setStatus("idle");
     setMetrics(null);
     setBoundary(null);
     setError(null);
-  }, [dataset, epochs, learningRate, batchSize, disposeModel]);
+  }, [disposeModel]);
+
+  // Any config change (new dataset or hyperparameters) makes a previously
+  // trained model and its boundary stale.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(reset, [dataset, epochs, learningRate, batchSize]);
 
   // Free the model on unmount. If a training run is still in flight, ask it
   // to stop at the next epoch boundary instead of disposing under it.
@@ -113,5 +116,5 @@ export function useModelTrainer({
     }
   }, [dataset, epochs, learningRate, batchSize, createModel, boundaryResolution, disposeModel]);
 
-  return { status, metrics, boundary, error, train, isTraining: status === "training" };
+  return { status, metrics, boundary, error, train, reset, isTraining: status === "training" };
 }
