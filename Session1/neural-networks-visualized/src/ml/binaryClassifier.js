@@ -30,6 +30,35 @@ export function createLinearModel({ inputDim = 2 } = {}) {
 }
 
 /**
+ * Creates a one-hidden-layer binary classifier: a ReLU Dense hidden layer
+ * feeding a sigmoid output layer. Unlike `createLinearModel`, this can
+ * learn non-linear decision boundaries. Left uncompiled, same as
+ * `createLinearModel`.
+ *
+ * @param {Object} [options]
+ * @param {number} [options.inputDim=2] - Number of input features.
+ * @param {number} [options.hiddenUnits=8] - Width of the hidden layer.
+ * @returns {tf.Sequential} An uncompiled Sequential model.
+ */
+export function createHiddenLayerModel({ inputDim = 2, hiddenUnits = 8 } = {}) {
+  const model = tf.sequential();
+  model.add(
+    tf.layers.dense({
+      units: hiddenUnits,
+      inputShape: [inputDim],
+      activation: "relu",
+    }),
+  );
+  model.add(
+    tf.layers.dense({
+      units: 1,
+      activation: "sigmoid",
+    }),
+  );
+  return model;
+}
+
+/**
  * Converts a labeled 2D point dataset into training tensors.
  *
  * @param {Object} dataset
