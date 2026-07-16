@@ -175,6 +175,141 @@ Command used:
 - `tokenizer_hf.json` — unweighted joint baseline (X1 fails), kept for comparison
 - `tokenizer_final.json` — final model (en weight=2), satisfies X1 ≤ 1.2
 
+## Phase 2 — swapped Gujarati for Marathi, new goal: minimize spread
+
+New requirements from the user:
+1. Use **Marathi** (title `भारत` on `mr.wikipedia.org`, 32,192 chars, same as
+   Hindi's — both languages happen to use the same word for "India") instead
+   of Gujarati.
+2. Beyond X1 ≤ 1.2, minimize the **spread** (max − min) across all four
+   ratios X1..X4 — i.e. don't just satisfy English's constraint, make all
+   four languages compress *similarly well*.
+
+Updated `fetch_corpus.py`, `evaluate_hf.py`, `train_tokenizer_hf.py` to use
+`mr` in place of `gu` (old `corpus/india_gu.txt` and the naive-BPE baseline
+above are left untouched as historical reference).
+
+### Oversampling isn't precise enough for equalization
+
+Tried tuning the joint-training weights directly (user's own experiment:
+`en=1, hi=3, te=3, mr=2`, one shared 10k vocab) — this pushed Hindi and
+Telugu down to 1.05 and 1.22, but **broke English** (2.35, since it got no
+oversampling boost and lost budget to the other three). This exposed the
+real limitation: oversampling only biases the *relative* priority in one
+shared merge race — there's no way to reason about it to hit 4 precise,
+simultaneous targets. Explicit per-language vocab quotas, decided in advance
+and then combined, give exact control instead.
+
+### Quota search — minimize spread analytically
+
+Wrote `optimize_allocation_v2.py`. Key insight: since more vocab always
+lowers (or holds) a language's ratio, and X1 ≤ 1.2 is a hard floor on
+English's *budget* (not its ratio), the spread-minimizing allocation is:
+
+1. Give English the **minimum** vocab that still satisfies ratio ≤ 1.2 (any
+   more wastes shared budget that could shrink the other three's ratios —
+   proved by noting spread is monotonically non-decreasing as English's vocab
+   grows past that minimum: its own ratio drops further below the pack
+   *and* the shrinking remainder pushes everyone else's ratio up).
+2. Spend 100% of the remaining budget equalizing the other languages' ratios
+   at the lowest common value the remaining budget allows (binary search over
+   a shared target ratio ρ; for each candidate ρ, sum the minimum vocab each
+   language needs to reach ρ, and find the smallest ρ where that sum still
+   fits the remaining budget).
+
+First pass treated Hindi, Telugu, Marathi as 3 independent single-language
+tokenizers, quotas found via binary search (`en=5333, hi=1407, te=1550,
+mr=1710`, sum=10000, individually verified ratios en=1.1999,
+hi≈te≈mr≈2.306).
+
+### Bug: merging independently-trained Hindi and Marathi tables corrupts both
+
+`merge_tokenizers.py` combined the 4 separately-trained tokenizers into one
+by concatenating each language's `(vocab, merges)` and deduping identical
+entries — assumed safe because each language's merges only touch its own
+script's characters, so there's no cross-language dependency.
+
+That assumption holds for English (Latin), Telugu (Telugu script) — but
+**Hindi and Marathi both use Devanagari.** After the actual merge, re-evaluating
+the *combined* tokenizer gave very different numbers than the
+individually-trained ones: Hindi improved (2.306 → 2.156) but **Marathi got
+worse (2.306 → 2.657)** — a real regression, not noise.
+
+Root cause: BPE encoding always applies the *earliest-listed* matching merge
+rule in the tokenizer's merge table (priority = position in the list, not
+per-language rank). Concatenating `[en's merges] + [hi's merges] + [te's
+merges] + [mr's merges]` means any Devanagari merge rule Hindi happened to
+learn — even one Marathi's own solo-trained chain never needed or would have
+prioritized differently — now sits ahead of Marathi's own rules and can
+hijack how a Marathi word merges, sometimes leading to a worse (more
+fragmented) final split than Marathi's standalone tokenizer would have
+produced. Concatenation is only safe across **script-disjoint** groups.
+
+### Fix — train script-sharing languages jointly, not independently
+
+Restructured into 3 script-safe groups: **English** alone, **Telugu** alone,
+**Hindi+Marathi trained jointly** as one coherent BPE chain (so there's no
+foreign-priority interference within the pair by construction). Hindi's
+larger corpus dominates the shared frequency race at equal weight, so used a
+**1:2 Hindi:Marathi** file-weight to balance them (empirically found: at
+vocab_size=3000, weight 1:1 gives hi=1.90/mr=2.16; weight 1:2 gives
+hi=2.06/mr=1.99 — much closer).
+
+Re-ran the same minimize-spread search (`optimize_allocation_v2.py`) over
+just 2 free groups now (Telugu vs. the Hindi+Marathi pool), since English's
+quota is already fixed:
+
+| Group | Quota | Ratio(s) |
+|---|---|---|
+| English | 5,333 | 1.1999 |
+| Telugu | 1,813 | 2.1398 |
+| Hindi+Marathi (joint, 1:2 weight) | 2,854 | hi=2.1403, mr=2.0238 |
+
+Equalized ρ ≈ 2.14 — notably *better* than the naive independent-quota result
+(2.306), because Hindi and Marathi genuinely share vocabulary/morphology as
+related Indo-Aryan languages, so pooling them lets the same budget cover both
+more efficiently than treating them as unrelated.
+
+`merge_tokenizers_v2.py` builds the final tokenizer from these 3 groups
+(concatenation is safe here — Latin, Telugu script, and Devanagari never
+overlap). Final combined vocab settled at **9,708** (a harmless ~300-token
+dedup of shared digits/punctuation across the 3 groups, not a script-overlap
+bug this time).
+
+## Final results — `tokenizer_final.json` (vocab_size = 9,708)
+
+| Lang | Unique words | Tokens | Ratio |
+|---|---|---|---|
+| English (X1) | 3,156 | 3,787 | **1.1999** |
+| Marathi (X4) | 2,272 | 4,542 | **1.9991** |
+| Hindi (X2) | 2,281 | 4,767 | **2.0899** |
+| Telugu (X3) | 1,588 | 3,381 | **2.1291** |
+
+**Sorted largest → smallest:** X3 (2.1291) > X2 (2.0899) > X4 (1.9991) > X1 (1.1999)
+
+**Constraint check: X1 = 1.1999 ≤ 1.2 → PASS**
+**Spread (max − min) = 2.1291 − 1.1999 = 0.929**, down from the un-optimized
+joint baseline's failing state and provably close to the best this allocation
+strategy can do (English's hard floor forces a minimum ~1.0+ gap, since it
+alone needs over half the 10k budget to reach 1.2, leaving proportionally
+less for the rest).
+
+## Files (updated)
+
+- `find_min_vocab.py` — generalized binary-search utility (`train_single`,
+  `ratio_for`, `binary_search_min_vocab`), now imported by the allocation
+  scripts instead of being a standalone CLI-only tool
+- `optimize_allocation_v2.py` — the spread-minimizing quota search (3
+  script-safe groups: en, te, hi+mr joint)
+- `merge_tokenizers_v2.py` — builds the final tokenizer from those 3 groups
+- `tokenizer_final.json` — final model (vocab=9,708), satisfies X1 ≤ 1.2 with
+  minimized spread
+- `tokenizer_hf.json` — regenerated equal-weight joint baseline (all 4
+  languages pooled, no allocation strategy) for comparison — X1 = 1.688, FAILs
+- superseded: an earlier `optimize_allocation.py` / `merge_tokenizers.py` pair
+  that treated Hindi and Marathi as independent (removed after the
+  script-overlap bug above was found — see narrative for their numbers)
+
 ## Caveats / what "best options" could improve further
 
 - **In-sample evaluation.** Fertility is measured on the same India-page text
@@ -183,14 +318,26 @@ Command used:
   English) — this reflects the assignment's own definition (tokens/vocab over
   the same corpus), but it's not evidence the tokenizer would generalize to new
   English text.
-- **Oversampling is a blunt instrument.** It works here only because it happens
-  to bias the greedy merge order in the right direction; it doesn't give
-  precise control over exactly how much vocab each language gets. A cleaner
-  "best options" approach would explicitly reserve a per-language token quota
-  (e.g. train each language's BPE separately to a target vocab size, then
-  union the merge tables into one final vocab), which is more controllable and
-  auditable than tuning a duplication factor by trial and error.
+- **Oversampling is a blunt instrument** for hitting *simultaneous* precise
+  targets across 4 languages sharing one vocab (confirmed in Phase 2: tuning
+  weights to help Hindi/Telugu broke English). It's still useful as a *local*
+  balancing lever between two languages that are already being trained
+  jointly on purpose (e.g. the 1:2 Hindi:Marathi weight) — the difference is
+  scope: one dial for one pairwise trade-off is tractable, one dial for a
+  4-way trade-off isn't.
+- **English's hard floor bounds how low the spread can go.** English alone
+  needs >50% of the 10k budget to reach ratio ≤ 1.2 (its unique-word count is
+  the largest of the four, and the constraint is strict), which caps how much
+  is left to equalize the rest. Spread ≈0.93 is close to the best this
+  4-language / 10k-budget / X1≤1.2 setup can do — meaningfully lowering it
+  further would need either a bigger shared vocab, a looser X1 bound, or more
+  training text per language (see below) to get more fertility per token.
+- **The 1:2 Hindi:Marathi weight was found empirically** (tried a few values,
+  picked the one that balanced them best at one sample vocab size), not
+  derived analytically like the 3-group equalization search was. It's a
+  reasonable approximation but a finer per-vocab-size tuning could exist.
 - **Small corpora.** Each language's corpus is just one Wikipedia article
   (8.8 KB–65 KB). Pulling in more India-related pages per language would give
   the trainer enough signal to make full use of the 10,000-token budget instead
-  of running dry on frequency (as the naive attempt did at vocab 8,431).
+  of running dry on frequency (as the naive attempt did at vocab 8,431), and
+  would likely change the achievable equalized ratio too.
