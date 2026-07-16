@@ -7,10 +7,12 @@ earliest-listed matching rule). Verified empirically: naively merging 4
 independently-trained tokenizers pushed Marathi's ratio from 2.31 -> 2.66.
 
 Fix: train Hindi+Marathi as ONE joint pool (their own internal order is then
-self-consistent, no interference) with a 1:2 Hindi:Marathi file-weight to
-counteract Hindi's larger corpus dominating the shared frequency race. English
-and Telugu remain single-language groups since Latin/Devanagari/Telugu script
-never overlap -- concatenating those three groups' merges is safe.
+self-consistent, no interference) with a 4:5 Hindi:Marathi file-weight
+(swept several ratios at the pair's actual quota and picked the one that
+minimizes max(r_hi, r_mr)) to counteract Hindi's larger corpus dominating the
+shared frequency race. English and Telugu remain single-language groups since
+Latin/Devanagari/Telugu script never overlap -- concatenating those three
+groups' merges is safe.
 
 Same allocation idea as before: give English the minimal vocab for ratio<=1.2,
 then split what's left between Telugu and the Hindi+Marathi pool to equalize
@@ -21,7 +23,7 @@ from find_min_vocab import train_single, ratio_for, binary_search_min_vocab, uni
 
 EN_TARGET = 1.2
 TOTAL_VOCAB = 10000
-HI_W, MR_W = 1, 2
+HI_W, MR_W = 4, 5
 
 
 def himr_train(vocab_size, hi_w=HI_W, mr_w=MR_W):
@@ -85,24 +87,47 @@ def find_min_common_rho(budget, lo=1.0, hi=4.0, iters=25):
     return best
 
 
-if __name__ == "__main__":
-    print(f"Step 1: minimal English vocab for ratio <= {EN_TARGET}")
-    en_result = binary_search_min_vocab("en", EN_TARGET, 100, 9000, verbose=False)
+def compute_quotas(en_target=EN_TARGET, total_vocab=TOTAL_VOCAB, verbose=True):
+    """Run the full allocation search and return {'en':.., 'te':.., 'himr':..}
+    quotas, plus the hi:mr weight to train the himr group with. This is the
+    single source of truth for quotas -- merge_tokenizers.py calls this
+    instead of hardcoding numbers that would drift out of sync."""
+    if verbose:
+        print(f"Step 1: minimal English vocab for ratio <= {en_target}")
+    en_result = binary_search_min_vocab("en", en_target, 100, 9000, verbose=False)
     v_en, v_en_actual, r_en = en_result
-    print(f"-> v_en = {v_en_actual}, ratio = {r_en:.4f}\n")
+    if verbose:
+        print(f"-> v_en = {v_en_actual}, ratio = {r_en:.4f}\n")
 
-    budget_remaining = TOTAL_VOCAB - v_en_actual
-    print(f"Step 2: remaining budget for Telugu + (Hindi+Marathi pool) = {budget_remaining}")
+    budget_remaining = total_vocab - v_en_actual
+    if verbose:
+        print(f"Step 2: remaining budget for Telugu + (Hindi+Marathi pool) = {budget_remaining}")
 
     result = find_min_common_rho(budget_remaining)
     rho, te_v, te_r, himr_v, himr_r, total = result
-    print(f"-> equalized target rho = {rho:.4f}")
-    print(f"-> Telugu: vocab={te_v}, ratio={te_r:.4f}")
-    print(f"-> Hindi+Marathi pool: vocab={himr_v}, ratios={himr_r}")
-    print(f"-> sum = {total}, budget = {budget_remaining}, leftover = {budget_remaining - total}")
+    if verbose:
+        print(f"-> equalized target rho = {rho:.4f}")
+        print(f"-> Telugu: vocab={te_v}, ratio={te_r:.4f}")
+        print(f"-> Hindi+Marathi pool: vocab={himr_v}, ratios={himr_r}")
+        print(f"-> sum = {total}, budget = {budget_remaining}, leftover = {budget_remaining - total}")
+        print("\nFinal quotas:")
+        print(f"  en: {v_en_actual}")
+        print(f"  te: {te_v}")
+        print(f"  hi+mr (joint, weight {HI_W}:{MR_W}): {himr_v}")
+        print(f"  TOTAL: {v_en_actual + te_v + himr_v}")
 
-    print("\nFinal quotas:")
-    print(f"  en: {v_en_actual}")
-    print(f"  te: {te_v}")
-    print(f"  hi+mr (joint, weight {HI_W}:{MR_W}): {himr_v}")
-    print(f"  TOTAL: {v_en_actual + te_v + himr_v}")
+    return {
+        "en": v_en_actual,
+        "te": te_v,
+        "himr": himr_v,
+        "hi_w": HI_W,
+        "mr_w": MR_W,
+        "rho": rho,
+        "r_en": r_en,
+        "r_te": te_r,
+        "r_himr": himr_r,
+    }
+
+
+if __name__ == "__main__":
+    compute_quotas()

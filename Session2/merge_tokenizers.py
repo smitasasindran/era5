@@ -3,20 +3,19 @@ Build the final combined tokenizer from 3 script-safe groups:
   - English (Latin), trained alone
   - Telugu (Telugu script), trained alone
   - Hindi + Marathi (share Devanagari), trained JOINTLY as one coherent BPE
-    chain (weight hi=1, mr=2) so there's no cross-language merge-priority
-    interference within the pair.
+    chain (weight hi=4, mr=5, tuned to minimize max(r_hi, r_mr)) so there's
+    no cross-language merge-priority interference within the pair.
 
 Concatenating merges *across* these 3 groups is safe because Latin, Telugu
 script, and Devanagari never overlap -- unlike merging independently-trained
 Hindi and Marathi tables, which corrupts each other's merge order (see
-optimize_allocation_v2.py docstring).
+optimize_allocation.py docstring).
 """
 import json
 import sys
 from tokenizers import Tokenizer, models, pre_tokenizers, trainers
 from find_min_vocab import train_single
-
-HI_W, MR_W = 1, 2
+from optimize_allocation import compute_quotas, HI_W, MR_W
 
 
 def himr_train(vocab_size, hi_w=HI_W, mr_w=MR_W):
@@ -63,11 +62,12 @@ def merge_groups(group_tokenizers, out_path):
 
 
 if __name__ == "__main__":
-    quotas = {"en": 5333, "te": 1813, "himr": 2854}
     out_path = sys.argv[1] if len(sys.argv) > 1 else "tokenizer_final.json"
+
+    quotas = compute_quotas()
 
     en_tok = train_single("en", quotas["en"])
     te_tok = train_single("te", quotas["te"])
-    himr_tok = himr_train(quotas["himr"])
+    himr_tok = himr_train(quotas["himr"], hi_w=quotas["hi_w"], mr_w=quotas["mr_w"])
 
     merge_groups([en_tok, te_tok, himr_tok], out_path)
