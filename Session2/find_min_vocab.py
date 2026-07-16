@@ -1,0 +1,49 @@
+"""Binary-search the minimum single-language vocab size needed to hit a target fertility ratio."""
+import sys
+from tokenizers import Tokenizer, models, pre_tokenizers, trainers
+
+
+def train_single(lang, vocab_size):
+    tok = Tokenizer(models.BPE(unk_token=None))
+    tok.pre_tokenizer = pre_tokenizers.Whitespace()
+    trainer = trainers.BpeTrainer(vocab_size=vocab_size, min_frequency=1, show_progress=False, special_tokens=[])
+    tok.train([f"corpus/india_{lang}.txt"], trainer)
+    return tok
+
+
+def unique_words(lang, tok):
+    with open(f"corpus/india_{lang}.txt", encoding="utf-8") as f:
+        text = f.read()
+    pretoks = tok.pre_tokenizer.pre_tokenize_str(text)
+    return sorted(set(p for p, _ in pretoks))
+
+
+def ratio_for(lang, vocab_size):
+    tok = train_single(lang, vocab_size)
+    words = unique_words(lang, tok)
+    total_tokens = sum(len(e.tokens) for e in tok.encode_batch(words))
+    return total_tokens / len(words), tok.get_vocab_size()
+
+
+def binary_search_min_vocab(lang, target_ratio, lo, hi):
+    best = None
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        ratio, actual_vocab = ratio_for(lang, mid)
+        print(f"  vocab_size={mid:5d} actual={actual_vocab:5d} ratio={ratio:.4f}")
+        if ratio <= target_ratio:
+            best = (mid, actual_vocab, ratio)
+            hi = mid - 1
+        else:
+            lo = mid + 1
+    return best
+
+
+if __name__ == "__main__":
+    lang = sys.argv[1] if len(sys.argv) > 1 else "en"
+    target = float(sys.argv[2]) if len(sys.argv) > 2 else 1.2
+    lo = int(sys.argv[3]) if len(sys.argv) > 3 else 100
+    hi = int(sys.argv[4]) if len(sys.argv) > 4 else 9000
+    print(f"Searching min vocab_size for {lang} to reach ratio <= {target} in [{lo}, {hi}]")
+    result = binary_search_min_vocab(lang, target, lo, hi)
+    print(f"\nResult: {result}")
