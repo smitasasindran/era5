@@ -6,7 +6,7 @@ TITLES = {
     "en": "India",
     "hi": "भारत",
     "te": "భారతదేశం",
-    "gu": "ભારત",
+    "mr": "भारत",
 }
 
 OUT_DIR = os.path.join(os.path.dirname(__file__), "corpus")

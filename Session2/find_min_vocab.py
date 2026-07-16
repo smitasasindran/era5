@@ -25,12 +25,13 @@ def ratio_for(lang, vocab_size):
     return total_tokens / len(words), tok.get_vocab_size()
 
 
-def binary_search_min_vocab(lang, target_ratio, lo, hi):
+def binary_search_min_vocab(lang, target_ratio, lo, hi, verbose=True):
     best = None
     while lo <= hi:
         mid = (lo + hi) // 2
         ratio, actual_vocab = ratio_for(lang, mid)
-        print(f"  vocab_size={mid:5d} actual={actual_vocab:5d} ratio={ratio:.4f}")
+        if verbose:
+            print(f"  vocab_size={mid:5d} actual={actual_vocab:5d} ratio={ratio:.4f}")
         if ratio <= target_ratio:
             best = (mid, actual_vocab, ratio)
             hi = mid - 1

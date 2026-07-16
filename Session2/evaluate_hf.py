@@ -5,8 +5,8 @@ whitespace-split word) per language, matching the naive-BPE evaluation metric.
 import sys
 from tokenizers import Tokenizer
 
-LANGS = ["en", "hi", "te", "gu"]
-NAMES = {"en": "X1 (English)", "hi": "X2 (Hindi)", "te": "X3 (Telugu)", "gu": "X4 (Gujarati)"}
+LANGS = ["en", "hi", "te", "mr"]
+NAMES = {"en": "X1 (English)", "hi": "X2 (Hindi)", "te": "X3 (Telugu)", "mr": "X4 (Marathi)"}
 
 
 def unique_words(lang, tok):

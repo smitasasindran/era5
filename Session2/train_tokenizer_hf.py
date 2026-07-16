@@ -5,7 +5,7 @@ hand-rolled BPE implementation.
 """
 from tokenizers import Tokenizer, models, pre_tokenizers, trainers
 
-LANGS = ["en", "hi", "te", "gu"]
+LANGS = ["en", "hi", "te", "mr"]
 VOCAB_SIZE = 10000
 
 
@@ -35,9 +35,9 @@ def train_joint_tokenizer(vocab_size=VOCAB_SIZE, min_frequency=1, weights=None):
 
 if __name__ == "__main__":
     import sys
-    weights = {"en": 1, "hi": 1, "te": 1, "gu": 1}
+    weights = {"en": 1, "hi": 1, "te": 1, "mr": 1}
     if len(sys.argv) > 1:
-        # e.g. "en=5,hi=1,te=1,gu=1"
+        # e.g. "en=5,hi=1,te=1,mr=1"
         for pair in sys.argv[1].split(","):
             k, v = pair.split("=")
             weights[k] = int(v)
