@@ -76,9 +76,11 @@ def evaluate(tokenizer_path):
 
 if __name__ == "__main__":
     path = sys.argv[1] if len(sys.argv) > 1 else "tokenizer_final.json"
-    # Writes straight into tokenizer-playground/ by default so the page's
-    # "Official evaluation" section is refreshed with no manual copy step.
-    out_json = sys.argv[2] if len(sys.argv) > 2 else "tokenizer-playground/eval_results.json"
+    # Writes straight into the playground's model folder by default so the
+    # page's "Official evaluation" section is refreshed with no manual copy
+    # step. Pass an explicit path for other tokenizer versions, e.g.
+    # tokenizer-playground/models/v2/eval_results.json.
+    out_json = sys.argv[2] if len(sys.argv) > 2 else "tokenizer-playground/models/v1/eval_results.json"
 
     _, summary = evaluate(path)
 

@@ -5,26 +5,33 @@ or HF's [tokenizer playground](https://huggingface.co/spaces/Xenova/the-tokenize
 for the custom BPE tokenizer built for the ERAv5 tokenizer assignment
 (English/Hindi/Telugu/Marathi, 10,000-token shared vocab).
 
-It loads `tokenizer.json` (a real HuggingFace `tokenizers` fast-tokenizer
+It loads a `tokenizer.json` (a real HuggingFace `tokenizers` fast-tokenizer
 file, copied straight from the training pipeline in `..`) and re-implements
 BPE encode in plain JS in `tokenizer.js` -- no server, no bundler, no
 external tokenizer library. The JS port is verified byte-for-byte against
 the real Python `tokenizers` output; see `test/`.
+
+The page supports multiple tokenizer *versions* via a dropdown -- see
+"Adding a new tokenizer version" below.
 
 ## Files
 
 - `index.html`, `style.css`, `app.js` -- the UI
 - `tokenizer.js` -- the BPE engine (normalizer + pre-tokenizer + merge logic),
   usable from both the browser (`<script>` tag) and Node (`require`)
-- `tokenizer.json` -- the trained tokenizer. **Replace this file** if you
-  retrain/update the tokenizer in `..` (`cp ../tokenizer_final.json tokenizer.json`)
-- `eval_results.json` -- the official per-language fertility numbers and
-  spread/score, shown in the page's "Official evaluation" section. This is a
-  static snapshot, not computed live in the browser. `evaluate_hf.py` (in
-  `..`) writes straight into this file by default --
-  `python evaluate_hf.py tokenizer_final.json`, run from `..`, no manual copy
-  step. Re-run it whenever `tokenizer_final.json` changes, or the numbers
-  shown here will silently go stale (the page has no way to detect a
+- `models/index.json` -- the version registry: `[{id, label, dir}, ...]`.
+  The dropdown is populated from this file; it's the only thing you need to
+  edit to add/rename/reorder versions.
+- `models/v1/tokenizer.json` -- the "Version 1" trained tokenizer.
+  **Replace this file** if you retrain/update it in `..`
+  (`cp ../tokenizer_final.json models/v1/tokenizer.json`)
+- `models/v1/eval_results.json` -- "Version 1"'s official per-language
+  fertility numbers and spread/score, shown in the page's "Official
+  evaluation" section. This is a static snapshot, not computed live in the
+  browser. `evaluate_hf.py` (in `..`) writes straight into this file by
+  default -- `python evaluate_hf.py tokenizer_final.json`, run from `..`, no
+  manual copy step. Re-run it whenever `tokenizer_final.json` changes, or the
+  numbers shown here will silently go stale (the page has no way to detect a
   mismatch on its own).
 - `test/compare_with_python.js` -- Node script that checks the JS port's
   output against the real Python tokenizer for a set of test strings
@@ -51,7 +58,7 @@ correctness against the real tokenizer:
 python3 -c "
 import json
 from tokenizers import Tokenizer
-tok = Tokenizer.from_file('tokenizer.json')
+tok = Tokenizer.from_file('models/v1/tokenizer.json')
 test_strings = ['This is a new day', 'भारत एक विशाल देश है।']  # add more
 results = [{'text': s, 'tokens': tok.encode(s).tokens, 'ids': tok.encode(s).ids} for s in test_strings]
 json.dump(results, open('/tmp/py_reference.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=2)
@@ -60,6 +67,42 @@ json.dump(results, open('/tmp/py_reference.json', 'w', encoding='utf-8'), ensure
 # 2. Compare
 node test/compare_with_python.js
 ```
+
+## Adding a new tokenizer version
+
+The dropdown reads `models/index.json`, a plain list of versions:
+
+```json
+[
+  { "id": "v1", "label": "Version 1", "dir": "models/v1" }
+]
+```
+
+To add "Version 2" (say, a retrained tokenizer with a different vocab size
+or corpus):
+
+```bash
+mkdir tokenizer-playground/models/v2
+cp tokenizer_final.json tokenizer-playground/models/v2/tokenizer.json
+python evaluate_hf.py tokenizer_final.json tokenizer-playground/models/v2/eval_results.json
+```
+
+Then add one entry to `models/index.json`:
+
+```json
+[
+  { "id": "v1", "label": "Version 1", "dir": "models/v1" },
+  { "id": "v2", "label": "Version 2", "dir": "models/v2" }
+]
+```
+
+No changes to `app.js`/`index.html` needed -- the dropdown, vocab badge,
+download link, live tokenization, and the "Official evaluation" table all
+switch together when the user picks a version, driven entirely by which
+`dir` that version's entry points at.
+
+This assumes the new tokenizer uses the same pipeline (BPE + Lowercase +
+Whitespace) -- see the next section for what happens if it doesn't.
 
 ## Swapping in a new tokenizer.json
 
@@ -74,7 +117,7 @@ mis-tokenizing** if something outside that pipeline shows up.
 
 | You changed... | Drop-in replacement? |
 |---|---|
-| Vocab size, corpus, per-language quotas, hi:mr weight -- anything that reruns `merge_tokenizers.py` as-is | **Yes.** Only the `vocab`/`merges` data changes; the pipeline (BPE + Lowercase + Whitespace) stays the same. Just `cp ../tokenizer_final.json tokenizer.json`. |
+| Vocab size, corpus, per-language quotas, hi:mr weight -- anything that reruns `merge_tokenizers.py` as-is | **Yes.** Only the `vocab`/`merges` data changes; the pipeline (BPE + Lowercase + Whitespace) stays the same. Just `cp ../tokenizer_final.json models/v1/tokenizer.json` (or add it as a new version -- see above). |
 | Pre-tokenizer (e.g. `Metaspace`, `ByteLevel`, a `Sequence` of several) | **No.** `tokenizer.js` always applies one hardcoded Whitespace-style regex regardless of what `pre_tokenizer.type` actually says. Before this validation was added it would have *silently* produced wrong atom boundaries; now it throws on load naming the exact unsupported type. You'd need to add a branch in `BPETokenizer.preTokenize()` for the new type. |
 | Merge strategy / model type (e.g. `Unigram`, `WordPiece` instead of `BPE`) | **No.** These use fundamentally different encode algorithms (Unigram: Viterbi over a probability-weighted trie; WordPiece: greedy longest-prefix-match) and different JSON fields (Unigram's `model.vocab` is a list of `[piece, score]` pairs, not a dict, and it has no `merges` field at all). Throws on load rather than crashing confusingly on `model.merges.forEach`. |
 | Normalizer (e.g. `NFC`, `Strip`, a `Sequence`) | **No.** Only `Lowercase` (or no normalizer) is implemented; anything else throws on load rather than being silently skipped. |

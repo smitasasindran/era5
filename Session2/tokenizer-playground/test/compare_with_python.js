@@ -5,7 +5,7 @@ const fs = require("fs");
 const path = require("path");
 const { BPETokenizer } = require("../tokenizer.js");
 
-const tokenizerPath = path.join(__dirname, "..", "tokenizer.json");
+const tokenizerPath = path.join(__dirname, "..", "models", "v1", "tokenizer.json");
 const tok = new BPETokenizer(JSON.parse(fs.readFileSync(tokenizerPath, "utf-8")));
 
 const referencePath = "/tmp/py_reference.json";

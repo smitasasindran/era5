@@ -107,6 +107,18 @@ header h1 {
   gap: 12px;
 }
 
+.model-select {
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: var(--panel-bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
 .badge {
   font-family: var(--mono);
   font-size: 0.8rem;
@@ -125,6 +137,11 @@ header h1 {
   border-radius: 6px;
   padding: 5px 12px;
   background: var(--panel-bg);
+}
+
+.download-btn[aria-disabled="true"] {
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 .download-btn:hover {

@@ -13,6 +13,7 @@ const EXAMPLES = {
 };
 
 let tokenizer = null;
+let models = [];
 
 const el = {
   input: document.getElementById("input-text"),
@@ -24,6 +25,8 @@ const el = {
   vocabBadge: document.getElementById("vocab-badge"),
   themeToggle: document.getElementById("theme-toggle"),
   evalContent: document.getElementById("eval-content"),
+  modelSelect: document.getElementById("model-select"),
+  downloadLink: document.getElementById("download-link"),
 };
 
 // --- Theme toggle (persisted; explicit choice always overrides system pref) ---
@@ -161,28 +164,76 @@ function renderEvalResults(summary) {
   `;
 }
 
-async function init() {
+// --- Multi-version tokenizer support ---
+// Available versions are listed in models/index.json, each pointing at its
+// own folder (models/<id>/tokenizer.json + eval_results.json). Adding a new
+// version is just: add a folder + one entry there, no code changes needed.
+const SELECTED_MODEL_KEY = "tokenizer-playground-model";
+
+async function loadModelById(id) {
+  const model = models.find((m) => m.id === id);
+  if (!model) {
+    console.error(`Unknown model id "${id}"`);
+    return;
+  }
+
+  el.vocabBadge.textContent = "loading…";
+  el.downloadLink.setAttribute("aria-disabled", "true");
+
   try {
-    tokenizer = await loadTokenizer("tokenizer.json");
+    tokenizer = await loadTokenizer(`${model.dir}/tokenizer.json`);
     el.vocabBadge.textContent = `vocab size: ${tokenizer.vocabSize.toLocaleString()}`;
-    el.input.value = EXAMPLES.mixed;
+    el.downloadLink.href = `${model.dir}/tokenizer.json`;
+    el.downloadLink.download = `tokenizer_${model.id}.json`;
+    el.downloadLink.removeAttribute("aria-disabled");
+    if (!el.input.value) el.input.value = EXAMPLES.mixed;
     render();
   } catch (err) {
-    el.vocabBadge.textContent = "failed to load tokenizer.json";
-    el.tokenView.innerHTML = `<span class="placeholder">Error: ${escapeHtml(String(err))}</span>`;
+    tokenizer = null;
+    el.vocabBadge.textContent = "failed to load tokenizer";
+    el.tokenView.innerHTML = `<span class="placeholder">Error loading ${model.dir}/tokenizer.json: ${escapeHtml(
+      String(err)
+    )}</span>`;
     console.error(err);
   }
 
   try {
-    const res = await fetch("eval_results.json");
+    const res = await fetch(`${model.dir}/eval_results.json`);
     if (!res.ok) throw new Error(`${res.status}`);
     renderEvalResults(await res.json());
   } catch (err) {
-    el.evalContent.innerHTML = `<span class="placeholder">Could not load eval_results.json (${escapeHtml(
+    el.evalContent.innerHTML = `<span class="placeholder">Could not load ${model.dir}/eval_results.json (${escapeHtml(
       String(err)
-    )}). Run: python evaluate_hf.py tokenizer_final.json eval_results.json</span>`;
+    )})</span>`;
     console.error(err);
   }
+
+  localStorage.setItem(SELECTED_MODEL_KEY, id);
+}
+
+el.modelSelect.addEventListener("change", () => loadModelById(el.modelSelect.value));
+
+async function init() {
+  try {
+    const res = await fetch("models/index.json");
+    if (!res.ok) throw new Error(`${res.status}`);
+    models = await res.json();
+  } catch (err) {
+    el.modelSelect.innerHTML = `<option>failed to load models/index.json</option>`;
+    console.error(err);
+    return;
+  }
+
+  el.modelSelect.innerHTML = models
+    .map((m) => `<option value="${escapeHtml(m.id)}">${escapeHtml(m.label)}</option>`)
+    .join("");
+
+  const saved = localStorage.getItem(SELECTED_MODEL_KEY);
+  const initialId = models.some((m) => m.id === saved) ? saved : models[0]?.id;
+  if (!initialId) return;
+
+  el.modelSelect.value = initialId;
+  await loadModelById(initialId);
 }
 
 init();
