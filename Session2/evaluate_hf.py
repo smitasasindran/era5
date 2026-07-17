@@ -16,6 +16,8 @@ def unique_words(lang, tok):
     subword fragmentation."""
     with open(f"corpus/india_{lang}.txt", encoding="utf-8") as f:
         text = f.read()
+    if tok.normalizer:
+        text = tok.normalizer.normalize_str(text)
     pretoks = tok.pre_tokenizer.pre_tokenize_str(text)
     return sorted(set(p for p, _ in pretoks))
 
@@ -45,5 +47,5 @@ def evaluate(tokenizer_path):
 
 
 if __name__ == "__main__":
-    path = sys.argv[1] if len(sys.argv) > 1 else "tokenizer_hf.json"
+    path = sys.argv[1] if len(sys.argv) > 1 else "tokenizer_final.json"
     evaluate(path)

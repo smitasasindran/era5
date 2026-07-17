@@ -352,7 +352,7 @@ hi+mr joint (4:5): 2814  (hi=2.0798, mr=2.1149)
 TOTAL: 10000
 ```
 
-## Final results — `tokenizer_final.json` (vocab_size = 9,713)
+## Phase 3 result — `tokenizer_final.json` (vocab_size = 9,713)
 
 | Lang | Unique words | Tokens | Ratio |
 |---|---|---|---|
@@ -363,14 +363,87 @@ TOTAL: 10000
 
 Sorted largest → smallest: X3 (2.1039) > X4 (2.0849) > X2 (2.0294) > X1 (1.1999)
 
-**X1 = 1.1999 ≤ 1.2 → PASS**
-**Spread = 2.1039 − 1.1999 = 0.9040**
-**Score = 1000 / 0.9040 ≈ 1106.2**
+X1 ≤ 1.2 → PASS. Spread = 0.9040, Score = 1000/0.9040 ≈ 1106.2 — improved from
+Phase 2's spread of 0.929 (score ≈1076) via the weight refinement above.
 
-Improved from Phase 2's spread of 0.929 (score ≈1076) via the weight
-refinement above. This is close to the ceiling for this budget/constraint
-combination — English's mandatory ≥5,333-token floor to satisfy X1<1.2 is the
-dominant limiter on how tight the spread can get.
+## Phase 5 — pushing for all four languages < 1.2
+
+User asked to try to get X2/X3/X4 under 1.2 too, not just close to each
+other, while keeping vocab≤10,000 and spread<1. Also asked specifically about
+using `Metaspace` instead of `Whitespace` as the pre-tokenizer. Wrote
+`count_merges_by_script.py` (classifies each merge in the final tokenizer's
+merge table by Unicode script) as an aside during this discussion — confirmed
+the 3-group design works as intended: of 9,468 merges, only 7 (0.07%) are
+Mixed-script, and even those are IPA pronunciation-guide characters
+(`ˈ`, `ʱ`, `ː`) from the English article's phonetic transcription of "Bharat",
+not real cross-language contamination.
+
+Tested four candidate optimizations empirically before adopting any of them:
+
+| Optimization | Result |
+|---|---|
+| `Metaspace` pre-tokenizer instead of `Whitespace` | **Worse** — English ratio 2.42 vs 1.94 (same vocab_size=3000). Metaspace doesn't split punctuation off words, so `"India"` and `"India,"` become separate atoms each needing independent merge coverage, instead of sharing one root atom (`Whitespace`'s regex splits punctuation into its own atom, which collapses back to shared coverage). Rejected. |
+| `Unigram` model instead of `BPE` | **Worse at the vocab sizes we need** — on a single-article corpus, Unigram's candidate-piece generation plateaus early (~2,240 vocab regardless of requested budget, e.g. requesting 5,000 still only trains 2,240), while BPE keeps improving as budget grows (BPE ratio 1.31 vs Unigram's stuck 2.25 at vocab=5000). Might reverse on a much bigger corpus. Rejected for this corpus size. |
+| NFC Unicode normalization | **No effect** — Wikipedia text already NFC-normalized, zero words changed by re-normalizing. Nothing to gain. |
+| Lowercase normalization | **Real, free gain** — English only (Devanagari/Telugu have no case, so it's a no-op there, safe to apply everywhere). Cuts English's unique-atom count from 3,156 → 2,965 (172 case-duplicate pairs collapse, e.g. "India"/"india"), lowering the vocab needed for ratio≤1.2 from 5,333 → **4,844**. Adopted. |
+
+### Checked feasibility of "all four < 1.2" before promising it
+
+Solo per-language vocab needed for ratio≤1.2, with lowercase applied:
+
+| Lang | Vocab needed |
+|---|---|
+| English | 4,844 |
+| Telugu | 3,287 |
+| Hindi+Marathi (joint, exploiting their shared vocabulary) | 7,062 |
+| **Sum** | **15,193** |
+
+Still **52% over** the 10,000 budget even after every real optimization found.
+This is a hard data-scale wall (Zipf's law: ratio≤1.2 requires whole-tokenizing
+~85-90%+ of each language's thousands of distinct word forms), not a missing
+trick. Also checked whether an occurrence-weighted fertility metric (tokens
+per word-occurrence in running text, rather than per unique word type) would
+close the gap — it comes much closer (~11,200 tokens needed, only ~12% over)
+but is a different, more lenient definition than the per-unique-word one used
+throughout this project.
+
+Presented both findings to the user and asked how to proceed. **Decision:
+keep the per-unique-word fertility definition, accept X1<1.2 only (not all
+four), and apply the free lowercase win** for the extra margin it gives.
+
+Wired the Lowercase normalizer into every tokenizer built by
+`find_min_vocab.py`, `optimize_allocation.py`, and `merge_tokenizers.py`
+(including the final merged tokenizer itself, so encoding real text at
+inference time lowercases consistently with how each sub-tokenizer was
+trained). Also had to fix `unique_words()` in `find_min_vocab.py` and
+`evaluate_hf.py` to apply the tokenizer's normalizer before pre-tokenizing —
+otherwise the word-count denominator wouldn't reflect the same case-folding
+the tokenizer itself applies when encoding, silently under-crediting the
+lowercase win.
+
+## Final results — `tokenizer_final.json` (vocab_size = 9,689)
+
+| Lang | Unique words | Tokens | Ratio |
+|---|---|---|---|
+| English (X1) | 2,965 | 3,558 | **1.2000** |
+| Hindi (X2) | 2,279 | 4,432 | **1.9447** |
+| Marathi (X4) | 2,271 | 4,445 | **1.9573** |
+| Telugu (X3) | 1,587 | 3,120 | **1.9660** |
+
+Quotas: en=4,844, te=2,048, hi+mr joint (4:5 weight)=3,097 (sum=9,989, 11
+tokens of the 10,000 budget left unused by binary-search granularity).
+
+Sorted largest → smallest: X3 (1.9660) > X4 (1.9573) > X2 (1.9447) > X1 (1.2000)
+
+**X1 = 1.2000 ≤ 1.2 → PASS**
+**Spread = 1.9660 − 1.2000 = 0.7660** (< 1 ✓)
+**Score = 1000 / 0.7660 ≈ 1305.5**
+
+Improved from Phase 3's spread of 0.904 (score ≈1106) — freeing 489 tokens
+from English's requirement let the equalization search push the other three
+down substantially further than the raw savings alone would suggest, since
+that part of each language's vocab-vs-ratio curve is steep (small budget
+increases still yield large ratio drops in this range).
 
 ## Files (current, cleaned up)
 
@@ -390,9 +463,15 @@ Current pipeline:
 - `find_min_vocab.py` — `train_single`, `ratio_for`, `binary_search_min_vocab`,
   `unique_words` — shared utilities imported by the scripts below
 - `optimize_allocation.py` — the spread-minimizing quota search (3
-  script-safe groups: en, te, hi+mr joint; includes the hi:mr weight sweep)
+  script-safe groups: en, te, hi+mr joint; includes the hi:mr weight sweep),
+  now with Lowercase normalization; exposes `compute_quotas()` so quotas are
+  never hardcoded elsewhere
 - `merge_tokenizers.py` — builds the final tokenizer from those 3 groups
-- `tokenizer_final.json` — the deliverable (vocab=9,713), X1≤1.2, spread≈0.904
+  (calls `compute_quotas()` directly)
+- `count_merges_by_script.py` — diagnostic: classifies the final tokenizer's
+  merges by Unicode script (Latin/Devanagari/Telugu/Mixed-script), used to
+  verify the 3-group design didn't leak cross-script merges
+- `tokenizer_final.json` — the deliverable (vocab=9,689), X1≤1.2, spread≈0.766
 - `report.md` — this file
 
 ## Caveats / what "best options" could improve further

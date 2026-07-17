@@ -18,7 +18,7 @@ Same allocation idea as before: give English the minimal vocab for ratio<=1.2,
 then split what's left between Telugu and the Hindi+Marathi pool to equalize
 the worse of {r_hi, r_mr} with r_te, using the full remaining budget.
 """
-from tokenizers import Tokenizer, models, pre_tokenizers, trainers
+from tokenizers import Tokenizer, models, pre_tokenizers, trainers, normalizers
 from find_min_vocab import train_single, ratio_for, binary_search_min_vocab, unique_words
 
 EN_TARGET = 1.2
@@ -28,6 +28,7 @@ HI_W, MR_W = 4, 5
 
 def himr_train(vocab_size, hi_w=HI_W, mr_w=MR_W):
     tok = Tokenizer(models.BPE(unk_token=None))
+    tok.normalizer = normalizers.Lowercase()
     tok.pre_tokenizer = pre_tokenizers.Whitespace()
     trainer = trainers.BpeTrainer(vocab_size=vocab_size, min_frequency=1, show_progress=False, special_tokens=[])
     files = ["corpus/india_hi.txt"] * hi_w + ["corpus/india_mr.txt"] * mr_w

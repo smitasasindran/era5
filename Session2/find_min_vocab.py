@@ -1,10 +1,15 @@
-"""Binary-search the minimum single-language vocab size needed to hit a target fertility ratio."""
+"""Binary-search the minimum single-language vocab size needed to hit a target fertility ratio.
+
+Uses a Lowercase normalizer: real, free reduction in English's unique-atom
+count (case variants like "India"/"india" collapse into one atom). Devanagari
+and Telugu have no case, so it's a no-op there -- safe to apply everywhere."""
 import sys
-from tokenizers import Tokenizer, models, pre_tokenizers, trainers
+from tokenizers import Tokenizer, models, pre_tokenizers, trainers, normalizers
 
 
 def train_single(lang, vocab_size):
     tok = Tokenizer(models.BPE(unk_token=None))
+    tok.normalizer = normalizers.Lowercase()
     tok.pre_tokenizer = pre_tokenizers.Whitespace()
     trainer = trainers.BpeTrainer(vocab_size=vocab_size, min_frequency=1, show_progress=False, special_tokens=[])
     tok.train([f"corpus/india_{lang}.txt"], trainer)
@@ -14,6 +19,8 @@ def train_single(lang, vocab_size):
 def unique_words(lang, tok):
     with open(f"corpus/india_{lang}.txt", encoding="utf-8") as f:
         text = f.read()
+    if tok.normalizer:
+        text = tok.normalizer.normalize_str(text)
     pretoks = tok.pre_tokenizer.pre_tokenize_str(text)
     return sorted(set(p for p, _ in pretoks))
 
