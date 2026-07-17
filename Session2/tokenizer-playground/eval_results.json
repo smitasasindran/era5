@@ -1,0 +1,43 @@
+{
+  "tokenizer_path": "tokenizer_final.json",
+  "vocab_size": 9689,
+  "languages": {
+    "en": {
+      "label": "X1",
+      "name": "English",
+      "unique_words": 2965,
+      "tokens": 3558,
+      "ratio": 1.2
+    },
+    "hi": {
+      "label": "X2",
+      "name": "Hindi",
+      "unique_words": 2279,
+      "tokens": 4432,
+      "ratio": 1.9447125932426503
+    },
+    "te": {
+      "label": "X3",
+      "name": "Telugu",
+      "unique_words": 1587,
+      "tokens": 3120,
+      "ratio": 1.9659735349716445
+    },
+    "mr": {
+      "label": "X4",
+      "name": "Marathi",
+      "unique_words": 2271,
+      "tokens": 4445,
+      "ratio": 1.9572875385292823
+    }
+  },
+  "sorted_largest_to_smallest": [
+    "te",
+    "mr",
+    "hi",
+    "en"
+  ],
+  "spread": 0.7659735349716446,
+  "score": 1305.5281342546891,
+  "x1_constraint_pass": true
+}

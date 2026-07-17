@@ -21,6 +21,28 @@
   }
 }
 
+/* Explicit overrides (set via the theme toggle) always win over the
+   prefers-color-scheme media query above, regardless of system setting. */
+:root[data-theme="light"] {
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #6b7280;
+  --panel-bg: #f7f7f8;
+  --border: #e2e2e5;
+  --accent: #1f2937;
+  --accent-fg: #ffffff;
+}
+
+:root[data-theme="dark"] {
+  --bg: #16161a;
+  --fg: #eaeaec;
+  --muted: #9a9aa2;
+  --panel-bg: #1f1f24;
+  --border: #33333a;
+  --accent: #eaeaec;
+  --accent-fg: #16161a;
+}
+
 * { box-sizing: border-box; }
 
 body {
@@ -36,9 +58,32 @@ body {
   padding: 32px 20px 60px;
 }
 
+.header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 header h1 {
   font-size: 1.6rem;
   margin: 0 0 4px;
+}
+
+.theme-toggle-btn {
+  flex-shrink: 0;
+  font-size: 1.1rem;
+  line-height: 1;
+  border: 1px solid var(--border);
+  background: var(--panel-bg);
+  color: var(--fg);
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.theme-toggle-btn:hover {
+  border-color: var(--accent);
 }
 
 .subtitle {
@@ -179,48 +224,123 @@ header h1 {
 }
 
 .token-view {
+  /* Always a light panel regardless of page theme -- the highlight palette
+     below is tuned for dark text on light backgrounds, same as tiktokenizer
+     and the HF tokenizer playground both do for their token views even in
+     dark mode. */
+  background: #fbfbfc;
+  color: #1a1a1a;
+  border-color: #dcdce0;
   min-height: 140px;
   font-family: var(--mono);
   font-size: 0.95rem;
-  line-height: 1.9;
+  line-height: 2.1;
   word-break: break-word;
   white-space: pre-wrap;
 }
 
 .token-view .placeholder {
-  color: var(--muted);
+  color: #8a8a92;
 }
 
 .tok {
   border-radius: 4px;
-  padding: 1px 1px;
+  padding: 2px 3px;
+  margin: 1px 0;
   display: inline;
+  color: #1a1a1a;
 }
 
 .tok.unk {
+  background: transparent;
   outline: 1.5px dashed #e5484d;
   outline-offset: -1px;
+  color: #1a1a1a;
 }
 
 .tok-id {
   border-radius: 4px;
-  padding: 1px 6px;
+  padding: 2px 7px;
   margin: 0 2px 2px 0;
   display: inline-block;
+  color: #1a1a1a;
+  font-weight: 600;
   font-size: 0.85rem;
 }
 
-footer {
-  margin-top: 40px;
-  color: var(--muted);
-  font-size: 0.8rem;
-  border-top: 1px solid var(--border);
-  padding-top: 16px;
+.eval-panel {
+  margin-top: 20px;
 }
 
-footer code {
+.eval-title {
+  font-size: 1.05rem;
+  margin: 0 0 4px;
+}
+
+.eval-subtitle {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 0 0 16px;
+}
+
+.eval-subtitle code {
   font-family: var(--mono);
-  background: var(--panel-bg);
+  background: var(--bg);
   padding: 1px 5px;
   border-radius: 4px;
+}
+
+.eval-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+  margin-bottom: 16px;
+}
+
+.eval-table th,
+.eval-table td {
+  text-align: left;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.eval-table th {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.eval-table td.ratio {
+  font-family: var(--mono);
+  font-weight: 600;
+}
+
+.eval-table-cols th,
+.eval-table-cols td {
+  text-align: center;
+  width: 25%;
+}
+
+.eval-table-cols td.ratio {
+  font-size: 1.05rem;
+}
+
+.eval-summary {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.eval-summary .stat-label {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+
+.eval-summary .stat-value {
+  font-size: 1.3rem;
+  font-weight: 600;
+  font-family: var(--mono);
 }

@@ -18,10 +18,40 @@ const el = {
   input: document.getElementById("input-text"),
   tokenCount: document.getElementById("token-count"),
   charCount: document.getElementById("char-count"),
+  wordCount: document.getElementById("word-count"),
   fertility: document.getElementById("fertility"),
   tokenView: document.getElementById("token-view"),
   vocabBadge: document.getElementById("vocab-badge"),
+  themeToggle: document.getElementById("theme-toggle"),
+  evalContent: document.getElementById("eval-content"),
 };
+
+// --- Theme toggle (persisted; explicit choice always overrides system pref) ---
+const THEME_KEY = "tokenizer-playground-theme";
+
+function effectiveTheme() {
+  const explicit = document.documentElement.getAttribute("data-theme");
+  if (explicit) return explicit;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function applyTheme(theme) {
+  if (theme === "light" || theme === "dark") {
+    document.documentElement.setAttribute("data-theme", theme);
+  } else {
+    document.documentElement.removeAttribute("data-theme");
+  }
+  el.themeToggle.textContent = effectiveTheme() === "dark" ? "☀️" : "\u{1F319}";
+}
+
+function toggleTheme() {
+  const next = effectiveTheme() === "dark" ? "light" : "dark";
+  localStorage.setItem(THEME_KEY, next);
+  applyTheme(next);
+}
+
+el.themeToggle.addEventListener("click", toggleTheme);
+applyTheme(localStorage.getItem(THEME_KEY));
 
 function escapeHtml(s) {
   return s
@@ -43,6 +73,7 @@ function render() {
   if (text.length === 0) {
     el.tokenView.innerHTML = `<span class="placeholder">Tokens will appear here&hellip;</span>`;
     el.tokenCount.textContent = "0";
+    el.wordCount.textContent = "0";
     el.fertility.textContent = "—";
     return;
   }
@@ -86,6 +117,7 @@ function render() {
 
   el.tokenView.innerHTML = html;
   el.tokenCount.textContent = totalTokens.toLocaleString();
+  el.wordCount.textContent = atoms.length.toLocaleString();
   el.fertility.textContent = atoms.length > 0 ? (totalTokens / atoms.length).toFixed(3) : "—";
 }
 
@@ -104,6 +136,31 @@ document.querySelectorAll(".example-btn").forEach((btn) => {
   });
 });
 
+function renderEvalResults(summary) {
+  const langs = ["en", "hi", "te", "mr"]; // fixed display order, independent of sort
+  const headerCells = langs.map((l) => `<th>${summary.languages[l].name}</th>`).join("");
+  const valueCells = langs
+    .map((l) => `<td class="ratio">${summary.languages[l].ratio.toFixed(4)}</td>`)
+    .join("");
+
+  el.evalContent.innerHTML = `
+    <table class="eval-table eval-table-cols">
+      <thead><tr>${headerCells}</tr></thead>
+      <tbody><tr>${valueCells}</tr></tbody>
+    </table>
+    <div class="eval-summary">
+      <div class="stat">
+        <div class="stat-label">Spread (max &minus; min)</div>
+        <div class="stat-value">${summary.spread.toFixed(4)}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Score (1000 / spread)</div>
+        <div class="stat-value">${summary.score.toFixed(1)}</div>
+      </div>
+    </div>
+  `;
+}
+
 async function init() {
   try {
     tokenizer = await loadTokenizer("tokenizer.json");
@@ -113,6 +170,17 @@ async function init() {
   } catch (err) {
     el.vocabBadge.textContent = "failed to load tokenizer.json";
     el.tokenView.innerHTML = `<span class="placeholder">Error: ${escapeHtml(String(err))}</span>`;
+    console.error(err);
+  }
+
+  try {
+    const res = await fetch("eval_results.json");
+    if (!res.ok) throw new Error(`${res.status}`);
+    renderEvalResults(await res.json());
+  } catch (err) {
+    el.evalContent.innerHTML = `<span class="placeholder">Could not load eval_results.json (${escapeHtml(
+      String(err)
+    )}). Run: python evaluate_hf.py tokenizer_final.json eval_results.json</span>`;
     console.error(err);
   }
 }

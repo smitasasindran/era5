@@ -13,11 +13,28 @@ const SEP = ""; // separator unlikely to appear in real merge tokens
 // (Unicode-aware \w), just spelled out with JS Unicode property escapes.
 const WORD_RE = /[\p{L}\p{M}\p{N}\p{Pc}]+|[^\s\p{L}\p{M}\p{N}\p{Pc}]+/gu;
 
+// This engine hand-implements exactly one pipeline: a BPE model, an optional
+// Lowercase normalizer, and a Whitespace-style pre-tokenizer. It does NOT
+// generically interpret tokenizer.json -- there's no code path for Unigram/
+// WordPiece models, NFC/NFD/Sequence normalizers, or Metaspace/ByteLevel/
+// Sequence pre-tokenizers. Retraining with a different vocab under the SAME
+// pipeline is safe to drop in; changing the pipeline itself is not (see
+// README's "Swapping in a new tokenizer.json" section) -- so we validate
+// against an allowlist and fail loudly rather than silently mis-tokenizing.
+const SUPPORTED_MODEL_TYPES = ["BPE"];
+const SUPPORTED_NORMALIZER_TYPES = [null, "Lowercase"];
+const SUPPORTED_PRE_TOKENIZER_TYPES = [null, "Whitespace"];
+
+class UnsupportedTokenizerError extends Error {}
+
 class BPETokenizer {
   constructor(json) {
     this.raw = json;
     this.normalizerType = json.normalizer?.type ?? null;
     this.preTokenizerType = json.pre_tokenizer?.type ?? null;
+    this.modelType = json.model?.type ?? null;
+
+    this.validate();
 
     const model = json.model;
     this.vocab = new Map(Object.entries(model.vocab));
@@ -25,6 +42,38 @@ class BPETokenizer {
     model.merges.forEach(([a, b], rank) => {
       this.mergeRank.set(a + SEP + b, rank);
     });
+  }
+
+  validate() {
+    const problems = [];
+    if (!SUPPORTED_MODEL_TYPES.includes(this.modelType)) {
+      problems.push(
+        `model.type is "${this.modelType}" -- this engine only implements BPE ` +
+          `(merges + greedy lowest-rank pairwise merging). A Unigram or ` +
+          `WordPiece model needs different encode logic entirely.`
+      );
+    }
+    if (!SUPPORTED_NORMALIZER_TYPES.includes(this.normalizerType)) {
+      problems.push(
+        `normalizer.type is "${this.normalizerType}" -- this engine only ` +
+          `implements Lowercase (or no normalizer). NFC/NFD/Strip/Sequence ` +
+          `normalizers would be silently skipped instead of applied.`
+      );
+    }
+    if (!SUPPORTED_PRE_TOKENIZER_TYPES.includes(this.preTokenizerType)) {
+      problems.push(
+        `pre_tokenizer.type is "${this.preTokenizerType}" -- this engine only ` +
+          `implements a Whitespace-style regex. Metaspace/ByteLevel/Sequence ` +
+          `pre-tokenizers would produce different, wrong atom boundaries.`
+      );
+    }
+    if (problems.length > 0) {
+      throw new UnsupportedTokenizerError(
+        "This tokenizer.json uses a pipeline this playground doesn't support:\n" +
+          problems.map((p) => `  - ${p}`).join("\n") +
+          "\nUpdate tokenizer.js to handle it, or retrain under the same pipeline."
+      );
+    }
   }
 
   get vocabSize() {
@@ -110,5 +159,5 @@ async function loadTokenizer(url) {
 // Isomorphic export (no-op in the browser, where `module` is undefined) so
 // this file can also be required from a Node test harness.
 if (typeof module !== "undefined") {
-  module.exports = { BPETokenizer, loadTokenizer };
+  module.exports = { BPETokenizer, loadTokenizer, UnsupportedTokenizerError };
 }
