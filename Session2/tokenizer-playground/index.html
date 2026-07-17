@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>India Multilingual Tokenizer Playground</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="page">
+    <header>
+      <h1>India Multilingual Tokenizer Playground</h1>
+      <p class="subtitle">
+        Custom BPE tokenizer &mdash; 10,000-token shared vocabulary across
+        English, Hindi, Telugu &amp; Marathi. Runs entirely in your browser.
+      </p>
+    </header>
+
+    <section class="toolbar">
+      <div class="model-info">
+        <span class="badge" id="vocab-badge">loading&hellip;</span>
+        <a id="download-link" href="tokenizer.json" download="tokenizer.json" class="download-btn">
+          &#11015; Download tokenizer.json
+        </a>
+      </div>
+      <div class="examples">
+        <span class="examples-label">Try:</span>
+        <button class="example-btn" data-lang="en">English</button>
+        <button class="example-btn" data-lang="hi">Hindi</button>
+        <button class="example-btn" data-lang="te">Telugu</button>
+        <button class="example-btn" data-lang="mr">Marathi</button>
+        <button class="example-btn" data-lang="mixed">Mixed</button>
+      </div>
+    </section>
+
+    <section class="editor-row">
+      <div class="panel">
+        <textarea id="input-text" spellcheck="false" placeholder="Type or paste text&hellip;"></textarea>
+      </div>
+      <div class="panel stats-panel">
+        <div class="stat">
+          <div class="stat-label">Token count</div>
+          <div class="stat-value" id="token-count">0</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Character count</div>
+          <div class="stat-value" id="char-count">0</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Fertility (tokens / words)</div>
+          <div class="stat-value" id="fertility">&mdash;</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view-controls">
+      <label><input type="radio" name="view-mode" value="text" checked /> Text</label>
+      <label><input type="radio" name="view-mode" value="ids" /> Token IDs</label>
+      <label><input type="radio" name="view-mode" value="hide" /> Hide</label>
+    </section>
+
+    <section class="panel token-view" id="token-view" aria-live="polite"></section>
+
+    <footer>
+      Built for the ERAv5 tokenizer assignment. BPE encode/decode logic
+      re-implemented in plain JS directly from <code>tokenizer.json</code> &mdash;
+      no server, no external tokenizer library.
+    </footer>
+  </div>
+
+  <script src="tokenizer.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
