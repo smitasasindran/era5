@@ -141,14 +141,23 @@ goal, but not necessary to beat their score as currently defined.
 - `evaluate.py` — computes final fertility/spread/score, writes `eval_results.json`
 - `tokenizer_final.json` — the v2 deliverable
 
-## Not yet done
+## Playground integration (done)
 
-- **Playground integration.** `tokenizer-playground/tokenizer.js` only
-  supports `Whitespace` + `Lowercase`(-or-none) + `BPE`-with-no-UNK by
-  design (see its `validate()` allowlist) — it will throw, not silently
-  break, if `models/v2/tokenizer.json` is added to `models/index.json`
-  as-is. Wiring up v2 needs: a `Metaspace` pre-tokenizer implementation in
-  JS, a `Sequence` normalizer (NFKC via JS's built-in `.normalize("NFKC")`
-  + lowercase), and `[UNK]`-aware rendering (map unrecognized pieces to the
-  literal `[UNK]` token instead of dropping them). Not built yet — flagging
-  before doing it in case the priority is elsewhere.
+Extended `tokenizer-playground/tokenizer.js` to support v2's full pipeline
+alongside v1's: a `Metaspace` pre-tokenizer (its exact splitting behavior —
+including leading/trailing/consecutive-space edge cases — was reverse
+engineered from the real Python `tokenizers` output and verified against
+~15 cases before writing the JS), a `Sequence` normalizer (`NFKC` via JS's
+built-in `.normalize("NFKC")`, then `Lowercase`), and `[UNK]`-aware encoding
+(an unrecognized piece maps to the real `[UNK]` vocab entry — a genuine
+token, not a drop, matching verified real behavior).
+
+`models/v2/tokenizer.json` + `models/v2/eval_results.json` added, and
+`models/index.json` now lists both versions. A real bug was caught while
+building the verification test for this: the merge-rank Map key was built
+by string concatenation with an empty separator, so two *different* merge
+pairs could collide if they happened to concatenate to the same string
+(`("2","024")` and `("20","24")` both → `"2024"`) — v1's test strings never
+hit this, v2's digit-heavy Metaspace content did. Fixed with a NUL-character
+separator; both v1 and v2 now pass 30/30 verification cases against the real
+Python tokenizer (see `tokenizer-playground/test/`).

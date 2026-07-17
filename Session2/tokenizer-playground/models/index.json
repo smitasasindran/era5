@@ -3,5 +3,10 @@
     "id": "v1",
     "label": "Version 1",
     "dir": "models/v1"
+  },
+  {
+    "id": "v2",
+    "label": "Version 2",
+    "dir": "models/v2"
   }
 ]
