@@ -193,6 +193,84 @@ header h1 {
   padding: 14px;
 }
 
+.stat.stat-hidden {
+  display: none;
+}
+
+.design-notes {
+  margin-bottom: 16px;
+}
+
+.design-notes summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: var(--fg);
+  list-style: none;
+}
+
+.design-notes summary::-webkit-details-marker {
+  display: none;
+}
+
+.design-notes summary::before {
+  content: "▸ ";
+  color: var(--muted);
+}
+
+.design-notes[open] summary::before {
+  content: "▾ ";
+}
+
+#design-notes-content {
+  margin-top: 14px;
+}
+
+.design-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 720px) {
+  .design-columns { grid-template-columns: 1fr; }
+}
+
+.design-col h3 {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+  margin: 0 0 10px;
+}
+
+.design-col-cons h3 {
+  color: #e5484d;
+}
+
+.design-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.design-list li {
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.design-list strong {
+  display: block;
+  margin-bottom: 2px;
+}
+
+.design-col-cons .design-list strong {
+  color: #e5484d;
+}
+
 #input-text {
   width: 100%;
   min-height: 220px;

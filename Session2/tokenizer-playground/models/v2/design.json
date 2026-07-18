@@ -1,0 +1,46 @@
+{
+  "decisions": [
+    {
+      "label": "Wiki-faithful Markdown corpus",
+      "detail": "Real wikitext (not flattened plain text) parsed with mwparserfromhell and converted to Markdown — headings, bold/italic, links, lists, and tables preserved; citation clutter dropped. 24-60% more corpus text per language than v1, and full of highly-repetitive structural symbols (**, ##, |) that compress extremely well."
+    },
+    {
+      "label": "Metaspace pre-tokenizer",
+      "detail": "Keeps punctuation attached to its word (\"India,\" stays one unit) instead of splitting it off — this is what lets a single learned token cover more than one \"faithful unit\", the mechanism that pushes fertility below 1.0."
+    },
+    {
+      "label": "NFKC normalizer, no Lowercase",
+      "detail": "NFKC collapses Unicode compatibility variants (ﬁ → fi, fullwidth forms, etc.). Lowercase was tried and tested but dropped once found to be a strict downgrade here: NFKC-only beat NFKC+Lowercase on both score (16,581 vs 13,458) and round-trip fidelity — unlike v1, where Lowercase is a real, unambiguous win."
+    },
+    {
+      "label": "Explicit [UNK] token",
+      "detail": "Same as v1 — an unrecognized character becomes a real, visible, counted [UNK] token."
+    },
+    {
+      "label": "Metaspace decoder",
+      "detail": "Makes decode(encode(text)) genuinely invertible: the replacement character (▁) marks exactly where a real space was, so decoding can reconstruct it — verified exact round-trip on normal text, including multi-token words and attached punctuation."
+    },
+    {
+      "label": "Same 3-group merge strategy as v1",
+      "detail": "English alone, Telugu alone, Hindi+Marathi trained jointly (they share Devanagari) — same reasoning as v1."
+    },
+    {
+      "label": "Symmetric equalization (no English carve-out)",
+      "detail": "Unlike v1, English no longer needs special protection — the richer corpus + Metaspace + NFKC combo gets every language comfortably under the fertility target on its own. So the full 10,000-token budget is split to equalize all three groups as tightly as possible, English included."
+    },
+    {
+      "label": "Fertility metric: \"faithful units\"",
+      "detail": "tokens / faithful_units, computed over the whole running corpus (not per-unique-word like v1). A faithful_unit is one contiguous letter/mark/number run, or one punctuation/symbol character counted individually. Because it's occurrence-weighted, common short words and punctuation dominate the average — this is why fertility can drop below 1.0 here but couldn't in v1."
+    }
+  ],
+  "cons": [
+    {
+      "label": "OOV characters still break exact round-trip",
+      "detail": "An unrecognized character decodes back as the literal 5-character string \"[UNK]\", not the original character — inherent to having any UNK token at all, not fixable without full byte-level coverage."
+    },
+    {
+      "label": "Markdown/table conversion is best-effort",
+      "detail": "Wikitext tables and infobox parameters are flattened into plain value lists rather than perfectly reconstructed — not pixel-perfect, though it captures far more real content than v1's plain-text extraction."
+    }
+  ]
+}

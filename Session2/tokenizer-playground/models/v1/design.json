@@ -1,0 +1,54 @@
+{
+  "decisions": [
+    {
+      "label": "Plain-text corpus",
+      "detail": "Wikipedia's explaintext API for the \"India\" article in each language — flattened prose, no headings/bold/links/tables."
+    },
+    {
+      "label": "Whitespace pre-tokenizer",
+      "detail": "Splits punctuation off words (\"India,\" → \"India\" + \",\") before training."
+    },
+    {
+      "label": "Lowercase normalizer",
+      "detail": "Collapses case variants (\"India\"/\"india\") into one atom — a real, free fertility win for English."
+    },
+    {
+      "label": "Explicit [UNK] token",
+      "detail": "An unrecognized character becomes a real, visible, counted [UNK] token rather than vanishing."
+    },
+    {
+      "label": "Hindi + Marathi trained jointly",
+      "detail": "They share Devanagari script. Training them independently and then combining the two vocabularies corrupts merge priority order — verified empirically (Marathi's fertility got measurably worse after a naive merge). Training them together as one pool avoids this."
+    },
+    {
+      "label": "3 script-safe groups, merged into one vocab",
+      "detail": "English (Latin), Telugu (Telugu script), and the Hindi+Marathi pool (Devanagari) are trained separately, then their vocabularies are concatenated into one final tokenizer — safe because none of the three scripts overlap."
+    },
+    {
+      "label": "English gets the minimum budget it needs, first",
+      "detail": "English's fertility must be < 1.2. Vocab search finds the smallest English allocation that clears that bar, then spends 100% of what's left equalizing Telugu and Hindi+Marathi as tightly as possible."
+    },
+    {
+      "label": "Fertility metric: per unique word",
+      "detail": "Tokens needed to encode each distinct word once, divided by the number of distinct words. A word used once counts the same as one used 50 times."
+    }
+  ],
+  "cons": [
+    {
+      "label": "Not round-trip safe",
+      "detail": "No decoder is configured, and Whitespace's split destroys the information needed to reconstruct it: decode(encode(text)) inserts stray spaces around punctuation (\"India,\" → \"India ,\") and even between subword pieces of the same word (\"hello\" → \"hel lo\")."
+    },
+    {
+      "label": "Case is unrecoverable",
+      "detail": "Lowercase normalization means \"India\" always decodes back as \"india\" — the original casing is gone for good."
+    },
+    {
+      "label": "Fertility can never drop below ~1.0 per word",
+      "detail": "Whitespace's atom boundaries mean no single token can ever cover more than one word-unit, unlike v2's Metaspace."
+    },
+    {
+      "label": "Per-word metric penalizes rare vocabulary",
+      "detail": "Since every distinct word counts equally regardless of frequency, long-tail rare words drag the average up — getting every language's fertility below 1.2 within one shared 10,000-token budget turned out to be mathematically infeasible (would need ~16,500 tokens even with every optimization tried)."
+    }
+  ]
+}

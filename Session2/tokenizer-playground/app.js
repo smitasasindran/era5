@@ -14,17 +14,22 @@ const EXAMPLES = {
 
 let tokenizer = null;
 let models = [];
+let currentModel = null;
 
 const el = {
   input: document.getElementById("input-text"),
   tokenCount: document.getElementById("token-count"),
   charCount: document.getElementById("char-count"),
   wordCount: document.getElementById("word-count"),
+  faithfulUnitsStat: document.getElementById("faithful-units-stat"),
+  faithfulUnitsCount: document.getElementById("faithful-units-count"),
+  fertilityLabel: document.getElementById("fertility-label"),
   fertility: document.getElementById("fertility"),
   tokenView: document.getElementById("token-view"),
   vocabBadge: document.getElementById("vocab-badge"),
   themeToggle: document.getElementById("theme-toggle"),
   evalContent: document.getElementById("eval-content"),
+  designNotesContent: document.getElementById("design-notes-content"),
   modelSelect: document.getElementById("model-select"),
   downloadLink: document.getElementById("download-link"),
 };
@@ -67,9 +72,19 @@ function currentViewMode() {
   return document.querySelector('input[name="view-mode"]:checked').value;
 }
 
+function usesFaithfulUnits() {
+  return currentModel?.fertilityMetric === "faithful_units";
+}
+
 function render() {
   const text = el.input.value;
   el.charCount.textContent = text.length.toLocaleString();
+
+  const showFaithfulUnits = usesFaithfulUnits();
+  el.faithfulUnitsStat.classList.toggle("stat-hidden", !showFaithfulUnits);
+  el.fertilityLabel.textContent = showFaithfulUnits
+    ? "Fertility (tokens / faithful units)"
+    : "Fertility (tokens / words)";
 
   if (!tokenizer) return;
 
@@ -77,9 +92,13 @@ function render() {
     el.tokenView.innerHTML = `<span class="placeholder">Tokens will appear here&hellip;</span>`;
     el.tokenCount.textContent = "0";
     el.wordCount.textContent = "0";
+    el.faithfulUnitsCount.textContent = "0";
     el.fertility.textContent = "—";
     return;
   }
+
+  const faithfulUnits = countFaithfulUnits(text);
+  el.faithfulUnitsCount.textContent = faithfulUnits.toLocaleString();
 
   const { atoms, gaps } = tokenizer.tokenize(text);
   const mode = currentViewMode();
@@ -88,11 +107,12 @@ function render() {
   let colorIdx = 0;
   let html = "";
 
-  // Real tokenizer behavior (this model has unk_token=None, verified against
-  // Python): a piece with no vocab entry is silently dropped from the actual
-  // token/id output entirely -- it does not become a placeholder token. We
-  // still render it distinctly (dashed, uncolored) so characters this
-  // tokenizer can't represent don't just silently vanish from the view.
+  // Both current models have an explicit unk_token ("[UNK]"), so id is never
+  // actually null in practice -- unrecognized pieces become a real, visible,
+  // counted "[UNK]" token instead (verified against Python). This dashed/
+  // uncounted rendering is kept as a defensive fallback for any future
+  // tokenizer.json with unk_token=None, where a piece really would be
+  // dropped from the real token/id output entirely.
   html += escapeHtml(gaps[0]);
   atoms.forEach((atom, i) => {
     for (const { piece, id } of atom.pieces) {
@@ -121,7 +141,9 @@ function render() {
   el.tokenView.innerHTML = html;
   el.tokenCount.textContent = totalTokens.toLocaleString();
   el.wordCount.textContent = atoms.length.toLocaleString();
-  el.fertility.textContent = atoms.length > 0 ? (totalTokens / atoms.length).toFixed(3) : "—";
+
+  const denominator = showFaithfulUnits ? faithfulUnits : atoms.length;
+  el.fertility.textContent = denominator > 0 ? (totalTokens / denominator).toFixed(3) : "—";
 }
 
 let debounceTimer = null;
@@ -164,10 +186,31 @@ function renderEvalResults(summary) {
   `;
 }
 
+function renderDesignNotes(design) {
+  const renderList = (items) =>
+    items
+      .map((item) => `<li><strong>${escapeHtml(item.label)}</strong> ${escapeHtml(item.detail)}</li>`)
+      .join("");
+
+  el.designNotesContent.innerHTML = `
+    <div class="design-columns">
+      <div class="design-col">
+        <h3>Design decisions</h3>
+        <ul class="design-list">${renderList(design.decisions)}</ul>
+      </div>
+      <div class="design-col design-col-cons">
+        <h3>Cons / disadvantages</h3>
+        <ul class="design-list">${renderList(design.cons)}</ul>
+      </div>
+    </div>
+  `;
+}
+
 // --- Multi-version tokenizer support ---
 // Available versions are listed in models/index.json, each pointing at its
-// own folder (models/<id>/tokenizer.json + eval_results.json). Adding a new
-// version is just: add a folder + one entry there, no code changes needed.
+// own folder (models/<id>/tokenizer.json + eval_results.json + design.json).
+// Adding a new version is just: add a folder + one entry there, no code
+// changes needed.
 const SELECTED_MODEL_KEY = "tokenizer-playground-model";
 
 async function loadModelById(id) {
@@ -176,6 +219,7 @@ async function loadModelById(id) {
     console.error(`Unknown model id "${id}"`);
     return;
   }
+  currentModel = model;
 
   el.vocabBadge.textContent = "loading…";
   el.downloadLink.setAttribute("aria-disabled", "true");
@@ -203,6 +247,17 @@ async function loadModelById(id) {
     renderEvalResults(await res.json());
   } catch (err) {
     el.evalContent.innerHTML = `<span class="placeholder">Could not load ${model.dir}/eval_results.json (${escapeHtml(
+      String(err)
+    )})</span>`;
+    console.error(err);
+  }
+
+  try {
+    const res = await fetch(`${model.dir}/design.json`);
+    if (!res.ok) throw new Error(`${res.status}`);
+    renderDesignNotes(await res.json());
+  } catch (err) {
+    el.designNotesContent.innerHTML = `<span class="placeholder">Could not load ${model.dir}/design.json (${escapeHtml(
       String(err)
     )})</span>`;
     console.error(err);

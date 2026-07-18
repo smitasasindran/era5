@@ -532,3 +532,39 @@ investigation" — dropping Lowercase there was a strict improvement, no
 tradeoff, and got adopted as v2's new official pipeline). v1 keeps
 `Lowercase` as the official choice; this experiment is kept as a standalone,
 rerunnable comparison script, not folded into the official pipeline.
+
+## Adopted `unk_token="[UNK]"` (matching v2)
+
+Updated `find_min_vocab.py`, `optimize_allocation.py`, and
+`merge_tokenizers.py` to use an explicit `unk_token="[UNK]"` instead of
+`None`, for consistency with v2 and more transparent behavior: an
+unrecognized character now becomes a real, visible, counted `[UNK]` token
+instead of silently vanishing from the output. Verified with the new
+`sanity_check.py` — e.g. `"Hello World! 2024"` now encodes `!` as `[UNK]`
+rather than dropping it.
+
+Regenerated `tokenizer_final.json` (quotas shifted by ~1 token due to the
+special token reserving a vocab slot; fertility numbers unchanged: X1=1.2000,
+spread=0.7660, score≈1305.5 — identical to before). Updated the playground's
+`models/v1/tokenizer.json` copy and regenerated its test reference; both
+still pass 30/30 against the real Python tokenizer.
+
+This did **not** fix v1's round-trip issues — `sanity_check.py` shows
+`decode()` still has no configured decoder, so even ordinary multi-token
+words come back with spurious spaces (`"Hello World! 2024"` → `"hel lo world
+[UNK] 2024"`) — worse than just the punctuation-adjacency case described
+above. This is `Whitespace`'s structural limitation (no marker distinguishes
+a word-starting piece from a continuation piece, unlike Metaspace's `▁`),
+independent of the `[UNK]` change.
+
+## Playground: design-notes panel
+
+Added a collapsible "Design decisions for this version & their tradeoffs"
+panel to the playground, driven by a new `models/v1/design.json` /
+`models/v2/design.json` per version (same registry pattern as
+`eval_results.json` — `app.js` fetches whichever file matches the selected
+version). Lists v1's key choices (plain-text corpus, Whitespace,
+Lowercase, joint Hindi+Marathi training, the 3-group merge, the
+English-gets-minimum-first allocation strategy) alongside its real
+disadvantages (not round-trip safe, case unrecoverable, ~1.0 fertility
+floor per word, per-word metric penalizes rare vocabulary).

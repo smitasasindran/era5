@@ -1,6 +1,6 @@
 {
   "tokenizer_path": "tokenizer_final.json",
-  "vocab_size": 9689,
+  "vocab_size": 9690,
   "languages": {
     "en": {
       "label": "X1",

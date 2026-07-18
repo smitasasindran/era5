@@ -39,6 +39,11 @@
       </div>
     </section>
 
+    <details class="panel design-notes" id="design-notes">
+      <summary>Design decisions for this version &amp; their tradeoffs</summary>
+      <div id="design-notes-content">loading&hellip;</div>
+    </details>
+
     <section class="editor-row">
       <div class="panel">
         <textarea id="input-text" spellcheck="false" placeholder="Type or paste text&hellip;"></textarea>
@@ -56,8 +61,12 @@
           <div class="stat-label">Word count</div>
           <div class="stat-value" id="word-count">0</div>
         </div>
+        <div class="stat" id="faithful-units-stat">
+          <div class="stat-label">Faithful units</div>
+          <div class="stat-value" id="faithful-units-count">0</div>
+        </div>
         <div class="stat">
-          <div class="stat-label">Fertility (tokens / words)</div>
+          <div class="stat-label" id="fertility-label">Fertility (tokens / words)</div>
           <div class="stat-value" id="fertility">&mdash;</div>
         </div>
       </div>

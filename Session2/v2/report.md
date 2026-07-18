@@ -231,3 +231,40 @@ pairs could collide if they happened to concatenate to the same string
 hit this, v2's digit-heavy Metaspace content did. Fixed with a NUL-character
 separator; both v1 and v2 now pass 30/30 verification cases against the real
 Python tokenizer (see `tokenizer-playground/test/`).
+
+## v1 also adopted `unk_token="[UNK]"`
+
+For consistency, v1's pipeline (`../v1/`) was updated to use an explicit
+`unk_token="[UNK]"` too, matching v2. This has no meaningful effect on
+fertility (one reserved vocab slot), but means both versions now behave the
+same way for unrecognized characters: a real, visible, counted `[UNK]`
+token instead of a silent drop. See `../v1/report.md`'s corresponding
+section — v1's decode() is still not round-trip safe regardless (structural
+`Whitespace` limitation, unrelated to `[UNK]`).
+
+Also added `sanity_check.py` here (and in `../v1/`) as a standalone,
+rerunnable script covering `[UNK]` behavior and round-trip checks — reused
+whenever either tokenizer changes, rather than one-off shell commands.
+
+## Playground: faithful-units stat + design-notes panel
+
+**Faithful-units stat.** Ported `count_faithful_units()` to JS
+(`tokenizer.js`), using `\p{L}`/`\p{M}`/`\p{N}` Unicode property regex
+escapes as the exact equivalent of Python's `unicodedata.category(ch)[0] in
+"LMN"` check. Verified byte-for-byte against the real Python implementation
+(30/30, see `tokenizer-playground/test/compare_faithful_units.js`). The
+playground now shows a "Faithful units" stat (alongside token/char/word
+count) and computes "Fertility" using faithful units as the denominator
+specifically for v2 — matching this project's actual official metric,
+rather than the generic pre-tokenizer-atom count the live stat used before
+(which is v1's metric, not v2's). Driven by a `fertilityMetric` field per
+entry in `models/index.json` (`"words"` for v1, `"faithful_units"` for v2),
+so the stat's visibility and the Fertility calculation switch automatically
+with the selected version.
+
+**Design-notes panel.** Added a collapsible section listing each version's
+key design decisions and real disadvantages, driven by
+`models/v1/design.json` / `models/v2/design.json` (same per-version registry
+pattern as `eval_results.json`) — so someone trying the playground can see
+*why* a tokenizer behaves the way it does (e.g. why v1 can't round-trip,
+why v2's fertility can dip below 1.0) without reading either report.md.

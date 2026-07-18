@@ -2,16 +2,23 @@
 
 Uses a Lowercase normalizer: real, free reduction in English's unique-atom
 count (case variants like "India"/"india" collapse into one atom). Devanagari
-and Telugu have no case, so it's a no-op there -- safe to apply everywhere."""
+and Telugu have no case, so it's a no-op there -- safe to apply everywhere.
+
+Uses an explicit unk_token="[UNK]" (matching v2): unrecognized characters
+become a real, visible, counted token instead of silently vanishing."""
 import sys
 from tokenizers import Tokenizer, models, pre_tokenizers, trainers, normalizers
 
+UNK_TOKEN = "[UNK]"
+
 
 def train_single(lang, vocab_size):
-    tok = Tokenizer(models.BPE(unk_token=None))
+    tok = Tokenizer(models.BPE(unk_token=UNK_TOKEN))
     tok.normalizer = normalizers.Lowercase()
     tok.pre_tokenizer = pre_tokenizers.Whitespace()
-    trainer = trainers.BpeTrainer(vocab_size=vocab_size, min_frequency=1, show_progress=False, special_tokens=[])
+    trainer = trainers.BpeTrainer(
+        vocab_size=vocab_size, min_frequency=1, show_progress=False, special_tokens=[UNK_TOKEN]
+    )
     tok.train([f"corpus/india_{lang}.txt"], trainer)
     return tok
 
