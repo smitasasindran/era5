@@ -97,7 +97,7 @@ Hindi:Marathi joint-training weight retuned the same way as v1 (swept a few
 ratios to minimize `max(r_hi, r_mr)`): **2:3** here (v1 used 4:5 — different
 because the metric and corpus both changed, not directly comparable).
 
-## Results — `tokenizer_final.json` (vocab_size = 9,410)
+## Results (before round-trip investigation) — `tokenizer_final.json` (vocab_size = 9,410)
 
 | Lang | Tokens | Faithful units | Fertility |
 |---|---|---|---|
@@ -106,39 +106,109 @@ because the metric and corpus both changed, not directly comparable).
 | Hindi | 17,268 | 14,808 | **1.1661** |
 | Marathi | 9,234 | 8,284 | **1.1147** |
 
-**X1 = 1.1770 < 1.2 → PASS**
-**Spread = 1.1890 − 1.1147 = 0.0743**
-**Score = 1000 / 0.0743 ≈ 13,458.4**
+X1 = 1.1770 < 1.2 → PASS. Spread = 0.0743, Score ≈ 13,458.4. (Superseded
+below — kept here since the "Playground integration" section and its
+tokenizer.json snapshot refer to these numbers.)
+
+## Round-trip fidelity investigation
+
+Separately, the assignment requires `decode(encode(text))` to keep the same
+non-whitespace characters as the original text, and the instructor's v2 also
+specified `min_frequency=1` (already matched), Metaspace with `▁` (already
+matched), and a `Metaspace` **decoder** (not yet set — a real gap, since
+neither v1 nor v2 had any decoder configured at all).
+
+**Tested round-trip on both, as they stood:**
+- v1: `'India, officially the Republic of India'` → `'india , officially the republic of india'` — case lost (Lowercase) and a spurious space inserted before the comma (no decoder, and Whitespace's split of `"India,"` into `"India"`+`","` discards the adjacency information needed to undo that even in principle).
+- v2: → `'▁india, ▁off ic ially ▁the ▁republic ▁of ▁india'` — worse: literal `▁` markers leak into the output, and word-internal subword pieces get spurious spaces, because nothing converts `▁` back to a real space.
+
+**Fixed the missing decoder** (`decoders.Metaspace()`, added to `train_utils.py`
+and `merge_tokenizers.py`) — this only affects `decode()`, not `encode()`, so
+vocab/merges/fertility were unaffected. Confirmed: `'India, officially the
+Republic of India'` → `'india, officially the republic of india'` — spacing
+and punctuation-adjacency now reconstruct exactly. v1 has no equivalent fix
+available: Whitespace's word/punctuation split is not invertible in general,
+regardless of decoder.
+
+**Then ran two comparison experiments** (`experiment_no_lowercase.py` in
+both `v1/` and `v2/`, `experiment_joint_weighted.py` in `v2/` — all kept as
+standalone, rerunnable scripts, not folded into the official pipeline
+unless noted):
+
+| Experiment | Spread | Score | Round-trip (case) |
+|---|---|---|---|
+| v1, official (Lowercase) | 0.9040 | ≈1,106 | ✗ (lowercased) |
+| v1, no Lowercase | 0.9040 | ≈1,106 | ✓ case preserved, spacing bug remains regardless |
+| v2, official at the time (NFKC+Lowercase) | 0.0743 | ≈13,458 | ✗ (lowercased) |
+| **v2, NFKC only (no Lowercase)** | **0.0603** | **≈16,581** | **✓ perfect round-trip** |
+| v2, instructor's exact joint-weighted training (single tokenizer, weights en:3/hi:4/te:4/mr:2 in place of their Maithili) | 0.3970 | ≈2,519 | n/a |
+
+Two conclusions:
+1. **v2 dropping Lowercase is a strict win** — better score *and* perfect
+   round-trip fidelity, no tradeoff. Adopted as the new official v2 (see
+   updated results below). v1 has no such free win: dropping Lowercase there
+   costs real score for no round-trip benefit (the spacing bug is
+   independent of case), so v1 keeps Lowercase.
+2. **The instructor's literal weights don't transfer to this corpus** —
+   replicating their exact numbers gave spread 0.397, worse than either of
+   our two approaches. Those weights were evidently hand-tuned for their own
+   corpus (with Maithili, not Marathi); our systematic binary-search
+   equalization is the more robust strategy regardless of which normalizer
+   is used.
+
+## Final results — `tokenizer_final.json` (vocab_size = 9,361)
+
+| Lang | Tokens | Faithful units | Fertility |
+|---|---|---|---|
+| Telugu | 8,370 | 6,916 | **1.2102** |
+| English (X1) | 27,187 | 22,688 | **1.1983** |
+| Hindi | 17,470 | 14,808 | **1.1798** |
+| Marathi | 9,526 | 8,284 | **1.1499** |
+
+**X1 = 1.1983 < 1.2 → PASS**
+**Spread = 1.2102 − 1.1499 = 0.0603**
+**Score = 1000 / 0.0603 ≈ 16,581.1**
+
+`decode(encode(text))` now reconstructs the original text exactly for
+normal text (verified: `'India, officially the Republic of India'` round-trips
+byte-for-byte identical) — case included, since Lowercase is no longer in
+the pipeline.
 
 ## Comparison with the instructor's solution
 
-| | Fertility range | Spread | Score (1000/spread) |
-|---|---|---|---|
-| v1 (this project, before this session) | 1.11 – 1.97 | 0.9040 | ≈1,106 |
-| **v2 (this session)** | **1.11 – 1.19** | **0.0743** | **≈13,458** |
-| Instructor's solution | 0.6 – 0.73 | 0.1538 | ≈6,503 |
+| | Fertility range | Spread | Score (1000/spread) | Round-trip |
+|---|---|---|---|---|
+| v1 (this project) | 1.11 – 1.97 | 0.9040 | ≈1,106 | ✗ case + spacing |
+| **v2 (final)** | **1.15 – 1.21** | **0.0603** | **≈16,581** | **✓ exact** |
+| Instructor's solution | 0.6 – 0.73 | 0.1538 | ≈6,503 | (unknown) |
 
-**By the actual graded quantity (spread → score), v2 already beats the
-instructor's solution by a wide margin** — our four languages sit closer
-together than theirs do, even though our *absolute* fertility level is
-higher. The instructor's lower absolute level (0.6-0.73 vs our ~1.1-1.2)
-likely comes from a richer corpus (more pages, and/or a more thorough
-markdown conversion preserving more infobox/table content faithfully than
-ours does) or possibly a larger effective vocab budget — worth investigating
-further if matching their absolute fertility level (not just the score) is a
-goal, but not necessary to beat their score as currently defined.
+**By the actual graded quantity (spread → score), v2 beats the instructor's
+solution by a wide margin, and now also has verified exact round-trip
+fidelity** — our four languages sit closer together than theirs do, even
+though our *absolute* fertility level is higher. The instructor's lower
+absolute level (0.6-0.73 vs our ~1.15-1.21) likely comes from a richer
+corpus (more pages, and/or a more thorough markdown conversion preserving
+more infobox/table content faithfully than ours does) or possibly a larger
+effective vocab budget — worth investigating further if matching their
+absolute fertility level (not just the score) is a goal, but not necessary
+to beat their score as currently defined.
 
 ## Files
 
 - `fetch_corpus_markdown.py` — wikitext → faithful-Markdown corpus fetcher
 - `corpus/india_{en,hi,te,mr}.txt` — the markdown corpora
 - `faithful_units.py` — the fertility metric's unit-counting function
-- `train_utils.py` — shared training/eval utilities (Metaspace, NFKC+Lowercase,
-  `[UNK]`, `fertility_for`, `binary_search_min_vocab`)
+- `train_utils.py` — shared training/eval utilities (Metaspace + its
+  `Metaspace` decoder, NFKC normalizer, `[UNK]`, `fertility_for`,
+  `binary_search_min_vocab`)
 - `optimize_allocation.py` — the symmetric 3-way quota search; exposes
   `compute_quotas()`
 - `merge_tokenizers.py` — builds the final tokenizer from the 3 groups
 - `evaluate.py` — computes final fertility/spread/score, writes `eval_results.json`
+- `experiment_no_lowercase.py` — standalone comparison: NFKC-only pipeline
+  (superseded the official pipeline once proven strictly better)
+- `experiment_joint_weighted.py` — standalone comparison: single joint
+  tokenizer with the instructor's exact oversampling weights
 - `tokenizer_final.json` — the v2 deliverable
 
 ## Playground integration (done)

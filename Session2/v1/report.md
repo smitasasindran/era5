@@ -508,3 +508,27 @@ Current pipeline:
   the trainer enough signal to make full use of the 10,000-token budget instead
   of running dry on frequency (as the naive attempt did at vocab 8,431), and
   would likely change the achievable equalized ratio too.
+
+## Round-trip fidelity check (during v2 development)
+
+The assignment also requires `decode(encode(text))` to preserve the same
+non-whitespace characters as the input. Tested against the official v1
+tokenizer: `'India, officially the Republic of India'` decodes to `'india ,
+officially the republic of india'` — case is lost (the `Lowercase`
+normalizer) and a spurious space gets inserted before the comma (no decoder
+is configured, and `Whitespace`'s split of `"India,"` into `"India"` + `","`
+discards the adjacency information needed to reconstruct it even with one).
+
+Wrote `experiment_no_lowercase.py` to check whether dropping `Lowercase`
+would fix this. It does restore case (`'India , officially...'` — note the
+comma spacing bug persists, since that's independent of case), but at a real
+cost: spread goes back to 0.9040 (score ≈1,106) instead of the official
+0.7660 (score ≈1,305) — exactly reproducing this file's own Phase 3 numbers
+from before Lowercase was adopted, a nice consistency check. Since the
+spacing bug isn't fixable this way regardless (it's structural to
+`Whitespace`, see above), there's no clean win available for v1 the way
+there turned out to be for v2 (see `../v2/report.md`'s "Round-trip fidelity
+investigation" — dropping Lowercase there was a strict improvement, no
+tradeoff, and got adopted as v2's new official pipeline). v1 keeps
+`Lowercase` as the official choice; this experiment is kept as a standalone,
+rerunnable comparison script, not folded into the official pipeline.

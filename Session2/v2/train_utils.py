@@ -1,13 +1,13 @@
 """
-Shared v2 training/evaluation utilities: Metaspace pre-tokenizer, NFKC+Lowercase
-normalizer, explicit [UNK] token, faithful-unit fertility metric computed over
-the FULL running corpus text (not per unique word type, unlike v1) -- so a
-single learned merge spanning multiple faithful units (e.g. a word fused with
-its trailing punctuation, or with a short adjacent function word) can push
-fertility below 1.0.
+Shared v2 training/evaluation utilities: Metaspace pre-tokenizer, NFKC
+normalizer (no Lowercase -- see make_normalizer()), explicit [UNK] token,
+faithful-unit fertility metric computed over the FULL running corpus text
+(not per unique word type, unlike v1) -- so a single learned merge spanning
+multiple faithful units (e.g. a word fused with its trailing punctuation, or
+with a short adjacent function word) can push fertility below 1.0.
 """
 import os
-from tokenizers import Tokenizer, models, pre_tokenizers, trainers, normalizers
+from tokenizers import Tokenizer, models, pre_tokenizers, trainers, normalizers, decoders
 from faithful_units import count_faithful_units
 
 CORPUS_DIR = os.path.join(os.path.dirname(__file__), "corpus")
@@ -24,13 +24,22 @@ def read_corpus(lang):
 
 
 def make_normalizer():
-    return normalizers.Sequence([normalizers.NFKC(), normalizers.Lowercase()])
+    # NFKC alone, no Lowercase: an experiment (experiment_no_lowercase.py)
+    # found dropping Lowercase actually *improves* the equalized score here
+    # (0.0743 -> 0.0603 spread) as well as fixing round-trip fidelity
+    # (decode(encode(text)) now preserves case exactly) -- unlike v1, where
+    # Lowercase has a real, monotonic fertility benefit (its per-unique-word
+    # metric directly rewards fewer unique atoms), v2's occurrence-weighted
+    # metric doesn't reward case-folding the same way, so there was no
+    # tradeoff to make here.
+    return normalizers.NFKC()
 
 
 def train_single(lang, vocab_size):
     tok = Tokenizer(models.BPE(unk_token=UNK_TOKEN))
     tok.normalizer = make_normalizer()
     tok.pre_tokenizer = pre_tokenizers.Metaspace()
+    tok.decoder = decoders.Metaspace()
     trainer = trainers.BpeTrainer(
         vocab_size=vocab_size, min_frequency=1, show_progress=False, special_tokens=[UNK_TOKEN]
     )
@@ -42,6 +51,7 @@ def himr_train(vocab_size, hi_w, mr_w):
     tok = Tokenizer(models.BPE(unk_token=UNK_TOKEN))
     tok.normalizer = make_normalizer()
     tok.pre_tokenizer = pre_tokenizers.Metaspace()
+    tok.decoder = decoders.Metaspace()
     trainer = trainers.BpeTrainer(
         vocab_size=vocab_size, min_frequency=1, show_progress=False, special_tokens=[UNK_TOKEN]
     )

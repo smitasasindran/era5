@@ -6,12 +6,19 @@ never overlap -- see that file's docstring for why concatenating
 independently-trained *same-script* tokenizers would corrupt merge order).
 
 Only real difference from v1: unk_token="[UNK]" instead of None, and the
-Metaspace pre-tokenizer + NFKC/Lowercase normalizer are attached to the
-final tokenizer too.
+Metaspace pre-tokenizer + NFKC normalizer (no Lowercase -- see
+train_utils.make_normalizer()) are attached to the final tokenizer too --
+plus a `decoders.Metaspace()` decoder, which v1 has no equivalent of.
+Metaspace's replacement character ("▁") is specifically
+what makes decode() invertible: it marks where a real space was, so decode()
+can convert it back, reconstructing spacing/punctuation-adjacency correctly.
+Whitespace (v1) has no such marker -- once it splits "India," into "India"
++ "," it's structurally impossible to recover that they were adjacent
+(vs. separated by a space) from the token sequence alone.
 """
 import json
 import sys
-from tokenizers import Tokenizer, models, pre_tokenizers
+from tokenizers import Tokenizer, models, pre_tokenizers, decoders
 from train_utils import train_single, himr_train, make_normalizer, UNK_TOKEN
 from optimize_allocation import compute_quotas
 
@@ -48,6 +55,7 @@ def merge_groups(group_tokenizers, out_path):
     )
     final.normalizer = make_normalizer()
     final.pre_tokenizer = pre_tokenizers.Metaspace()
+    final.decoder = decoders.Metaspace()
     final.save(out_path)
     print(f"Saved {out_path}")
     return final
