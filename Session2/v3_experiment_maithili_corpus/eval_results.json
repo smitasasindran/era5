@@ -1,0 +1,42 @@
+{
+  "tokenizer_path": "tokenizer_final.json",
+  "vocab_size": 8469,
+  "metric": "faithful_unit fertility (tokens / faithful units, over full corpus)",
+  "languages": {
+    "en": {
+      "name": "English",
+      "tokens": 124976,
+      "faithful_units": 186367,
+      "ratio": 0.6705908234826982
+    },
+    "hi": {
+      "name": "Hindi",
+      "tokens": 68342,
+      "faithful_units": 88359,
+      "ratio": 0.7734582781606854
+    },
+    "te": {
+      "name": "Telugu",
+      "tokens": 28024,
+      "faithful_units": 36292,
+      "ratio": 0.7721811969580072
+    },
+    "mai": {
+      "name": "Maithili",
+      "tokens": 3892,
+      "faithful_units": 5808,
+      "ratio": 0.6701101928374655
+    }
+  },
+  "sorted_largest_to_smallest": [
+    "hi",
+    "te",
+    "en",
+    "mai"
+  ],
+  "spread": 0.10334808532321982,
+  "score": 9676.037992116764,
+  "x1_constraint_pass": true,
+  "hindi_penalty_factor": 1.0,
+  "hindi_adjusted_score": 9676.037992116764
+}

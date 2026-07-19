@@ -10,5 +10,11 @@
     "label": "Version 2",
     "dir": "models/v2",
     "fertilityMetric": "faithful_units"
+  },
+  {
+    "id": "v3",
+    "label": "Version 3",
+    "dir": "models/v3",
+    "fertilityMetric": "faithful_units"
   }
 ]

@@ -1,0 +1,42 @@
+{
+  "tokenizer_path": "tokenizer_final.json",
+  "vocab_size": 8503,
+  "metric": "faithful_unit fertility (tokens / faithful units, over full corpus)",
+  "languages": {
+    "en": {
+      "name": "English",
+      "tokens": 128992,
+      "faithful_units": 186426,
+      "ratio": 0.6919206548442813
+    },
+    "hi": {
+      "name": "Hindi",
+      "tokens": 62098,
+      "faithful_units": 88359,
+      "ratio": 0.7027920189228035
+    },
+    "te": {
+      "name": "Telugu",
+      "tokens": 28605,
+      "faithful_units": 36292,
+      "ratio": 0.7881902347624821
+    },
+    "mr": {
+      "name": "Marathi",
+      "tokens": 21605,
+      "faithful_units": 29766,
+      "ratio": 0.7258281260498556
+    }
+  },
+  "sorted_largest_to_smallest": [
+    "te",
+    "mr",
+    "hi",
+    "en"
+  ],
+  "spread": 0.09626957991820073,
+  "score": 10387.497284704988,
+  "x1_constraint_pass": true,
+  "hindi_penalty_factor": 1.0,
+  "hindi_adjusted_score": 10387.497284704988
+}

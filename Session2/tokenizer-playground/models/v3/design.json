@@ -1,0 +1,42 @@
+{
+  "decisions": [
+    {
+      "label": "Rendered-HTML Markdown corpus (not wikitext)",
+      "detail": "Fetched Wikipedia's rendered HTML (the same content a browser shows, via the /api/rest_v1/page/html/ endpoint) and converted to Markdown with markdownify/BeautifulSoup, stripping only script/style/meta tags. Keeps infobox tables, citation footnotes, navboxes, and category links (absolutized to full URLs) that v2's wikitext parser deliberately dropped as clutter. 3.6-8.2x more faithful units per language than v2's corpus as a result."
+    },
+    {
+      "label": "Same 4 languages as v1/v2",
+      "detail": "English, Hindi, Telugu, Marathi — this version changes the corpus-building method, not the language set."
+    },
+    {
+      "label": "Same core pipeline as v2",
+      "detail": "Metaspace pre-tokenizer + decoder, NFKC-only normalizer, explicit [UNK] token, BPE model, 10,000-token budget — unchanged from v2. Only the corpus differs."
+    },
+    {
+      "label": "Same 3-group merge strategy",
+      "detail": "English alone, Telugu alone, Hindi+Marathi trained jointly (they share Devanagari) — same reasoning as v1/v2."
+    },
+    {
+      "label": "Symmetric equalization across all 3 groups",
+      "detail": "Same allocation-search strategy as v2: binary search for the smallest common fertility target that all three groups can reach within the 10,000-token budget, no group privileged."
+    },
+    {
+      "label": "Hindi:Marathi joint-training weight re-tuned",
+      "detail": "3:7 here vs v2's 2:3 — the richer corpus grew Hindi's size relative to Marathi's (from ~1.8x to ~3.0x), so Marathi needs more counter-weight to balance against Hindi's larger frequency pool."
+    }
+  ],
+  "cons": [
+    {
+      "label": "OOV characters still break exact round-trip",
+      "detail": "Same as v2 — an unrecognized character decodes back as the literal string \"[UNK]\", not the original character."
+    },
+    {
+      "label": "Larger vocab dedup during merging",
+      "detail": "This corpus's 3 groups share more vocabulary (common URLs, digits, Latin acronyms) than v2's did, so more of the allocated 10,000-token budget gets deduplicated away during the merge step (final vocab 8,503 vs the 10,000 allocated) — leaving less precision in the equalization than the pre-merge search predicted."
+    },
+    {
+      "label": "Slightly worse spread than v2, despite the richer corpus",
+      "detail": "Score ≈10,388 here vs v2's ≈16,581 — the bigger corpus gets fertility down to the assignment solution's own reported range (0.69-0.79 vs v2's 1.15-1.21), but doesn't automatically mean a tighter spread across languages, partly due to the dedup effect above."
+    }
+  ]
+}
