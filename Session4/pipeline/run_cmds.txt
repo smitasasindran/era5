@@ -1,0 +1,12 @@
+python run_extract.py --source local \
+  --path /work/courses/capstone_era4/Data-benchmark/raw_shard.parquet \
+  --text-field text \
+  --output out/step0_capstone_extracted.parquet \
+  --report out/step0_capstone_extracted_report.json
+
+
+python run_normalize.py --source local \
+  --path out/step0_capstone_extracted.parquet \
+  --text-field text --content-type auto \
+  --output out/step1_capstone_clean.parquet \
+  --report out/step1_capstone_clean_report.json
