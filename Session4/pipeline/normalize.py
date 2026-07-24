@@ -1,18 +1,27 @@
 """Step 1 of the data-cleaning pipeline: Normalize + Clean.
 
 clean_text() does, in order:
-  1. NFC-normalize unicode (one canonical encoding per character)
-  2. unescape HTML entities (&amp; -> "&", numeric entities -> the real char)
-  3. drop the literal U+FFFD replacement character
-  4. strip invisible noise: C0/C1 controls, ZWSP, BOM, bidi overrides
+  1. repair mojibake (ftfy, if installed) -- fixes double-encoded UTF-8 text
+     like "\xc3\xa9" that should have been "\xe9"; NFC alone does NOT catch
+     this, it only picks one canonical encoding for whatever characters are
+     already there, mojibake characters are already "valid" unicode, just
+     the wrong ones.
+  2. NFC-normalize unicode (one canonical encoding per character)
+  3. unescape HTML entities (&amp; -> "&", numeric entities -> the real char)
+  4. drop the literal U+FFFD replacement character
+  5. strip invisible noise: C0/C1 controls, ZWSP, BOM, bidi overrides
      -- but NEVER touch ZWNJ (U+200C) / ZWJ (U+200D): these are real
      characters in Brahmic scripts (they control conjunct formation) and
      stripping them mangles Indic text.
-  5. flag "ghost" special tokens (<|endoftext|>, [USER], |<user>|, ...)
+  6. flag "ghost" special tokens (<|endoftext|>, [USER], |<user>|, ...)
      instead of silently deleting them -- the set of real special tokens
      must be a deliberate decision made before the tokenizer is built, not
      an accident of whatever pattern happened to appear in the corpus.
-  6. tidy whitespace -- collapsed to single spaces for prose, but only
+  7. prose only: de-hyphenate line-wrapped words ("exam-\\nple" -> "example"),
+     the artifact of a fixed-width layout (PDF/OCR sources) rather than a
+     real compound word -- must run before whitespace collapsing, while the
+     real newline is still there to detect.
+  8. tidy whitespace -- collapsed to single spaces for prose, but only
      trimmed line-by-line for code, since indentation is meaningful there.
 
 The hash used for exact-dedup should be computed on the OUTPUT of
@@ -28,6 +37,11 @@ import hashlib
 import html
 import re
 import unicodedata
+
+try:
+    import ftfy
+except ImportError:
+    ftfy = None
 
 # ---------------------------------------------------------------------------
 # Noise: characters stripped unconditionally, regardless of script/content type.
@@ -137,6 +151,23 @@ def _collapse_whitespace_prose(s):
     return re.sub(r"\s+", " ", s).strip()
 
 
+# A hyphen at a line break, surrounded by lowercase letters, is the classic
+# fixed-width-layout wrap artifact (PDF/OCR text) -- rejoin it. Anything
+# else (hyphen before/after a digit, uppercase letter, or punctuation) is
+# left alone since it's more likely a real compound/range/bullet.
+_HYPHEN_WRAP_RE = re.compile(r"(?<=[a-z])-\r?\n(?=[a-z])")
+
+
+def _dehyphenate_wrapped_lines(s):
+    return _HYPHEN_WRAP_RE.sub("", s)
+
+
+def _repair_mojibake(s):
+    if ftfy is None:
+        return s
+    return ftfy.fix_text(s)
+
+
 def _tidy_whitespace_code(s):
     """Preserve structure (newlines, indentation) -- only trim trailing
     per-line whitespace and collapse runs of >1 blank line down to 1."""
@@ -164,6 +195,7 @@ def clean_text(s, content_type="prose"):
     if not s:
         return "", {}
 
+    s = _repair_mojibake(s)
     s = unicodedata.normalize("NFC", s)
     s = html.unescape(s)
     s = s.replace(REPLACEMENT_CHAR, "")
@@ -174,6 +206,7 @@ def clean_text(s, content_type="prose"):
     if content_type == "code":
         s = _tidy_whitespace_code(s)
     else:
+        s = _dehyphenate_wrapped_lines(s)
         s = _collapse_whitespace_prose(s)
 
     return s, ghosts

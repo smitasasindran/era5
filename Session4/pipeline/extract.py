@@ -56,7 +56,18 @@ _STRUCTURAL_TAG_RE = re.compile(
 _TAG_DENSITY_THRESHOLD = 0.02
 _TAG_DENSITY_MIN_LEN = 200
 
-_DROP_TAG_NAMES = ["script", "style", "nav", "footer", "header", "aside", "form", "noscript", "iframe"]
+_DROP_TAG_NAMES = [
+    "script", "style", "nav", "footer", "header", "aside", "form", "noscript", "iframe",
+    # Flattening a real <table> with .get_text() loses row/column structure
+    # entirely -- cells run together with no separator, which reads as
+    # worse noise than just dropping the table. Drop rather than flatten.
+    "table",
+]
+
+# Same rationale as the "table" entry above, for the regex-only fallback
+# tier (no bs4/trafilatura available): drop whole table blocks rather than
+# stripping just the tags and leaving jumbled cell text behind.
+_TABLE_BLOCK_RE = re.compile(r"<table\b[^>]*>.*?</table>", re.IGNORECASE | re.DOTALL)
 
 _BOILERPLATE_ATTR_HINTS = (
     "cookie", "consent", "gdpr", "banner", "subscribe", "newsletter",
@@ -102,6 +113,7 @@ def _strip_boilerplate_lines(s):
 
 
 def _strip_tags_lightweight(s):
+    s = _TABLE_BLOCK_RE.sub(" ", s)
     return _strip_boilerplate_lines(_TAG_RE.sub(" ", s))
 
 

@@ -10,7 +10,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from pipeline.extract import extract_content, looks_like_html_document  # noqa: E402
+from pipeline.extract import (  # noqa: E402
+    _extract_with_bs4,
+    _strip_tags_lightweight,
+    extract_content,
+    looks_like_html_document,
+)
 
 checks_run = 0
 checks_failed = 0
@@ -80,6 +85,29 @@ check("text unchanged", extracted_plain == raw_plain)
 # 4. Empty input handled without raising.
 check("empty string handled", extract_content("") == ("", {"path": "empty"}))
 check("None handled", extract_content(None) == ("", {"path": "empty"}))
+
+# 5. Tables: flattening a real <table> with get_text() jumbles cells together
+# with no separator -- worse than dropping it -- so both the bs4 tier and the
+# regex-only fallback tier drop table content entirely rather than flattening.
+raw_table_page = """
+<article>
+<p>Intro paragraph before the table.</p>
+<table><tr><th>Name</th><th>Score</th></tr><tr><td>Alice</td><td>90</td></tr></table>
+<p>Outro paragraph after the table.</p>
+</article>
+"""
+bs4_result = _extract_with_bs4(raw_table_page)
+show("bs4 tier: table dropped", raw_table_page, bs4_result, {})
+check("bs4 tier keeps intro paragraph", bs4_result is not None and "Intro paragraph" in bs4_result)
+check("bs4 tier keeps outro paragraph", bs4_result is not None and "Outro paragraph" in bs4_result)
+check("bs4 tier drops table cell content", bs4_result is not None and "Alice" not in bs4_result and "90" not in bs4_result)
+
+raw_table_snippet = "Before table <table><tr><td>Alice</td><td>90</td></tr></table> after table"
+lightweight_result = _strip_tags_lightweight(raw_table_snippet)
+show("Regex fallback tier: table dropped", raw_table_snippet, lightweight_result, {})
+check("lightweight tier keeps text before the table", "Before table" in lightweight_result)
+check("lightweight tier keeps text after the table", "after table" in lightweight_result)
+check("lightweight tier drops table cell content", "Alice" not in lightweight_result and "90" not in lightweight_result)
 
 print(f"\n{checks_run - checks_failed}/{checks_run} checks passed.")
 if checks_failed:

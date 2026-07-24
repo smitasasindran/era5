@@ -156,6 +156,35 @@ check(
 check("empty string handled", clean_text("", content_type="prose") == ("", {}))
 check("None-ish handled", clean_text(None, content_type="prose") == ("", {}))
 
+# 8. Mojibake repair (ftfy): double-encoded UTF-8 text should come back as the
+# real characters. "cafe" + U+00E9 (e-acute) mis-decoded as latin-1 then
+# re-encoded as UTF-8 is the textbook mojibake case -- NFC alone does NOT fix
+# this, since every byte involved is already a "valid" (wrong) character.
+mojibake_raw = "caf" + chr(0x00E9).encode("utf-8").decode("latin-1")
+cleaned_mojibake, _ = clean_text(mojibake_raw, content_type="prose")
+show("Mojibake repair", mojibake_raw, cleaned_mojibake)
+try:
+    import ftfy as _ftfy_probe  # noqa: F401
+    check("mojibake repaired to the real character", cleaned_mojibake == "caf" + chr(0x00E9))
+except ImportError:
+    check("ftfy not installed -- mojibake left as-is (expected without the dependency)", True)
+
+# 9. De-hyphenation: a word wrapped across a line break by fixed-width layout
+# (PDF/OCR) should be rejoined; a genuine end-of-line hyphenated/compound
+# word before a capitalized new sentence is NOT touched by this heuristic
+# (only lowercase-hyphen-newline-lowercase triggers it).
+raw_wrapped = "This is an exam-\nple of wrapped text, not a re-\nsult of anything else."
+cleaned_wrapped, _ = clean_text(raw_wrapped, content_type="prose")
+show("De-hyphenation (prose)", raw_wrapped, cleaned_wrapped)
+check("wrapped word rejoined: example", "example" in cleaned_wrapped)
+check("wrapped word rejoined: result", "result" in cleaned_wrapped)
+check("no stray hyphen left behind", "exam-" not in cleaned_wrapped and "re-" not in cleaned_wrapped)
+
+raw_code_hyphen = "x = 1\ny = flag-\nvalue"
+cleaned_code_hyphen, _ = clean_text(raw_code_hyphen, content_type="code")
+show("De-hyphenation must NOT run for code", raw_code_hyphen, cleaned_code_hyphen)
+check("code mode leaves a line-end hyphen untouched", "flag-\nvalue" in cleaned_code_hyphen)
+
 print(f"\n{checks_run - checks_failed}/{checks_run} checks passed.")
 if checks_failed:
     sys.exit(1)
