@@ -21,9 +21,10 @@ Add or refresh a profile, with its narrative copy in a small JSON file:
         --normalize out/step1_c4_realnewslike_clean_report.json
 
 --meta is a JSON object with: label, description, highlight, facts (a list
-of [label, value] pairs for the dataset-facts table), and two optional
-narrative asides: script_sanity_note, ghost_token_note. See
-report/profiles/*.meta.json for real examples.
+of [label, value] pairs for the dataset-facts table), and optional narrative
+asides: script_sanity_note, ghost_token_note, finding (a concise "we found
+and fixed a bug" callout, separate from highlight's general dataset
+description). See report/profiles/*.meta.json for real examples.
 
 List the profiles currently in the file:
     python report/build_report.py --list
@@ -162,6 +163,8 @@ def main():
     }
     if meta.get("script_sanity_note"):
         dataset["script_sanity_note"] = meta["script_sanity_note"]
+    if meta.get("finding"):
+        dataset["finding"] = meta["finding"]
     if args.samples:
         dataset["samples"] = json.loads(Path(args.samples).read_text(encoding="utf-8"))
     elif existing_profile and "samples" in existing_profile.get("dataset", {}):
