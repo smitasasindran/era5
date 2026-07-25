@@ -114,6 +114,13 @@
     color: var(--ink);
   }
   a { color: var(--accent); }
+  p {
+    text-align: justify;
+    text-justify: inter-word;
+    hyphens: auto;
+    -webkit-hyphens: auto;
+  }
+  p:last-child { margin-bottom: 0; }
   .mono {
     font-family: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, monospace;
     font-variant-numeric: tabular-nums;
@@ -340,7 +347,7 @@
   table.sourcemix td.num { text-align: right; font-variant-numeric: tabular-nums; }
 </style>
 
-<div class="page">
+<div class="page" lang="en">
 
   <nav class="mininav"><div class="mininav-inner">
     <a href="#strategies">Strategies</a>
@@ -355,8 +362,8 @@
     <div class="eyebrow">Session 4 — Data Cleaning &amp; Deduplication</div>
     <h1>Stripping the noise, keeping the joiners.</h1>
     <p class="lede">
-      A two-stage cleaning pipeline — Extraction, then Normalize + Clean — run over a
-      66,143-document corpus spanning English, code, math, and nine Brahmic scripts.
+      A two-stage cleaning pipeline: Extraction, then Normalize + Clean.  
+      Run over a 66,143-document corpus spanning English, code, math, and nine Brahmic scripts.
       The hard part isn't stripping garbage characters; it's knowing which invisible
       characters <em>are</em> the garbage.
     </p>
@@ -398,7 +405,7 @@
       <div class="card stage-card">
         <h3>4 · Quality Filtering <span class="stage-count">4 strategies</span> <span class="chip planned">Planned</span></h3>
         <ul>
-          <li>Deterministic heuristics — mean word length, symbol-to-word ratio</li>
+          <li>Deterministic heuristics — mean word length, symbol-to-word ratio, Lines end in . !?, Duplicate-line fraction, Top 2-gram fraction, Common stop-words, Bullet-line ratio, Ellipsis-line ratio, Document word count </li>
           <li>ML classifier, distilled from a large model to a cheap ~95%-accurate copy</li>
           <li>Language-aware rules — e.g. Sanskrit has no full stop</li>
           <li>Synthetic / rephrased data as a quality lever</li>
