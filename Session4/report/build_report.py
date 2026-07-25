@@ -28,6 +28,10 @@ report/profiles/*.meta.json for real examples.
 List the profiles currently in the file:
     python report/build_report.py --list
 
+Reorder the dropdown (any keys not listed keep their relative order, appended
+at the end):
+    python report/build_report.py --order github_code_python,openr1_math,c4_realnewslike,capstone
+
 By default this edits report/index.html in place. Pass --output to write
 somewhere else instead and leave index.html untouched.
 """
@@ -82,6 +86,7 @@ def parse_args():
     p.add_argument("--html", default=str(Path(__file__).parent / "index.html"), help="HTML file to read/update")
     p.add_argument("--output", default=None, help="Write to this path instead of updating --html in place")
     p.add_argument("--list", action="store_true", help="List existing profile keys/labels and exit")
+    p.add_argument("--order", default=None, help="Comma-separated profile keys, in the desired dropdown order")
     return p.parse_args()
 
 
@@ -91,6 +96,22 @@ def load_data_block(html):
         print("ERROR: could not find the #report-data script block in the HTML file.", file=sys.stderr)
         sys.exit(1)
     return m, json.loads(m.group(2))
+
+
+def write_validated(html, m, new_data, out_path):
+    new_json = json.dumps(new_data, indent=2, ensure_ascii=False)
+    new_html = html[:m.start(2)] + "\n" + new_json + "\n" + html[m.end(2):]
+
+    checker = TagBalanceChecker()
+    checker.feed(new_html)
+    if checker.stack or checker.errors:
+        print("ERROR: refreshed HTML failed a tag-balance check -- not writing.", file=sys.stderr)
+        print(f"  unclosed at EOF: {checker.stack}", file=sys.stderr)
+        print(f"  errors: {checker.errors}", file=sys.stderr)
+        sys.exit(1)
+
+    out_path.write_text(new_html, encoding="utf-8")
+    return new_html
 
 
 def main():
@@ -103,6 +124,20 @@ def main():
     if args.list:
         for p in profiles:
             print(f"{p['key']:20s} {p['dataset'].get('label', '')}")
+        return
+
+    if args.order:
+        wanted = [k.strip() for k in args.order.split(",") if k.strip()]
+        by_key = {p["key"]: p for p in profiles}
+        unknown = [k for k in wanted if k not in by_key]
+        if unknown:
+            print(f"ERROR: --order names unknown profile key(s): {unknown}", file=sys.stderr)
+            sys.exit(1)
+        ordered = [by_key[k] for k in wanted] + [p for p in profiles if p["key"] not in wanted]
+        out_path = Path(args.output) if args.output else html_path
+        write_validated(html, m, {"profiles": ordered}, out_path)
+        print(f"Wrote {out_path}")
+        print(f"  profile order now: {[p['key'] for p in ordered]}")
         return
 
     if not args.profile_key or not args.extraction or not args.normalize:
@@ -152,19 +187,8 @@ def main():
     profiles.append(new_profile)
     new_data = {"profiles": profiles}
 
-    new_json = json.dumps(new_data, indent=2, ensure_ascii=False)
-    new_html = html[:m.start(2)] + "\n" + new_json + "\n" + html[m.end(2):]
-
-    checker = TagBalanceChecker()
-    checker.feed(new_html)
-    if checker.stack or checker.errors:
-        print("ERROR: refreshed HTML failed a tag-balance check -- not writing.", file=sys.stderr)
-        print(f"  unclosed at EOF: {checker.stack}", file=sys.stderr)
-        print(f"  errors: {checker.errors}", file=sys.stderr)
-        sys.exit(1)
-
     out_path = Path(args.output) if args.output else html_path
-    out_path.write_text(new_html, encoding="utf-8")
+    write_validated(html, m, new_data, out_path)
 
     print(f"Wrote {out_path}")
     print(f"  profile: {args.profile_key} ({dataset['label']}), {normalize_report.get('n_docs')} documents")

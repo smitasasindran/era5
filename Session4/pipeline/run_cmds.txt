@@ -47,3 +47,15 @@ python report/build_report.py --profile-key openr1_math \
   --extraction out/step0_openr1math_extracted_report.json \
   --normalize out/step1_openr1math_clean_report.json \
   --samples report/profiles/openr1_math.samples.json
+
+
+
+  ----
+python report/build_report.py --profile-key github_code_python \
+  --meta report/profiles/github_code_python.meta.json \
+  --extraction out/step0_githubcode_py_extracted_report.json \
+  --normalize out/step1_githubcode_py_clean_report.json
+echo "---"
+python report/build_report.py --order github_code_python,openr1_math,c4_realnewslike,capstone
+echo "---"
+python report/build_report.py --list

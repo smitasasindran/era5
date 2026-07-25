@@ -728,6 +728,383 @@
 {
   "profiles": [
     {
+      "key": "github_code_python",
+      "dataset": {
+        "label": "GitHub Code 2025 — Python",
+        "description": "Real-world GitHub Python source files (the \"content\" field), streamed and sampled to 5,000 documents from a 55-language, 143M-row code corpus.",
+        "highlight": "A Python file embedding real HTML fooled the HTML-document detector into running trafilatura on the whole file, which confidently extracted an unrelated fragment and discarded most of the actual code. Fixed with a new --content-hint not-html flag that completely disables HTML tag stripping for known code inputs. Even the previous \"lightweight\" stripping mode proved unsafe, since <...> is common Python syntax (for example in Flask route parameters, chained comparisons, or generics) rather than HTML markup. Separately, the content-type heuristic correctly identifies about 99.5% of documents in this dataset as code (compared with roughly 90% on the math dataset). Nearly all remaining ghost-token matches occur in legitimate code that manipulates tokenizer special tokens—for example, checking for <|endoftext|> or mocking <bos>/<eos> tokens—rather than indicating dataset contamination. The only notable false positives are [prompt] and [cls], which come from ordinary Python identifiers (a list literal and a class-method parameter, respectively) that happen to overlap with the ghost-token vocabulary",
+        "facts": [
+          [
+            "HF dataset",
+            "hasankursun/github-code-2025-language-split, config python"
+          ],
+          [
+            "Full size",
+            "28.9M rows (Python config); 143.7M rows across all 55 languages"
+          ],
+          [
+            "Sample size",
+            "5,000 rows (streamed, no download)"
+          ],
+          [
+            "Content",
+            "Real GitHub Python source files, the \"content\" field"
+          ],
+          [
+            "Extraction setting",
+            "--content-hint not-html (source code, not prose or HTML)"
+          ]
+        ],
+        "samples": [
+          {
+            "id": "0",
+            "text": "from rich.console import Console\nconsole = Console()\n\nimport argparse\n\nfrom blobber.ui.banner import get_banner\nfrom blobber.modules.status import request\nfrom blobber.modules.blobs import blob_handler\n\ndef initialize() -> None:\n    \"\"\" Initiates Blobber \"\"\"\n    get_banner()\n\n    parser = argparse.ArgumentParser(\n        prog='Blobber',\n        description='Attacking Azure Blob Storage Service'\n    )\n    \n    parser.add_argument('-u', help=\"Specify the target URL to be used\", required=True)\n    parser.add_argument('-f', help=\"Filter by extension based on file name. Example: .pdf\", required=False, default=None)\n    args = parser.parse_args()\n\n    url = args.u\n    file_filter = args.f\n\n    status(url, file_filter)\n\ndef status(url: str, file_filter: str) -> None:\n    \"\"\"Wrapper to check the s",
+            "truncated": true,
+            "full_len": 1071
+          },
+          {
+            "id": "1",
+            "text": "\"\"\" \nThis module aims to enumerate and get Name, Last-Modified, Content-Length and Content-Typpe blob value.\n\"\"\"\n\nfrom lxml import etree\nfrom rich.console import Console\nconsole = Console()\n\ndef blob_handler(content: str, file_filter: str) -> None:\n    try:\n        content_bytes = content.encode('utf-8')\n        root = etree.fromstring(content_bytes)\n        \n        blobs = root.xpath(\".//Blob\")\n        if not blobs:\n            console.print(\"[[yellow]![/]] Nenhum blob encontrado.\")\n            return\n        \n        for blob in blobs:\n            url_element = blob.find(\"Url\")\n            url = url_element.text.strip() if url_element is not None else \"N/A\"\n\n            file_name = blob.findtext(\".//Name\", default=\"N/A\").strip()\n            last_modified = blob.findtext(\".//Last-Modifie",
+            "truncated": true,
+            "full_len": 1809
+          },
+          {
+            "id": "2",
+            "text": "\"\"\"\nThis module checks the status from the Azure Container passed\n\"\"\"\n\nfrom rich.console import Console\nconsole = Console()\nfrom requests import get\nfrom urllib3 import disable_warnings\ndisable_warnings()\n\nfrom blobber.modules.errors import error_handler\n\ndef request(url: str) -> tuple:\n    \"\"\"\n    Perform a GET request to the given URL, handle errors, and retry if necessary.\n    \"\"\"\n\n    url = f\"{url}/?restype=container&comp=list\"\n\n    try:\n        response = get(url, verify=False, timeout=10)\n        if response.ok:\n            console.print(f\"[[green]+[/]] Connected successfully to [green]{url}[/]\")\n            return response\n\n        # Handle errors\n        error_handler_response = error_handler(url, response)\n        if error_handler_response:\n            return error_handler_respons",
+            "truncated": true,
+            "full_len": 1092
+          },
+          {
+            "id": "3",
+            "text": "\"\"\"\nThis module handle the common errors when interacting with Azure Blobs\n\"\"\"\n\nfrom rich.console import Console\nconsole = Console()\nfrom requests import get\nfrom urllib3 import disable_warnings\ndisable_warnings()\n\nerrors_list = {\n    \"InvalidQueryParameterValue\": \"Value for one of the query parameters specified in the request URI is invalid.\",\n    \"FeatureVersionMismatch\": \"Trying to add 'x-ms-version: 2020-04-08' header on the request.\",\n    \"ResourceNotFound\": \"Invalid container or blob file specified in the URL.\",\n    \"AccountIsDisabled\": \"The specified account is disabled.\"\n}\n\ndef error_handler(url: str, response) -> tuple:\n    \"\"\"\n    Handles errors in Azure Blob responses and retries if specific errors occur.\n    \"\"\"\n    \n    try:\n        if isinstance(response, str):\n            re",
+            "truncated": true,
+            "full_len": 2492
+          },
+          {
+            "id": "4",
+            "text": "from rich.console import Console\nconsole = Console()\nfrom os import path, chdir\nfrom pathlib import Path\nfrom zipfile import ZipFile, BadZipFile\nfrom shutil import rmtree\n\nfrom androguard.core.apk import APK\nfrom androguard.core.dex import DEX\n\nfrom src.apepe.modules.suggest import suggest_sslpinning\nfrom src.apepe.modules.deeplink import scraper\nfrom src.apepe.modules.exported import exported\n\nfrom loguru import logger\nlogger.remove(0)\n\n\ndef perform_checks(apk_file, list_scripts, deeplink) -> None:\n    \"\"\"\n    This function is responsible to check if the APK file exists and\n    if the extension is .apk\n    \"\"\"\n\n    global args_list_scripts\n    args_list_scripts = list_scripts\n\n    global args_deeplink\n    args_deeplink = deeplink\n\n    file_name: str = apk_file\n    check_if_file: bool = pa",
+            "truncated": true,
+            "full_len": 5812
+          },
+          {
+            "id": "5",
+            "text": "import json\nimport re\n\nfrom rich.console import Console\nconsole = Console()\nfrom pathlib import Path\n\nfrom androguard.core.dex import DEX\nfrom androguard.core.apk import APK\n\nfrom lxml.etree import tostring\n\nDEEPLINK_PATTERN = r'\\b\\w+://[^\\s]+'\n\n\ndef dex_handler(file_path: Path) -> list:\n    \"\"\"\n    Extract readable strings from a .dex file and filter for deeplinks,\n    excluding those that start with 'http://', 'https://' or 'parse'\n    \"\"\"\n    results = []\n\n    try:\n        with file_path.open('rb') as dex_file:\n            content = DEX(dex_file.read())\n            strings = content.get_strings()\n            results = [\n                s for s in strings \n                if isinstance(s, str) \n                and re.search(DEEPLINK_PATTERN, s) \n                and not ('http://' in s or",
+            "truncated": true,
+            "full_len": 4821
+          },
+          {
+            "id": "6",
+            "text": "from rich.console import Console\nconsole = Console()\n\ndef exported(target) -> None:\n    \"\"\"\n    Lists activities, services, receivers, and providers from AndroidManifest.xml file.\n    \"\"\"\n\n    manifest = target.get_android_manifest_xml()\n    endpoints = [\"activity\", \"service\", \"receiver\", \"provider\"]\n\n    for endpoint in endpoints:\n        console.print(f\"\\n[green][+][/] {endpoint.capitalize()}:\", highlight=False)\n\n        if(endpoint == \"activity\"):\n            console.print(f\" [green]\\\\_[/] Main Activity: [yellow]{target.get_main_activity()}[/]\")\n\n        for element in manifest.findall(f\".//{endpoint}\"):\n            name = element.get(\"{http://schemas.android.com/apk/res/android}name\")\n            exported = element.get(\"{http://schemas.android.com/apk/res/android}exported\")\n\n          ",
+            "truncated": true,
+            "full_len": 1131
+          },
+          {
+            "id": "7",
+            "text": "from random import choice\n\ndef get_file_data(path) -> str:\n    \" Return the content inside text file \"\n\n    with open(path) as file:\n        return file.read()\n\n\ndef get_usernames() -> list:\n    \" Get all usernames inside usernames.txt file \"\n\n    raw = get_file_data('src/core/data/usernames.txt')\n    raw = raw.split('\\n')\n    return raw\n\n\ndef get_passwords() -> list:\n    \" Get all passwords inside passwords.txt file \"\n\n    raw = get_file_data('src/core/data/passwords.txt')\n    raw = raw.split('\\n')\n    return raw\n\n\ndef user_agent() -> str:\n    \"\"\"  Return a random user-agent from user-agents.txt file \"\"\"\n\n    user_agents_file: str = \"src/core/data/user-agents.txt\"\n\n    with open(user_agents_file, 'r+') as user_agents:\n        user_agent = user_agents.readlines()\n        user_agent = choic",
+            "truncated": true,
+            "full_len": 1031
+          }
+        ]
+      },
+      "extraction": {
+        "n_docs": 5000,
+        "extraction_path_distribution": {
+          "passthrough": 5000
+        },
+        "total_raw_chars": 74759820,
+        "total_extracted_chars": 74759820,
+        "chars_removed": 0
+      },
+      "normalize": {
+        "n_docs": 5000,
+        "content_type_distribution": {
+          "code": 4976,
+          "prose": 24
+        },
+        "total_raw_chars": 74759820,
+        "total_clean_chars": 74643897,
+        "chars_removed": 115923,
+        "n_empty_after_clean": 0,
+        "ghost_token_counts": {
+          "bracket_upper": 1844,
+          "pipe_angle": 173,
+          "angle_bare": 2650
+        },
+        "ghost_token_examples": {
+          "bracket_upper": [
+            "[prompt]"
+          ],
+          "pipe_angle": [
+            "<|endoftext|>",
+            "<|endoftext|>"
+          ],
+          "angle_bare": [
+            "<output>",
+            "</output>",
+            "<output>",
+            "</output>"
+          ]
+        },
+        "noise_stats": {
+          "garbage_control_chars": 3,
+          "zero_width_noise_chars": 5,
+          "broken_utf_replacement_chars": 29,
+          "n_docs_with_broken_utf": 9,
+          "zwnj_kept": 0,
+          "zwj_kept": 0
+        },
+        "script_stats": {
+          "dominant_script_distribution": {
+            "latin": 5000
+          },
+          "n_docs_with_script_signal": 5000,
+          "avg_purity_among_scripted_docs": 0.9999971697082496,
+          "n_docs_below_0.85_purity": 0
+        }
+      }
+    },
+    {
+      "key": "openr1_math",
+      "dataset": {
+        "label": "open-r1/OpenR1-Math-220k",
+        "description": "A math/olympiad reasoning dataset — problem, solution, and answer fields joined into one text field — streamed and sampled to 5,000 documents.",
+        "highlight": "Heavy LaTeX markup causes real content-type ambiguity: about 10% of documents (498 of 5,000) get classified as \"code\" by the whitespace-preservation heuristic, because LaTeX array/matrix blocks are line-structured the same way source code is. Concrete evidence for the \"math\" content-type gap discussed earlier — this dataset is the reason to actually build it.",
+        "facts": [
+          [
+            "HF dataset",
+            "open-r1/OpenR1-Math-220k, config default"
+          ],
+          [
+            "Full size",
+            "93.7k rows (default config; 450k across all configs)"
+          ],
+          [
+            "Sample size",
+            "5,000 rows (streamed, no download)"
+          ],
+          [
+            "Language",
+            "English"
+          ],
+          [
+            "Content",
+            "Math/olympiad problems — problem + solution + answer fields joined via --text-fields"
+          ]
+        ],
+        "samples": [
+          {
+            "id": "0",
+            "text": "## Task B-1.3.\n\nA ship traveling along a river has covered $24 \\mathrm{~km}$ upstream and $28 \\mathrm{~km}$ downstream. For this journey, it took half an hour less than for traveling $30 \\mathrm{~km}$ upstream and $21 \\mathrm{~km}$ downstream, or half an hour more than for traveling $15 \\mathrm{~km}$ upstream and $42 \\mathrm{~km}$ downstream, assuming that both the ship and the river move uniformly.\n\nDetermine the speed of the ship in still water and the speed of the river.\n\n## Solution.\n\nLet $t$ be the time required for the boat to travel $24 \\mathrm{~km}$ upstream and $28 \\mathrm{~km}$ downstream, $v_{R}$ the speed of the river, and $v_{B}$ the speed of the boat. When the boat is traveling upstream, its speed is $v_{B}-v_{R}$, and when it is traveling downstream, its speed is $v_{B}+v_{R",
+            "truncated": true,
+            "full_len": 2211
+          },
+          {
+            "id": "1",
+            "text": "3. (6 points) A construction company was building a tunnel. When $\\frac{1}{3}$ of the tunnel was completed at the original speed, they started using new equipment, which increased the construction speed by $20 \\%$ and reduced the working hours to $80 \\%$ of the original. As a result, it took a total of 185 days to complete the tunnel. If they had not used the new equipment and continued at the original speed, it would have taken $\\qquad$ days to complete the tunnel.\n\n3. (6 points) A construction company builds a tunnel. When $\\frac{1}{3}$ of the tunnel is completed at the original speed, new equipment is used, increasing the construction speed by $20 \\%$ and reducing the daily working hours to $80 \\%$ of the original. As a result, the tunnel is completed in 185 days. If the new equipment w",
+            "truncated": true,
+            "full_len": 1303
+          },
+          {
+            "id": "2",
+            "text": "Prove that number $1$ can be represented as a sum of a finite number $n$ of real numbers, less than $1,$ not necessarily  distinct, which contain in their decimal representation only the digits $0$ and/or $7.$ Which is the least possible number $n$?\n\n1. **Restate the problem in a more manageable form:**\n   We need to prove that the number \\(1\\) can be represented as a sum of a finite number \\(n\\) of real numbers, each less than \\(1\\), and each containing only the digits \\(0\\) and \\(7\\) in their decimal representation. We also need to find the least possible value of \\(n\\).\n\n2. **Reformulate the problem using a known rational number:**\n   Consider the rational number \\(\\frac{1}{7} = 0.\\overline{142857}\\). We need to express \\(\\frac{1}{7}\\) as a sum of \\(n\\) real numbers, each less than \\(\\f",
+            "truncated": true,
+            "full_len": 2248
+          },
+          {
+            "id": "3",
+            "text": "4. Given the three sides of an obtuse triangle are 3, $4, x$, then the range of values for $x$ is ( ).\n(A) $1<x<7$.\n(B) $5 \\ll x<7$.\n(C) $1<x<\\sqrt{7}$.\n(D) $5<x<7$ or $1<x<\\sqrt{7}$.\n\n$D$\n\nD",
+            "truncated": false,
+            "full_len": 191
+          },
+          {
+            "id": "4",
+            "text": "1. Solve the equation: $\\frac{8 x+13}{3}=\\frac{19-12 x}{2}-\\left(16 x-\\frac{7-4 x}{6}\\right)$.\n\n1. $\\frac{8 x+13}{3}=\\frac{19-12 x}{2}-\\left(16 x-\\frac{7-4 x}{6}\\right)$\n\n$\\frac{8 x+13}{3}=\\frac{19-12 x}{2}-16 x+\\frac{7-4 x}{6} / \\cdot 6$\n\n1 BOD\n\n$2 \\cdot(8 x+13)=3 \\cdot(19-12 x)-96 x+7-4 x \\quad 1$ BOD\n\n$16 x+26=57-36 x-96 x+7-4 x \\quad 1$ BOD\n\n$16 x+36 x+96 x+4 x=57+7-26$\n\n$152 x=38 \\quad /: 152$\n\n1 BOD\n\n$x=\\frac{38}{152}$\n\n1 BOD\n\n$x=\\frac{1}{4}$\n\n1 BOD\n\nTOTAL 6 POINTS\n\nNote: If the student has not fully simplified the fraction, the solution should be evaluated with 5, not 6 points.\n\n\\frac{1}{4}",
+            "truncated": false,
+            "full_len": 604
+          },
+          {
+            "id": "5",
+            "text": "A right-angled triangle has side lengths that are integers. What could be the last digit of the area's measure, if the length of the hypotenuse is not divisible by 5?\n\nLet the lengths of the legs be $a$ and $b$, and the length of the hypotenuse be $c$. According to the Pythagorean theorem, we then have\n\n$$\na^{2}+b^{2}=c^{2}\n$$\n\nA square number can give a remainder of 0, 1, or 4 when divided by 5. If neither $a$ nor $b$ is divisible by 5, then the left side of (1) can give a remainder of 2 (in the form $1+1$), 0 (in the form $1+4$), or 3 (in the form $4+4$) when divided by 5. Since 2 and 3 cannot be the remainder of a square number $-c^{2}$ when divided by 5, and 0 is excluded by the condition, if the length of the hypotenuse is not divisible by 5, then the length of one of the legs will be",
+            "truncated": true,
+            "full_len": 2716
+          },
+          {
+            "id": "6",
+            "text": "Let $a_n\\ (n\\geq 1)$ be the value for which $\\int_x^{2x} e^{-t^n}dt\\ (x\\geq 0)$ is maximal. Find $\\lim_{n\\to\\infty} \\ln a_n.$\n\n1. Define the integral \\( I_n(x) = \\int_x^{2x} e^{-t^n} \\, dt \\). We need to find the value of \\( x \\) that maximizes \\( I_n(x) \\).\n\n2. To find the maximum, we first compute the derivative of \\( I_n(x) \\) with respect to \\( x \\):\n   \\[\n   I_n'(x) = \\frac{d}{dx} \\left( \\int_x^{2x} e^{-t^n} \\, dt \\right)\n   \\]\n   Using the Leibniz rule for differentiation under the integral sign, we get:\n   \\[\n   I_n'(x) = e^{-(2x)^n} \\cdot 2 - e^{-x^n}\n   \\]\n   Simplifying, we have:\n   \\[\n   I_n'(x) = 2e^{-(2x)^n} - e^{-x^n}\n   \\]\n\n3. Set the derivative equal to zero to find the critical points:\n   \\[\n   2e^{-(2x)^n} - e^{-x^n} = 0\n   \\]\n   \\[\n   2e^{-(2x)^n} = e^{-x^n}\n   \\]\n   Tak",
+            "truncated": true,
+            "full_len": 1966
+          },
+          {
+            "id": "7",
+            "text": "11. Given that the internal angles $A, B, C$ of $\\triangle ABC$ have opposite sides $a, b, c$ respectively, and $\\sqrt{3} b \\cos \\frac{A+B}{2}=c \\sin B$.\n(1) Find the size of $\\angle C$;\n(2) If $a+b=\\sqrt{3} c$, find $\\sin A$.\n\n(1) $\\sqrt{3} \\sin B \\cos \\frac{A+B}{2}=\\sin C \\sin B \\Rightarrow \\sqrt{3} \\sin \\frac{C}{2}=\\sin C \\Rightarrow \\cos \\frac{C}{2}=\\frac{\\sqrt{3}}{2}$,\n\nso $\\frac{C}{2}=30^{\\circ} \\Rightarrow C=60^{\\circ}$.\n$$\n\\begin{array}{l}\n\\text { (2) } \\sin A+\\sin B=\\sqrt{3} \\sin C=\\frac{3}{2} \\Rightarrow \\sin A+\\sin \\left(120^{\\circ}-A\\right) \\\\\n=\\sin A+\\frac{\\sqrt{3}}{2} \\cos A+\\frac{1}{2} \\sin A=\\frac{3}{2} \\sin A+\\frac{\\sqrt{3}}{2} \\cos A=\\frac{3}{2} \\\\\n\\Rightarrow \\frac{\\sqrt{3}}{2} \\sin A+\\frac{1}{2} \\cos A=\\sin \\left(A+30^{\\circ}\\right)=\\frac{\\sqrt{3}}{2} \\Rightarrow A=30^{",
+            "truncated": true,
+            "full_len": 917
+          }
+        ]
+      },
+      "extraction": {
+        "n_docs": 5000,
+        "extraction_path_distribution": {
+          "passthrough": 4864,
+          "bs4": 127,
+          "inline_tags_stripped": 9
+        },
+        "total_raw_chars": 6133356,
+        "total_extracted_chars": 6116623,
+        "chars_removed": 16733
+      },
+      "normalize": {
+        "n_docs": 5000,
+        "content_type_distribution": {
+          "prose": 4502,
+          "code": 498
+        },
+        "total_raw_chars": 6116623,
+        "total_clean_chars": 6085892,
+        "chars_removed": 30731,
+        "n_empty_after_clean": 0,
+        "ghost_token_counts": {},
+        "ghost_token_examples": {},
+        "noise_stats": {
+          "garbage_control_chars": 10,
+          "zero_width_noise_chars": 2,
+          "broken_utf_replacement_chars": 370,
+          "n_docs_with_broken_utf": 30,
+          "zwnj_kept": 0,
+          "zwj_kept": 0
+        },
+        "script_stats": {
+          "dominant_script_distribution": {
+            "latin": 5000
+          },
+          "n_docs_with_script_signal": 5000,
+          "avg_purity_among_scripted_docs": 0.9999998114985861,
+          "n_docs_below_0.85_purity": 0
+        }
+      }
+    },
+    {
+      "key": "c4_realnewslike",
+      "dataset": {
+        "label": "C4 — realnewslike",
+        "description": "A news-like English web-text slice of the C4 corpus (Common Crawl derived), streamed and sampled to 5,000 documents.",
+        "highlight": "Already extracted upstream (Common Crawl WET files), so almost nothing for the Extraction stage to do — 99.8% of documents pass straight through. Still real broken-UTF and control-character noise for Normalize+Clean to catch, and effectively zero ghost tokens or non-Latin script content — its own useful data point: not every dataset needs every strategy.",
+        "facts": [
+          [
+            "HF dataset",
+            "allenai/c4, config realnewslike"
+          ],
+          [
+            "Full size",
+            "~14M rows (~15GB)"
+          ],
+          [
+            "Sample size",
+            "5,000 rows (streamed, no download)"
+          ],
+          [
+            "Language",
+            "English"
+          ],
+          [
+            "Content",
+            "News-like web text; Common Crawl WET-extracted upstream, so already mostly de-HTML'd"
+          ]
+        ],
+        "samples": [
+          {
+            "id": "0",
+            "text": "After the martyrdom of St. Boniface, Vergilius was made Bishop of Salzburg (766 or 767) and laboured successfully for the upbuilding of his diocese as well as for the spread of the Faith in neighbouring heathen countries, especially in Carinthia. He died at Salzburg, 27 November, 789. In 1233 he was canonized by Gregory IX. His doctrine that the earth is a sphere was derived from the teaching of ancient geographers, and his belief in the existence of the antipodes was probably influenced by the accounts which the ancient Irish voyagers gave of their journeys. This, at least, is the opinion of Rettberg (\"Kirchengesch. Deutschlands\", II, 236).",
+            "truncated": false,
+            "full_len": 649
+          },
+          {
+            "id": "1",
+            "text": "\"Whoever gets him, they'll be getting a good one,\" David Montgomery said.\nINDIANAPOLIS — Hakeem Butler has been surrounded by some of the best wide receivers on the planet this week at the NFL Scouting Combine.\nIt’s an experience that might humble some. But for Butler, it has only enhanced his confidence.\nAs it stands, 22-year-old Butler is not regarded as the best wide receiver in this year’s NFL Draft. He’s projected by some experts to go as late as the third round. But when wide receivers were measured Thursday, Butler gained some attention: He led all receivers in height (6-foot-5 3/8), arm length (35 1/4 inches) and wingspan (83 7/8 inches).\nOn Thursday, running back David Montgomery, who played with Butler at Iowa State, captured the general vibe surrounding Butler here.\nButler says ",
+            "truncated": true,
+            "full_len": 2124
+          },
+          {
+            "id": "2",
+            "text": "8i announced today it has launched a web player, the 8i Portal, for its volumetric 3D video of people in virtual reality.\nUsing 8i’s technology and VR goggles, you’ll be able to walk around a person inside a virtual environment to see their entire being. The Wellington, New Zealand-based startup said its VR platform will allow you to view fully volumetric 3D video.\nPreviously, VR cameras could record a partial torso of a person, but the 8i Portal goes beyond that. It enables “complete freedom of movement,” and it gives you a sense of “presence,” or the feeling that you are there in the virtual space with the person. It creates a more “emotional connection with the person you are watching,” the company said in the video below.\n8i’s platform will let you create, experience, and share immersi",
+            "truncated": true,
+            "full_len": 1793
+          },
+          {
+            "id": "3",
+            "text": "The Arlington County Board plans to vote Saturday afternoon on giving Amazon $23 million and other incentives to build a headquarters campus in Crystal City, but only after hearing scores of northern Virginia residents and advocates testify for or against the project.\nThe five-member board is expected to support the plan, which was announced amid much hoopla on Nov. 13. The proposed county incentives are part of an agreement in which Amazon would occupy significant office space and bring at least 25,000 high-paying jobs to Arlington in coming years.\nOpponents hope to postpone the vote until after additional public hearings, where they want representatives of the online retail giant to answer questions directly from anyone in the community.\nThe Saturday hearing was scheduled to begin no ear",
+            "truncated": true,
+            "full_len": 4463
+          },
+          {
+            "id": "4",
+            "text": "Karl Kispert, principal of cyber and information security, has more than 28 years of experience in selling, managing and delivering information risk management, internal audit, regulatory and compliance programs, and information security and technology risk management.\nA former chief information security officer, Kispert has helped design and implement cybersecurity programs for many firms, according to the firm.\n“By adding this new service line, and bringing someone with Karl’s expertise to the firm, we can service yet another important aspect of our clients’ and prospects’ businesses, ensuring their continued success,” CEO Louis Grassi said in a written statement.\nServices will include full security programs, compliance, third party vendor risk assessment, threat management, and managed ",
+            "truncated": true,
+            "full_len": 818
+          },
+          {
+            "id": "5",
+            "text": "The Hawaii man who was fired after issuing the false ballistic missile alert in mid-January told reporters Friday that he was very upset over the incident but remained adamant that it appeared, at the time, to be a real-life attack.\nThe former state employee – a man in his 50s who asked to remain anonymous for his safety – said that he was “100 percent sure” that the drill on Jan. 13 was real, even though several other employees heard the word “exercise” repeated throughout the message, according to officials.\nOnce the man realized what had happened, he said he felt like he’d sustained a “body blow.” Since then, he’s reportedly been distressed to the point that he has had trouble eating and sleeping.\nDuring a news conference on Tuesday, investigating officer Brig. Gen. Bruce Oliveira share",
+            "truncated": true,
+            "full_len": 1860
+          },
+          {
+            "id": "6",
+            "text": "Shania Twain expected to break the charts with new album NOW!\nEven after a 15-year hiatus, she’s still the one! Shania Twain is on pace to top the charts with her new album NOW. The 16-song LP was released on Sept. 29 and is set to shoot past Demi Lovato and Miley Cyrus to claim the number one spot on Billboard’s Top 200. The Timmins native hopped on Twitter on Wednesday to announce that her album is already platinum in Canada!\nShortly after the release of the lead single “Life’s About to Get Good,” it hit number one on the Billboard 200. Of course, fans were simply dying to see how their favourite country icon was doing, so the new single rocked its way to the top of Billboard + Twitter Trending 140, too! So far, the song’s video has over four million views on YouTube and the number conti",
+            "truncated": true,
+            "full_len": 1614
+          },
+          {
+            "id": "7",
+            "text": "A version of this article appeared in the print edition of The Daily Star on July 12, 2018, on page 16.\nAssembled by Palestinian artist Said Baalbaki, the exhibition presents 50 of Abbo's sketches, etchings and object, as well as texts – all taken from Baalbaki's personal collection of work from, and publications on, the elusive sculptor. Baalbaki has no work of his own in this show.\nBorn in Safad, northern Palestine, around 1888-1890, Abbo was a farmer and fisherman who later took up carpentry and stone masonry. It was not until he moved to Berlin in 1911 to study sculpture that his artistic career took shape.\nBaalbaki has spent the last four years finding, and determining attribution for, 70 artworks and 100 texts mentioning the artist.\nBaalbaki says many of Abbo's sculptures didn't surv",
+            "truncated": true,
+            "full_len": 1225
+          }
+        ]
+      },
+      "extraction": {
+        "n_docs": 5000,
+        "extraction_path_distribution": {
+          "passthrough": 4991,
+          "bs4": 2,
+          "inline_tags_stripped": 6,
+          "trafilatura": 1
+        },
+        "total_raw_chars": 13024445,
+        "total_extracted_chars": 13023808,
+        "chars_removed": 637
+      },
+      "normalize": {
+        "n_docs": 5000,
+        "content_type_distribution": {
+          "prose": 4999,
+          "code": 1
+        },
+        "total_raw_chars": 13023808,
+        "total_clean_chars": 13019925,
+        "chars_removed": 3883,
+        "n_empty_after_clean": 0,
+        "ghost_token_counts": {},
+        "ghost_token_examples": {},
+        "noise_stats": {
+          "garbage_control_chars": 188,
+          "zero_width_noise_chars": 33,
+          "broken_utf_replacement_chars": 380,
+          "n_docs_with_broken_utf": 42,
+          "zwnj_kept": 0,
+          "zwj_kept": 0
+        },
+        "script_stats": {
+          "dominant_script_distribution": {
+            "latin": 5000
+          },
+          "n_docs_with_script_signal": 5000,
+          "avg_purity_among_scripted_docs": 0.9999104896675651,
+          "n_docs_below_0.85_purity": 1
+        }
+      }
+    },
+    {
       "key": "capstone",
       "dataset": {
         "label": "Capstone benchmark shard (mixed)",
@@ -869,383 +1246,6 @@
           "n_docs_below_0.85_purity": 210
         },
         "ghost_token_note": "One caught case worth naming: the 2 <input> hits are a false positive — an HTML-spec diff document literally discussing the <input> element, not a chat-format marker. That's the \"flag, don't delete\" design working as intended."
-      }
-    },
-    {
-      "key": "c4_realnewslike",
-      "dataset": {
-        "label": "C4 — realnewslike",
-        "description": "A news-like English web-text slice of the C4 corpus (Common Crawl derived), streamed and sampled to 5,000 documents.",
-        "highlight": "Already extracted upstream (Common Crawl WET files), so almost nothing for the Extraction stage to do — 99.8% of documents pass straight through. Still real broken-UTF and control-character noise for Normalize+Clean to catch, and effectively zero ghost tokens or non-Latin script content — its own useful data point: not every dataset needs every strategy.",
-        "facts": [
-          [
-            "HF dataset",
-            "allenai/c4, config realnewslike"
-          ],
-          [
-            "Full size",
-            "~14M rows (~15GB)"
-          ],
-          [
-            "Sample size",
-            "5,000 rows (streamed, no download)"
-          ],
-          [
-            "Language",
-            "English"
-          ],
-          [
-            "Content",
-            "News-like web text; Common Crawl WET-extracted upstream, so already mostly de-HTML'd"
-          ]
-        ],
-        "samples": [
-          {
-            "id": "0",
-            "text": "After the martyrdom of St. Boniface, Vergilius was made Bishop of Salzburg (766 or 767) and laboured successfully for the upbuilding of his diocese as well as for the spread of the Faith in neighbouring heathen countries, especially in Carinthia. He died at Salzburg, 27 November, 789. In 1233 he was canonized by Gregory IX. His doctrine that the earth is a sphere was derived from the teaching of ancient geographers, and his belief in the existence of the antipodes was probably influenced by the accounts which the ancient Irish voyagers gave of their journeys. This, at least, is the opinion of Rettberg (\"Kirchengesch. Deutschlands\", II, 236).",
-            "truncated": false,
-            "full_len": 649
-          },
-          {
-            "id": "1",
-            "text": "\"Whoever gets him, they'll be getting a good one,\" David Montgomery said.\nINDIANAPOLIS — Hakeem Butler has been surrounded by some of the best wide receivers on the planet this week at the NFL Scouting Combine.\nIt’s an experience that might humble some. But for Butler, it has only enhanced his confidence.\nAs it stands, 22-year-old Butler is not regarded as the best wide receiver in this year’s NFL Draft. He’s projected by some experts to go as late as the third round. But when wide receivers were measured Thursday, Butler gained some attention: He led all receivers in height (6-foot-5 3/8), arm length (35 1/4 inches) and wingspan (83 7/8 inches).\nOn Thursday, running back David Montgomery, who played with Butler at Iowa State, captured the general vibe surrounding Butler here.\nButler says ",
-            "truncated": true,
-            "full_len": 2124
-          },
-          {
-            "id": "2",
-            "text": "8i announced today it has launched a web player, the 8i Portal, for its volumetric 3D video of people in virtual reality.\nUsing 8i’s technology and VR goggles, you’ll be able to walk around a person inside a virtual environment to see their entire being. The Wellington, New Zealand-based startup said its VR platform will allow you to view fully volumetric 3D video.\nPreviously, VR cameras could record a partial torso of a person, but the 8i Portal goes beyond that. It enables “complete freedom of movement,” and it gives you a sense of “presence,” or the feeling that you are there in the virtual space with the person. It creates a more “emotional connection with the person you are watching,” the company said in the video below.\n8i’s platform will let you create, experience, and share immersi",
-            "truncated": true,
-            "full_len": 1793
-          },
-          {
-            "id": "3",
-            "text": "The Arlington County Board plans to vote Saturday afternoon on giving Amazon $23 million and other incentives to build a headquarters campus in Crystal City, but only after hearing scores of northern Virginia residents and advocates testify for or against the project.\nThe five-member board is expected to support the plan, which was announced amid much hoopla on Nov. 13. The proposed county incentives are part of an agreement in which Amazon would occupy significant office space and bring at least 25,000 high-paying jobs to Arlington in coming years.\nOpponents hope to postpone the vote until after additional public hearings, where they want representatives of the online retail giant to answer questions directly from anyone in the community.\nThe Saturday hearing was scheduled to begin no ear",
-            "truncated": true,
-            "full_len": 4463
-          },
-          {
-            "id": "4",
-            "text": "Karl Kispert, principal of cyber and information security, has more than 28 years of experience in selling, managing and delivering information risk management, internal audit, regulatory and compliance programs, and information security and technology risk management.\nA former chief information security officer, Kispert has helped design and implement cybersecurity programs for many firms, according to the firm.\n“By adding this new service line, and bringing someone with Karl’s expertise to the firm, we can service yet another important aspect of our clients’ and prospects’ businesses, ensuring their continued success,” CEO Louis Grassi said in a written statement.\nServices will include full security programs, compliance, third party vendor risk assessment, threat management, and managed ",
-            "truncated": true,
-            "full_len": 818
-          },
-          {
-            "id": "5",
-            "text": "The Hawaii man who was fired after issuing the false ballistic missile alert in mid-January told reporters Friday that he was very upset over the incident but remained adamant that it appeared, at the time, to be a real-life attack.\nThe former state employee – a man in his 50s who asked to remain anonymous for his safety – said that he was “100 percent sure” that the drill on Jan. 13 was real, even though several other employees heard the word “exercise” repeated throughout the message, according to officials.\nOnce the man realized what had happened, he said he felt like he’d sustained a “body blow.” Since then, he’s reportedly been distressed to the point that he has had trouble eating and sleeping.\nDuring a news conference on Tuesday, investigating officer Brig. Gen. Bruce Oliveira share",
-            "truncated": true,
-            "full_len": 1860
-          },
-          {
-            "id": "6",
-            "text": "Shania Twain expected to break the charts with new album NOW!\nEven after a 15-year hiatus, she’s still the one! Shania Twain is on pace to top the charts with her new album NOW. The 16-song LP was released on Sept. 29 and is set to shoot past Demi Lovato and Miley Cyrus to claim the number one spot on Billboard’s Top 200. The Timmins native hopped on Twitter on Wednesday to announce that her album is already platinum in Canada!\nShortly after the release of the lead single “Life’s About to Get Good,” it hit number one on the Billboard 200. Of course, fans were simply dying to see how their favourite country icon was doing, so the new single rocked its way to the top of Billboard + Twitter Trending 140, too! So far, the song’s video has over four million views on YouTube and the number conti",
-            "truncated": true,
-            "full_len": 1614
-          },
-          {
-            "id": "7",
-            "text": "A version of this article appeared in the print edition of The Daily Star on July 12, 2018, on page 16.\nAssembled by Palestinian artist Said Baalbaki, the exhibition presents 50 of Abbo's sketches, etchings and object, as well as texts – all taken from Baalbaki's personal collection of work from, and publications on, the elusive sculptor. Baalbaki has no work of his own in this show.\nBorn in Safad, northern Palestine, around 1888-1890, Abbo was a farmer and fisherman who later took up carpentry and stone masonry. It was not until he moved to Berlin in 1911 to study sculpture that his artistic career took shape.\nBaalbaki has spent the last four years finding, and determining attribution for, 70 artworks and 100 texts mentioning the artist.\nBaalbaki says many of Abbo's sculptures didn't surv",
-            "truncated": true,
-            "full_len": 1225
-          }
-        ]
-      },
-      "extraction": {
-        "n_docs": 5000,
-        "extraction_path_distribution": {
-          "passthrough": 4991,
-          "bs4": 2,
-          "inline_tags_stripped": 6,
-          "trafilatura": 1
-        },
-        "total_raw_chars": 13024445,
-        "total_extracted_chars": 13023808,
-        "chars_removed": 637
-      },
-      "normalize": {
-        "n_docs": 5000,
-        "content_type_distribution": {
-          "prose": 4999,
-          "code": 1
-        },
-        "total_raw_chars": 13023808,
-        "total_clean_chars": 13019925,
-        "chars_removed": 3883,
-        "n_empty_after_clean": 0,
-        "ghost_token_counts": {},
-        "ghost_token_examples": {},
-        "noise_stats": {
-          "garbage_control_chars": 188,
-          "zero_width_noise_chars": 33,
-          "broken_utf_replacement_chars": 380,
-          "n_docs_with_broken_utf": 42,
-          "zwnj_kept": 0,
-          "zwj_kept": 0
-        },
-        "script_stats": {
-          "dominant_script_distribution": {
-            "latin": 5000
-          },
-          "n_docs_with_script_signal": 5000,
-          "avg_purity_among_scripted_docs": 0.9999104896675651,
-          "n_docs_below_0.85_purity": 1
-        }
-      }
-    },
-    {
-      "key": "openr1_math",
-      "dataset": {
-        "label": "open-r1/OpenR1-Math-220k",
-        "description": "A math/olympiad reasoning dataset — problem, solution, and answer fields joined into one text field — streamed and sampled to 5,000 documents.",
-        "highlight": "Heavy LaTeX markup causes real content-type ambiguity: about 10% of documents (498 of 5,000) get classified as \"code\" by the whitespace-preservation heuristic, because LaTeX array/matrix blocks are line-structured the same way source code is. Concrete evidence for the \"math\" content-type gap discussed earlier — this dataset is the reason to actually build it.",
-        "facts": [
-          [
-            "HF dataset",
-            "open-r1/OpenR1-Math-220k, config default"
-          ],
-          [
-            "Full size",
-            "93.7k rows (default config; 450k across all configs)"
-          ],
-          [
-            "Sample size",
-            "5,000 rows (streamed, no download)"
-          ],
-          [
-            "Language",
-            "English"
-          ],
-          [
-            "Content",
-            "Math/olympiad problems — problem + solution + answer fields joined via --text-fields"
-          ]
-        ],
-        "samples": [
-          {
-            "id": "0",
-            "text": "## Task B-1.3.\n\nA ship traveling along a river has covered $24 \\mathrm{~km}$ upstream and $28 \\mathrm{~km}$ downstream. For this journey, it took half an hour less than for traveling $30 \\mathrm{~km}$ upstream and $21 \\mathrm{~km}$ downstream, or half an hour more than for traveling $15 \\mathrm{~km}$ upstream and $42 \\mathrm{~km}$ downstream, assuming that both the ship and the river move uniformly.\n\nDetermine the speed of the ship in still water and the speed of the river.\n\n## Solution.\n\nLet $t$ be the time required for the boat to travel $24 \\mathrm{~km}$ upstream and $28 \\mathrm{~km}$ downstream, $v_{R}$ the speed of the river, and $v_{B}$ the speed of the boat. When the boat is traveling upstream, its speed is $v_{B}-v_{R}$, and when it is traveling downstream, its speed is $v_{B}+v_{R",
-            "truncated": true,
-            "full_len": 2211
-          },
-          {
-            "id": "1",
-            "text": "3. (6 points) A construction company was building a tunnel. When $\\frac{1}{3}$ of the tunnel was completed at the original speed, they started using new equipment, which increased the construction speed by $20 \\%$ and reduced the working hours to $80 \\%$ of the original. As a result, it took a total of 185 days to complete the tunnel. If they had not used the new equipment and continued at the original speed, it would have taken $\\qquad$ days to complete the tunnel.\n\n3. (6 points) A construction company builds a tunnel. When $\\frac{1}{3}$ of the tunnel is completed at the original speed, new equipment is used, increasing the construction speed by $20 \\%$ and reducing the daily working hours to $80 \\%$ of the original. As a result, the tunnel is completed in 185 days. If the new equipment w",
-            "truncated": true,
-            "full_len": 1303
-          },
-          {
-            "id": "2",
-            "text": "Prove that number $1$ can be represented as a sum of a finite number $n$ of real numbers, less than $1,$ not necessarily  distinct, which contain in their decimal representation only the digits $0$ and/or $7.$ Which is the least possible number $n$?\n\n1. **Restate the problem in a more manageable form:**\n   We need to prove that the number \\(1\\) can be represented as a sum of a finite number \\(n\\) of real numbers, each less than \\(1\\), and each containing only the digits \\(0\\) and \\(7\\) in their decimal representation. We also need to find the least possible value of \\(n\\).\n\n2. **Reformulate the problem using a known rational number:**\n   Consider the rational number \\(\\frac{1}{7} = 0.\\overline{142857}\\). We need to express \\(\\frac{1}{7}\\) as a sum of \\(n\\) real numbers, each less than \\(\\f",
-            "truncated": true,
-            "full_len": 2248
-          },
-          {
-            "id": "3",
-            "text": "4. Given the three sides of an obtuse triangle are 3, $4, x$, then the range of values for $x$ is ( ).\n(A) $1<x<7$.\n(B) $5 \\ll x<7$.\n(C) $1<x<\\sqrt{7}$.\n(D) $5<x<7$ or $1<x<\\sqrt{7}$.\n\n$D$\n\nD",
-            "truncated": false,
-            "full_len": 191
-          },
-          {
-            "id": "4",
-            "text": "1. Solve the equation: $\\frac{8 x+13}{3}=\\frac{19-12 x}{2}-\\left(16 x-\\frac{7-4 x}{6}\\right)$.\n\n1. $\\frac{8 x+13}{3}=\\frac{19-12 x}{2}-\\left(16 x-\\frac{7-4 x}{6}\\right)$\n\n$\\frac{8 x+13}{3}=\\frac{19-12 x}{2}-16 x+\\frac{7-4 x}{6} / \\cdot 6$\n\n1 BOD\n\n$2 \\cdot(8 x+13)=3 \\cdot(19-12 x)-96 x+7-4 x \\quad 1$ BOD\n\n$16 x+26=57-36 x-96 x+7-4 x \\quad 1$ BOD\n\n$16 x+36 x+96 x+4 x=57+7-26$\n\n$152 x=38 \\quad /: 152$\n\n1 BOD\n\n$x=\\frac{38}{152}$\n\n1 BOD\n\n$x=\\frac{1}{4}$\n\n1 BOD\n\nTOTAL 6 POINTS\n\nNote: If the student has not fully simplified the fraction, the solution should be evaluated with 5, not 6 points.\n\n\\frac{1}{4}",
-            "truncated": false,
-            "full_len": 604
-          },
-          {
-            "id": "5",
-            "text": "A right-angled triangle has side lengths that are integers. What could be the last digit of the area's measure, if the length of the hypotenuse is not divisible by 5?\n\nLet the lengths of the legs be $a$ and $b$, and the length of the hypotenuse be $c$. According to the Pythagorean theorem, we then have\n\n$$\na^{2}+b^{2}=c^{2}\n$$\n\nA square number can give a remainder of 0, 1, or 4 when divided by 5. If neither $a$ nor $b$ is divisible by 5, then the left side of (1) can give a remainder of 2 (in the form $1+1$), 0 (in the form $1+4$), or 3 (in the form $4+4$) when divided by 5. Since 2 and 3 cannot be the remainder of a square number $-c^{2}$ when divided by 5, and 0 is excluded by the condition, if the length of the hypotenuse is not divisible by 5, then the length of one of the legs will be",
-            "truncated": true,
-            "full_len": 2716
-          },
-          {
-            "id": "6",
-            "text": "Let $a_n\\ (n\\geq 1)$ be the value for which $\\int_x^{2x} e^{-t^n}dt\\ (x\\geq 0)$ is maximal. Find $\\lim_{n\\to\\infty} \\ln a_n.$\n\n1. Define the integral \\( I_n(x) = \\int_x^{2x} e^{-t^n} \\, dt \\). We need to find the value of \\( x \\) that maximizes \\( I_n(x) \\).\n\n2. To find the maximum, we first compute the derivative of \\( I_n(x) \\) with respect to \\( x \\):\n   \\[\n   I_n'(x) = \\frac{d}{dx} \\left( \\int_x^{2x} e^{-t^n} \\, dt \\right)\n   \\]\n   Using the Leibniz rule for differentiation under the integral sign, we get:\n   \\[\n   I_n'(x) = e^{-(2x)^n} \\cdot 2 - e^{-x^n}\n   \\]\n   Simplifying, we have:\n   \\[\n   I_n'(x) = 2e^{-(2x)^n} - e^{-x^n}\n   \\]\n\n3. Set the derivative equal to zero to find the critical points:\n   \\[\n   2e^{-(2x)^n} - e^{-x^n} = 0\n   \\]\n   \\[\n   2e^{-(2x)^n} = e^{-x^n}\n   \\]\n   Tak",
-            "truncated": true,
-            "full_len": 1966
-          },
-          {
-            "id": "7",
-            "text": "11. Given that the internal angles $A, B, C$ of $\\triangle ABC$ have opposite sides $a, b, c$ respectively, and $\\sqrt{3} b \\cos \\frac{A+B}{2}=c \\sin B$.\n(1) Find the size of $\\angle C$;\n(2) If $a+b=\\sqrt{3} c$, find $\\sin A$.\n\n(1) $\\sqrt{3} \\sin B \\cos \\frac{A+B}{2}=\\sin C \\sin B \\Rightarrow \\sqrt{3} \\sin \\frac{C}{2}=\\sin C \\Rightarrow \\cos \\frac{C}{2}=\\frac{\\sqrt{3}}{2}$,\n\nso $\\frac{C}{2}=30^{\\circ} \\Rightarrow C=60^{\\circ}$.\n$$\n\\begin{array}{l}\n\\text { (2) } \\sin A+\\sin B=\\sqrt{3} \\sin C=\\frac{3}{2} \\Rightarrow \\sin A+\\sin \\left(120^{\\circ}-A\\right) \\\\\n=\\sin A+\\frac{\\sqrt{3}}{2} \\cos A+\\frac{1}{2} \\sin A=\\frac{3}{2} \\sin A+\\frac{\\sqrt{3}}{2} \\cos A=\\frac{3}{2} \\\\\n\\Rightarrow \\frac{\\sqrt{3}}{2} \\sin A+\\frac{1}{2} \\cos A=\\sin \\left(A+30^{\\circ}\\right)=\\frac{\\sqrt{3}}{2} \\Rightarrow A=30^{",
-            "truncated": true,
-            "full_len": 917
-          }
-        ]
-      },
-      "extraction": {
-        "n_docs": 5000,
-        "extraction_path_distribution": {
-          "passthrough": 4864,
-          "bs4": 127,
-          "inline_tags_stripped": 9
-        },
-        "total_raw_chars": 6133356,
-        "total_extracted_chars": 6116623,
-        "chars_removed": 16733
-      },
-      "normalize": {
-        "n_docs": 5000,
-        "content_type_distribution": {
-          "prose": 4502,
-          "code": 498
-        },
-        "total_raw_chars": 6116623,
-        "total_clean_chars": 6085892,
-        "chars_removed": 30731,
-        "n_empty_after_clean": 0,
-        "ghost_token_counts": {},
-        "ghost_token_examples": {},
-        "noise_stats": {
-          "garbage_control_chars": 10,
-          "zero_width_noise_chars": 2,
-          "broken_utf_replacement_chars": 370,
-          "n_docs_with_broken_utf": 30,
-          "zwnj_kept": 0,
-          "zwj_kept": 0
-        },
-        "script_stats": {
-          "dominant_script_distribution": {
-            "latin": 5000
-          },
-          "n_docs_with_script_signal": 5000,
-          "avg_purity_among_scripted_docs": 0.9999998114985861,
-          "n_docs_below_0.85_purity": 0
-        }
-      }
-    },
-    {
-      "key": "github_code_python",
-      "dataset": {
-        "label": "GitHub Code 2025 — Python",
-        "description": "Real-world GitHub Python source files (the \"content\" field), streamed and sampled to 5,000 documents from a 55-language, 143M-row code corpus.",
-        "highlight": "Surfaced a real bug, not just a data quirk: a Python file embedding real HTML (a Qt \"About\" dialog's setHtml(...) call) fooled the HTML-document detector into running trafilatura on the whole file, which confidently extracted an unrelated fragment and silently discarded most of the actual code. Fixed with a new --content-hint not-html flag that bypasses ALL tag-stripping for known-code sources — even the \"lightweight\" tier was unsafe, since <...> in code is often a Flask route param, a chained comparison, or a generic, not markup. Separately, ~99.5% of documents are correctly classified as \"code\" by the content-type heuristic (compare to ~90% on the math dataset), and its ghost-token hits are almost all code that legitimately manipulates tokenizer special tokens (checking for <|endoftext|>, mocking a tokenizer's <bos>/<eos>) rather than contamination — except [prompt] and [cls], which are false positives from Python identifiers that happen to collide with the ghost-token vocabulary (a list literal and a class-method parameter, not special tokens).",
-        "facts": [
-          [
-            "HF dataset",
-            "hasankursun/github-code-2025-language-split, config python"
-          ],
-          [
-            "Full size",
-            "28.9M rows (Python config); 143.7M rows across all 55 languages"
-          ],
-          [
-            "Sample size",
-            "5,000 rows (streamed, no download)"
-          ],
-          [
-            "Content",
-            "Real GitHub Python source files, the \"content\" field"
-          ],
-          [
-            "Extraction setting",
-            "--content-hint not-html (source code, not prose or HTML)"
-          ]
-        ],
-        "samples": [
-          {
-            "id": "0",
-            "text": "from rich.console import Console\nconsole = Console()\n\nimport argparse\n\nfrom blobber.ui.banner import get_banner\nfrom blobber.modules.status import request\nfrom blobber.modules.blobs import blob_handler\n\ndef initialize() -> None:\n    \"\"\" Initiates Blobber \"\"\"\n    get_banner()\n\n    parser = argparse.ArgumentParser(\n        prog='Blobber',\n        description='Attacking Azure Blob Storage Service'\n    )\n    \n    parser.add_argument('-u', help=\"Specify the target URL to be used\", required=True)\n    parser.add_argument('-f', help=\"Filter by extension based on file name. Example: .pdf\", required=False, default=None)\n    args = parser.parse_args()\n\n    url = args.u\n    file_filter = args.f\n\n    status(url, file_filter)\n\ndef status(url: str, file_filter: str) -> None:\n    \"\"\"Wrapper to check the s",
-            "truncated": true,
-            "full_len": 1071
-          },
-          {
-            "id": "1",
-            "text": "\"\"\" \nThis module aims to enumerate and get Name, Last-Modified, Content-Length and Content-Typpe blob value.\n\"\"\"\n\nfrom lxml import etree\nfrom rich.console import Console\nconsole = Console()\n\ndef blob_handler(content: str, file_filter: str) -> None:\n    try:\n        content_bytes = content.encode('utf-8')\n        root = etree.fromstring(content_bytes)\n        \n        blobs = root.xpath(\".//Blob\")\n        if not blobs:\n            console.print(\"[[yellow]![/]] Nenhum blob encontrado.\")\n            return\n        \n        for blob in blobs:\n            url_element = blob.find(\"Url\")\n            url = url_element.text.strip() if url_element is not None else \"N/A\"\n\n            file_name = blob.findtext(\".//Name\", default=\"N/A\").strip()\n            last_modified = blob.findtext(\".//Last-Modifie",
-            "truncated": true,
-            "full_len": 1809
-          },
-          {
-            "id": "2",
-            "text": "\"\"\"\nThis module checks the status from the Azure Container passed\n\"\"\"\n\nfrom rich.console import Console\nconsole = Console()\nfrom requests import get\nfrom urllib3 import disable_warnings\ndisable_warnings()\n\nfrom blobber.modules.errors import error_handler\n\ndef request(url: str) -> tuple:\n    \"\"\"\n    Perform a GET request to the given URL, handle errors, and retry if necessary.\n    \"\"\"\n\n    url = f\"{url}/?restype=container&comp=list\"\n\n    try:\n        response = get(url, verify=False, timeout=10)\n        if response.ok:\n            console.print(f\"[[green]+[/]] Connected successfully to [green]{url}[/]\")\n            return response\n\n        # Handle errors\n        error_handler_response = error_handler(url, response)\n        if error_handler_response:\n            return error_handler_respons",
-            "truncated": true,
-            "full_len": 1092
-          },
-          {
-            "id": "3",
-            "text": "\"\"\"\nThis module handle the common errors when interacting with Azure Blobs\n\"\"\"\n\nfrom rich.console import Console\nconsole = Console()\nfrom requests import get\nfrom urllib3 import disable_warnings\ndisable_warnings()\n\nerrors_list = {\n    \"InvalidQueryParameterValue\": \"Value for one of the query parameters specified in the request URI is invalid.\",\n    \"FeatureVersionMismatch\": \"Trying to add 'x-ms-version: 2020-04-08' header on the request.\",\n    \"ResourceNotFound\": \"Invalid container or blob file specified in the URL.\",\n    \"AccountIsDisabled\": \"The specified account is disabled.\"\n}\n\ndef error_handler(url: str, response) -> tuple:\n    \"\"\"\n    Handles errors in Azure Blob responses and retries if specific errors occur.\n    \"\"\"\n    \n    try:\n        if isinstance(response, str):\n            re",
-            "truncated": true,
-            "full_len": 2492
-          },
-          {
-            "id": "4",
-            "text": "from rich.console import Console\nconsole = Console()\nfrom os import path, chdir\nfrom pathlib import Path\nfrom zipfile import ZipFile, BadZipFile\nfrom shutil import rmtree\n\nfrom androguard.core.apk import APK\nfrom androguard.core.dex import DEX\n\nfrom src.apepe.modules.suggest import suggest_sslpinning\nfrom src.apepe.modules.deeplink import scraper\nfrom src.apepe.modules.exported import exported\n\nfrom loguru import logger\nlogger.remove(0)\n\n\ndef perform_checks(apk_file, list_scripts, deeplink) -> None:\n    \"\"\"\n    This function is responsible to check if the APK file exists and\n    if the extension is .apk\n    \"\"\"\n\n    global args_list_scripts\n    args_list_scripts = list_scripts\n\n    global args_deeplink\n    args_deeplink = deeplink\n\n    file_name: str = apk_file\n    check_if_file: bool = pa",
-            "truncated": true,
-            "full_len": 5812
-          },
-          {
-            "id": "5",
-            "text": "import json\nimport re\n\nfrom rich.console import Console\nconsole = Console()\nfrom pathlib import Path\n\nfrom androguard.core.dex import DEX\nfrom androguard.core.apk import APK\n\nfrom lxml.etree import tostring\n\nDEEPLINK_PATTERN = r'\\b\\w+://[^\\s]+'\n\n\ndef dex_handler(file_path: Path) -> list:\n    \"\"\"\n    Extract readable strings from a .dex file and filter for deeplinks,\n    excluding those that start with 'http://', 'https://' or 'parse'\n    \"\"\"\n    results = []\n\n    try:\n        with file_path.open('rb') as dex_file:\n            content = DEX(dex_file.read())\n            strings = content.get_strings()\n            results = [\n                s for s in strings \n                if isinstance(s, str) \n                and re.search(DEEPLINK_PATTERN, s) \n                and not ('http://' in s or",
-            "truncated": true,
-            "full_len": 4821
-          },
-          {
-            "id": "6",
-            "text": "from rich.console import Console\nconsole = Console()\n\ndef exported(target) -> None:\n    \"\"\"\n    Lists activities, services, receivers, and providers from AndroidManifest.xml file.\n    \"\"\"\n\n    manifest = target.get_android_manifest_xml()\n    endpoints = [\"activity\", \"service\", \"receiver\", \"provider\"]\n\n    for endpoint in endpoints:\n        console.print(f\"\\n[green][+][/] {endpoint.capitalize()}:\", highlight=False)\n\n        if(endpoint == \"activity\"):\n            console.print(f\" [green]\\\\_[/] Main Activity: [yellow]{target.get_main_activity()}[/]\")\n\n        for element in manifest.findall(f\".//{endpoint}\"):\n            name = element.get(\"{http://schemas.android.com/apk/res/android}name\")\n            exported = element.get(\"{http://schemas.android.com/apk/res/android}exported\")\n\n          ",
-            "truncated": true,
-            "full_len": 1131
-          },
-          {
-            "id": "7",
-            "text": "from random import choice\n\ndef get_file_data(path) -> str:\n    \" Return the content inside text file \"\n\n    with open(path) as file:\n        return file.read()\n\n\ndef get_usernames() -> list:\n    \" Get all usernames inside usernames.txt file \"\n\n    raw = get_file_data('src/core/data/usernames.txt')\n    raw = raw.split('\\n')\n    return raw\n\n\ndef get_passwords() -> list:\n    \" Get all passwords inside passwords.txt file \"\n\n    raw = get_file_data('src/core/data/passwords.txt')\n    raw = raw.split('\\n')\n    return raw\n\n\ndef user_agent() -> str:\n    \"\"\"  Return a random user-agent from user-agents.txt file \"\"\"\n\n    user_agents_file: str = \"src/core/data/user-agents.txt\"\n\n    with open(user_agents_file, 'r+') as user_agents:\n        user_agent = user_agents.readlines()\n        user_agent = choic",
-            "truncated": true,
-            "full_len": 1031
-          }
-        ]
-      },
-      "extraction": {
-        "n_docs": 5000,
-        "extraction_path_distribution": {
-          "passthrough": 5000
-        },
-        "total_raw_chars": 74759820,
-        "total_extracted_chars": 74759820,
-        "chars_removed": 0
-      },
-      "normalize": {
-        "n_docs": 5000,
-        "content_type_distribution": {
-          "code": 4976,
-          "prose": 24
-        },
-        "total_raw_chars": 74759820,
-        "total_clean_chars": 74643897,
-        "chars_removed": 115923,
-        "n_empty_after_clean": 0,
-        "ghost_token_counts": {
-          "bracket_upper": 1844,
-          "pipe_angle": 173,
-          "angle_bare": 2650
-        },
-        "ghost_token_examples": {
-          "bracket_upper": [
-            "[prompt]"
-          ],
-          "pipe_angle": [
-            "<|endoftext|>",
-            "<|endoftext|>"
-          ],
-          "angle_bare": [
-            "<output>",
-            "</output>",
-            "<output>",
-            "</output>"
-          ]
-        },
-        "noise_stats": {
-          "garbage_control_chars": 3,
-          "zero_width_noise_chars": 5,
-          "broken_utf_replacement_chars": 29,
-          "n_docs_with_broken_utf": 9,
-          "zwnj_kept": 0,
-          "zwj_kept": 0
-        },
-        "script_stats": {
-          "dominant_script_distribution": {
-            "latin": 5000
-          },
-          "n_docs_with_script_signal": 5000,
-          "avg_purity_among_scripted_docs": 0.9999971697082496,
-          "n_docs_below_0.85_purity": 0
-        }
       }
     }
   ]
