@@ -439,18 +439,30 @@
   <section id="strategies">
     <div class="section-head">
       <div class="section-kicker">1 · Strategy catalogue</div>
-      <h2>4 pipeline stages, 19 discrete strategies</h2>
+      <h2>5 pipeline stages, 26 discrete strategies</h2>
       <p>
-        The full cleaning pipeline breaks into <strong>4 major stages, built from 19
-        discrete techniques</strong>: Normalization, Quality Filtering, Deduplication,
-        and the PII Scrubber. Two stages are implemented and verified below; the other
-        two are scoped and planned.
+        The full cleaning pipeline breaks into <strong>5 major stages, built from 26
+        discrete techniques</strong>: Extraction, Normalization, Quality Filtering,
+        Deduplication, and the PII Scrubber. Two stages are implemented and verified
+        below; the other three are scoped and planned.
       </p>
     </div>
 
     <div class="card-grid two" style="margin-top:20px;">
       <div class="card stage-card">
-        <h3>1 · Normalization <span class="stage-count">8 strategies</span> <span class="chip built">Built</span></h3>
+        <h3>1 · Extraction <span class="stage-count">7 strategies</span> <span class="chip built">Built</span></h3>
+        <ul>
+          <li>Tiered extraction — trafilatura → BeautifulSoup structural pass → regex fallback</li>
+          <li>Drop nav/footer/header/script/style and boilerplate-flagged elements (cookie banners, sidebars, ads)</li>
+          <li>Prefer an article/main content container when one exists</li>
+          <li>Drop &lt;table&gt; entirely rather than flattening it into jumbled cell text</li>
+          <li>Filter boilerplate lines that survive as plain text (cookie notices, nav breadcrumbs)</li>
+          <li>Detect full HTML documents by doctype/structural tags/tag density — not just any stray tag</li>
+          <li>--content-hint override to skip all tag-stripping for known non-HTML sources (source code)</li>
+        </ul>
+      </div>
+      <div class="card stage-card">
+        <h3>2 · Normalization <span class="stage-count">8 strategies</span> <span class="chip built">Built</span></h3>
         <ul>
           <li>NFC Unicode normalization</li>
           <li>Strip C0 / C1 control characters</li>
@@ -463,7 +475,7 @@
         </ul>
       </div>
       <div class="card stage-card">
-        <h3>4 · Quality Filtering <span class="stage-count">4 strategies</span> <span class="chip planned">Planned</span></h3>
+        <h3>3 · Quality Filtering <span class="stage-count">4 strategies</span> <span class="chip planned">Planned</span></h3>
         <ul>
           <li>Deterministic heuristics — mean word length, symbol-to-word ratio, Lines end in . !?, Duplicate-line fraction, Top 2-gram fraction, Common stop-words, Bullet-line ratio, Ellipsis-line ratio, Document word count </li>
           <li>ML classifier, distilled from a large model to a cheap ~95%-accurate copy</li>
@@ -472,7 +484,7 @@
         </ul>
       </div>
       <div class="card stage-card">
-        <h3>5 · Deduplication <span class="stage-count">4 strategies</span> <span class="chip planned">Planned</span></h3>
+        <h3>4 · Deduplication <span class="stage-count">4 strategies</span> <span class="chip planned">Planned</span></h3>
         <ul>
           <li>Shingling — overlapping token windows (e.g. 50-token overlap)</li>
           <li>Similarity-preserving hashing (MinHash) per shingle</li>
@@ -481,11 +493,11 @@
         </ul>
       </div>
       <div class="card stage-card">
-        <h3>6 · PII Scrubber <span class="stage-count">3 strategies</span> <span class="chip planned">Planned</span></h3>
+        <h3>5 · PII Scrubber <span class="stage-count">3 strategies</span> <span class="chip planned">Planned</span></h3>
         <ul>
           <li>Regex layer — emails, phone numbers, network addresses</li>
           <li>NER / name-detection layer</li>
-          <li>Source-aware policy — keep for news, scrub for Reddit</li>
+          <li>Source-aware policy — eg. keep names for news, scrub for Reddit/github</li>
         </ul>
       </div>
     </div>
@@ -643,33 +655,29 @@
   <section id="beyond">
     <div class="section-head">
       <div class="section-kicker">4 · Any other cleanup strategy or concern </div>
-      <h2>Six additional techniques applied</h2>
+      <h2>Five additional techniques applied</h2>
       <p>Found and fixed while actually running the pipeline against real data.</p>
     </div>
 
     <div class="card beyond-list">
       <div class="beyond-item">
         <div class="num">01</div>
-        <div><h4>Extraction stage</h4><p>Added as stage 0 after ghost-token noise was traced back to un-stripped HTML tags.</p></div>
-      </div>
-      <div class="beyond-item">
-        <div class="num">02</div>
         <div><h4>Mojibake repair (ftfy)</h4><p>NFC alone can't fix double-encoded UTF-8 — every mojibake character is already "validly" encoded, just the wrong one.</p></div>
       </div>
       <div class="beyond-item">
-        <div class="num">03</div>
+        <div class="num">02</div>
         <div><h4>De-hyphenation</h4><p>Rejoins PDF/OCR-style line-wrapped words ("exam-\nple" → "example"), prose only — never touches code.</p></div>
       </div>
       <div class="beyond-item">
-        <div class="num">04</div>
+        <div class="num">03</div>
         <div><h4>&lt;table&gt; dropped, not flattened</h4><p>Flattening a table with <code>get_text()</code> jumbles every cell together — worse noise than just dropping it.</p></div>
       </div>
       <div class="beyond-item">
-        <div class="num">05</div>
+        <div class="num">04</div>
         <div><h4>Ghost-token vocabulary restricted</h4><p>An unrestricted pattern also matched HTML tags (<code>&lt;h3&gt;</code>), acronyms (<code>[ERISA]</code>), and even bracketed plurals (<code>word[s]</code>) — narrowed to a curated conversation-role vocabulary.</p></div>
       </div>
       <div class="beyond-item">
-        <div class="num">06</div>
+        <div class="num">05</div>
         <div><h4>Script-purity diagnostic</h4><p>Text-only signal (no language label needed) that catches legacy-font mojibake and language-switching — see the chart above.</p></div>
       </div>
     </div>
