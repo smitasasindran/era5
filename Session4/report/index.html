@@ -184,6 +184,38 @@
     color: var(--ink-2);
   }
 
+  .dataset-picker-row {
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 22px;
+  }
+  .profile-picker {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .docs-processed {
+    display: flex; align-items: baseline; gap: 8px;
+    padding: 8px 16px;
+    background: var(--card); border: 1px solid var(--hairline); border-radius: 9px;
+  }
+  .docs-processed .v { font-size: 18px; font-weight: 700; }
+  .docs-processed .l { font-size: 12px; color: var(--ink-3); }
+  .profile-picker label {
+    font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--ink-3);
+  }
+  .profile-picker select {
+    font: inherit; font-size: 14.5px; font-weight: 600; color: var(--ink);
+    background: var(--card) url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill="%238a9099" d="M4 6l4 4 4-4"/></svg>') no-repeat right 12px center;
+    background-size: 12px;
+    border: 1px solid var(--hairline);
+    border-radius: 9px;
+    padding: 9px 34px 9px 14px;
+    appearance: none; -webkit-appearance: none;
+    cursor: pointer;
+    max-width: 100%;
+  }
+  .profile-picker select:hover { border-color: var(--accent); }
+
   .stat-strip {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -289,6 +321,15 @@
     display: flex; align-items: center; gap: 7px; margin-bottom: 10px;
   }
   .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+  .sample-card summary { cursor: pointer; list-style: none; user-select: none; }
+  .sample-card summary::-webkit-details-marker { display: none; }
+  .sample-card summary::before {
+    content: "\25B8"; display: inline-block; font-size: 11px; color: var(--ink-3);
+    transition: transform 0.15s ease; transform-origin: 45% 50%;
+  }
+  .sample-card[open] summary::before { transform: rotate(90deg); }
+  .sample-card[open] summary { margin-bottom: 4px; }
   .tile-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; }
   .tile {
     border: 1px solid var(--hairline); border-radius: 10px; padding: 13px 14px;
@@ -345,6 +386,31 @@
   table.sourcemix th, table.sourcemix td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--hairline-2); }
   table.sourcemix th { color: var(--ink-3); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
   table.sourcemix td.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  .sample-list { display: grid; gap: 10px; margin-top: 10px; }
+  .sample-item {
+    border: 1px solid var(--hairline); border-radius: 10px;
+    background: var(--card-raised); overflow: hidden;
+  }
+  .sample-item-head {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+    padding: 7px 12px; border-bottom: 1px solid var(--hairline-2);
+    background: var(--track);
+  }
+  .sample-item-head .id {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, monospace;
+    font-size: 11.5px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 70%;
+  }
+  .sample-item-head .len { font-size: 11px; color: var(--ink-3); flex: 0 0 auto; }
+  .sample-text {
+    margin: 0; padding: 12px;
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, monospace;
+    font-size: 12.5px; line-height: 1.55; color: var(--ink-2);
+    white-space: pre-wrap; word-break: break-word;
+    text-align: left; hyphens: none;
+    max-height: 170px; overflow-y: auto;
+  }
+  .sample-truncated { font-size: 11px; color: var(--ink-3); padding: 0 12px 10px; }
 </style>
 
 <div class="page" lang="en">
@@ -362,17 +428,11 @@
     <div class="eyebrow">Session 4 — Data Cleaning &amp; Deduplication</div>
     <h1>Stripping the noise, keeping the joiners.</h1>
     <p class="lede">
-      A two-stage cleaning pipeline: Extraction, then Normalize + Clean.  
-      Run over a 66,143-document corpus spanning English, code, math, and nine Brahmic scripts.
-      The hard part isn't stripping garbage characters; it's knowing which invisible
-      characters <em>are</em> the garbage.
+      A two-stage cleaning pipeline — Extraction, then Normalize + Clean — run against
+      three differently-shaped datasets, because no single corpus exercises every
+      cleaning strategy at once. The hard part isn't stripping garbage characters;
+      it's knowing which invisible characters <em>are</em> the garbage.
     </p>
-    <div class="stat-strip">
-      <div class="stat-tile"><div class="v mono" data-bind="normalize.n_docs"></div><div class="l">Documents processed</div></div>
-      <div class="stat-tile"><div class="v mono">2 / 6</div><div class="l">Pipeline stages built</div></div>
-      <div class="stat-tile"><div class="v mono">19</div><div class="l">Strategies catalogued</div></div>
-      <div class="stat-tile"><div class="v mono" data-bind="computed.joiners_total|int"></div><div class="l">Brahmic joiners preserved</div></div>
-    </div>
   </header>
 
   <!-- ============================= STRATEGIES ============================= -->
@@ -439,26 +499,36 @@
       <p data-bind="dataset.description"></p>
     </div>
 
+    <div class="dataset-picker-row">
+      <div class="profile-picker">
+        <label for="profile-select">Dataset</label>
+        <select id="profile-select"></select>
+      </div>
+      <div class="docs-processed">
+        <span class="v mono" data-bind="normalize.n_docs|int"></span>
+        <span class="l">documents processed</span>
+      </div>
+    </div>
+
     <div class="callout">
-      <strong>This is an interim placeholder.</strong> The final dataset for this
-      assignment will be a single HuggingFace dataset in the
-      <code>size_categories:10M&lt;n&lt;100M</code> range. This capstone benchmark shard
-      is what the pipeline has been built and tested against so far — the Extraction
-      and Normalize + Clean numbers below will refresh from the same
-      <code>step0</code>/<code>step1</code> report JSON once the real dataset is chosen;
-      nothing else on this page needs to change.
+      <strong>Why this one:</strong> <span data-bind="dataset.highlight"></span>
     </div>
 
     <div class="table-wrap">
       <table class="sourcemix">
         <thead><tr><th>Signal</th><th>Breakdown</th></tr></thead>
-        <tbody>
-          <tr><td>Domains</td><td>web, qa, code, science, math, news, instruction, social, encyclopedia, education</td></tr>
-          <tr><td>Languages</td><td>English + 10 Indic languages (bn, mr, hi, ml, kn, gu, or, pa, ta, as)</td></tr>
-          <tr><td>Source mix</td><td>Starcoder, C4, RefinedWeb, Common Crawl (head/middle/tail), StackExchange, Reddit, peS2o, proof-pile-2, RedPajama-arXiv, Sangraha (ai4bharat), NCERT, MegaWika</td></tr>
-        </tbody>
+        <tbody id="dataset-facts"></tbody>
       </table>
     </div>
+
+    <details class="card sample-card" style="margin-top:14px;">
+      <summary class="stat-group-label">What the raw text looks like</summary>
+      <p style="font-size:13px;color:var(--ink-3);margin:10px 0 4px;">
+        Sampled directly from the source, before Extraction or Normalize + Clean ever
+        touch it.
+      </p>
+      <div class="sample-list" id="sample-list"></div>
+    </details>
   </section>
 
   <!-- ============================= EXTRACTION ============================= -->
@@ -543,12 +613,9 @@
       <div class="stat-group-label">Ghost special tokens flagged (not deleted)</div>
       <div class="barchart" id="chart-ghost"></div>
       <div class="ghost-examples" id="ghost-examples"></div>
-      <p style="font-size:13px;color:var(--ink-3);margin:12px 0 0;">
+      <p id="ghost-note" style="font-size:13px;color:var(--ink-3);margin:12px 0 0;">
         These are decisions for whoever builds the tokenizer next, not automatic
-        deletions. One caught case worth naming: the 2 <code>&lt;input&gt;</code> hits
-        above are a false positive — an HTML-spec diff document literally discussing
-        the <code>&lt;input&gt;</code> element, not a chat-format marker. That's the
-        "flag, don't delete" design working as intended.
+        deletions. <span id="ghost-note-extra"></span>
       </p>
     </div>
 
@@ -561,13 +628,9 @@
         documents: <strong data-bind="computed.purity_pct|pct2"></strong>.
       </p>
       <div class="barchart" id="chart-script"></div>
-      <div class="callout" style="margin-top:16px;">
-        <strong>Sanity check, not a pipeline dependency:</strong> this distribution was
-        computed purely from cleaned text, with no language label in the loop — yet it
-        lines up with this file's own declared languages within single digits
-        (Devanagari 1,828 vs. hi+mr 1,830; Bengali 1,445 vs. bn+as 1,471). The pipeline
-        itself never reads that column; this cross-check only happened because the
-        column happened to exist on this particular file.
+      <div class="callout" id="script-sanity-callout" style="margin-top:16px;">
+        <strong>Sanity check, not a pipeline dependency:</strong>
+        <span id="script-sanity-text"></span>
       </div>
     </div>
   </section>
@@ -575,7 +638,7 @@
   <!-- ============================= ADDITIONAL STRATEGIES ============================= -->
   <section id="beyond">
     <div class="section-head">
-      <div class="section-kicker">4 · Any other strategy or concern cleaned up</div>
+      <div class="section-kicker">4 · Any other cleanup strategy or concern </div>
       <h2>Six additional techniques applied</h2>
       <p>Found and fixed while actually running the pipeline against real data.</p>
     </div>
@@ -643,14 +706,14 @@
   </section>
 
   <footer>
-    <div class="refresh">
+    <!--div class="refresh">
       <strong>To refresh:</strong> run
       <code>python report/build_report.py --extraction out/step0_..._report.json --normalize out/step1_..._report.json</code>
       (add <code>--dataset-label</code> / <code>--dataset-description</code> when the
       dataset changes). It rewrites this page's data block and validates the result
       before saving. Every number and bar on this page recomputes from that data
       automatically.
-    </div>
+    </div-->
     Built for Session 4 — Data Cleaning &amp; Deduplication.
   </footer>
 
@@ -663,76 +726,393 @@
 -->
 <script id="report-data" type="application/json">
 {
-  "dataset": {
-    "label": "Capstone benchmark shard (interim placeholder)",
-    "description": "A 66,143-document shard assembled for a separate capstone project, blending roughly two dozen source corpora across web text, code, math, and 10 Indic languages. Used here to build and test the pipeline while a final 10M–100M HuggingFace dataset is chosen."
-  },
-  "extraction": {
-    "n_docs": 66143,
-    "extraction_path_distribution": {
-      "passthrough": 43541,
-      "trafilatura": 3803,
-      "inline_tags_stripped": 7369,
-      "bs4": 11425,
-      "html_fallback_stripped": 5
-    },
-    "total_raw_chars": 426051159,
-    "total_extracted_chars": 402251545,
-    "chars_removed": 23799614
-  },
-  "normalize": {
-    "n_docs": 66143,
-    "content_type_distribution": {
-      "prose": 39178,
-      "code": 26965
-    },
-    "total_raw_chars": 402251545,
-    "total_clean_chars": 400646422,
-    "chars_removed": 1605123,
-    "n_empty_after_clean": 13,
-    "ghost_token_counts": {
-      "bracket_upper": 441,
-      "pipe_angle": 1,
-      "angle_bare": 4
-    },
-    "ghost_token_examples": {
-      "bracket_upper": [
-        "[User]"
-      ],
-      "pipe_angle": [
-        "<|endoftext|>"
-      ],
-      "angle_bare": [
-        "<input>",
-        "<input>"
-      ]
-    },
-    "noise_stats": {
-      "garbage_control_chars": 2170,
-      "zero_width_noise_chars": 1462,
-      "broken_utf_replacement_chars": 4666,
-      "n_docs_with_broken_utf": 127,
-      "zwnj_kept": 536,
-      "zwj_kept": 1252
-    },
-    "script_stats": {
-      "dominant_script_distribution": {
-        "latin": 58857,
-        "telugu": 1,
-        "gurmukhi": 509,
-        "bengali": 1445,
-        "gujarati": 782,
-        "devanagari": 1828,
-        "kannada": 797,
-        "malayalam": 837,
-        "oriya": 563,
-        "tamil": 504
+  "profiles": [
+    {
+      "key": "capstone",
+      "dataset": {
+        "label": "Capstone benchmark shard (mixed)",
+        "description": "A 66,143-document shard assembled for a separate capstone project, blending roughly two dozen source corpora across web text, code, math, and 10 Indic languages.",
+        "highlight": "Broadest coverage — 10 domains, 11 languages/scripts, and a code/math mix in one file. Best for seeing script-purity and ghost-token detection across many languages at once, though it's relatively pre-cleaned going in, so Extraction and Normalize+Clean have comparatively little left to remove.",
+        "facts": [
+          [
+            "Domains",
+            "web, qa, code, science, math, news, instruction, social, encyclopedia, education"
+          ],
+          [
+            "Languages",
+            "English + 10 Indic languages (bn, mr, hi, ml, kn, gu, or, pa, ta, as)"
+          ],
+          [
+            "Source mix",
+            "Starcoder, C4, RefinedWeb, Common Crawl (head/middle/tail), StackExchange, Reddit, peS2o, proof-pile-2, RedPajama-arXiv, Sangraha (ai4bharat), NCERT, MegaWika"
+          ],
+          [
+            "Sample size",
+            "Full shard — all 66,143 rows"
+          ]
+        ],
+        "script_sanity_note": "This distribution was computed purely from cleaned text, with no language label in the loop — yet it lines up with this file's own declared languages within single digits (Devanagari 1,828 vs. hi+mr 1,830; Bengali 1,445 vs. bn+as 1,471). The pipeline itself never reads that column; this cross-check only happened because the column happened to exist on this particular file.",
+        "samples": [
+          {
+            "id": "916452943f0d44e1a829e8e82f4db536",
+            "text": "Located in Richmond, Marina Bay can be a great place to kite when conditions are good. Generally speaking, Summer to Fall provide the best conditions with winds ranging from 10-30 knots mostly onshore. It is not a suitable location for beginners as a confined launch surrounded by rocks and turbulent winds create hazardous situations during launching and landing. Depending on the tides, waterstarts can be a bit tricky as your ability to get out in the water to start may be limited and starting requires sending the kite down over the rocks. As with many sites, if you for any reason doubt your confidence in safely launching and landing in a confined rocky area, handling your kite precisely, getting out on the water fast and staying upwind, don't kite here! In addition, fisherman do frequent t",
+            "truncated": true,
+            "full_len": 2406
+          },
+          {
+            "id": "cd0550f63e126eec8f61d2adccbda194",
+            "text": "“I am a Fan of PC gaming and always looked forward to owning a good PC gaming setup. But due to the nature of my job and change of job location nearly every year a desktop was not an option.\nHigh Performance Laptops available from reputed brands in India didn’t really offer a good price vs. performance. I was looking for something in laptop segment with good price vs. performance ratio and somewhat future proof for the next couple of years which will solve my gaming and multimedia needs.\nAs my search for a desktop replacement laptop was going on I chanced upon a post in digit about AZOM. I was initially skeptical and later decided to talk to them. I still do remember the conversation I had with Harsh, we discussed on quality, after sales support etc. He had the patience of a saint as I did",
+            "truncated": true,
+            "full_len": 2720
+          },
+          {
+            "id": "aef129f39de978ec4b2e82c10b6fab7e",
+            "text": "- being 11 years old is of course 'plausible' (/sarc) and/or appropriate (sarc) or any 11-17 non adults for that matter. How many 11-17 year olds were in the LOG12 data, we don't know, the authors and UWA refuse to release the data.\nSo how many 11 to 17 year olds were there in the data, we know from PLOS One that two 14 year olds that believed in Moon Hoax conspiracy were included in the PLOS One data set..\noh we don't know, because age and gender (and other responses,-Iraq War, lifestyle and metadata data) is redacted from Lew's dataset. and University of Western Australia refuses to release the full dataset for LOG12, and Psychological Science refuses to do anything about it..\nThanks for all your effort, it really shouldn't have been necessary.\nI actually really believed when UWA refused",
+            "truncated": true,
+            "full_len": 9579
+          },
+          {
+            "id": "c32f3d929f522d40f56d0760ad878edc",
+            "text": "This policy applies to your use of SchwettyBalls.com. This policy does not apply to your use of unaffiliated sites to which SchwettyBalls.com only links.\nSchwettyBalls.com understands that young people need special safeguards and privacy protection. We realize that they may not understand all the provisions of our policy or be able to make thoughtful decisions about the choices that are made available to our adult users. We urge all parents to participate in their children's exploration of the Internet and any online services, and to teach their children about protecting their personal information while online. SchwettyBalls.com has adopted the following special policies to protect the privacy of users who are under 13 years old: No information may be submitted on or to SchwettyBalls.com b",
+            "truncated": true,
+            "full_len": 3392
+          },
+          {
+            "id": "004ad6b407c0268ec264598c94f75041",
+            "text": "She says she's angry at President Obama for having promised that people who like their health plans could keep them, when hers is getting canceled for not meeting Obamacare's standards.\n\"Please explain to me,\" she told Maria Bartiromo on CNBC Wednesday, \"how my plan is a 'substandard' plan when ... I'd be paying more for the exchange plans than I am currently paying by a wide margin.\"\nBartiromo didn't take her up on her request. So I will.\nThe bottom line is that Cavallaro's assertion that \"there's nothing affordable about the Affordable Care Act,\" as she put it Tuesday on NBC Channel 4, is the product of her own misunderstandings, abetted by a passel of uninformed and incurious news reporters.\nI talked with Cavallaro, 60, after her CNBC appearance. Let's walk through what she told me.\nHer",
+            "truncated": true,
+            "full_len": 4613
+          },
+          {
+            "id": "aaf12cf23c80b023cfb4897fb8a94761",
+            "text": "\"In crowded parts of a crowded city like New York, youngsters are thrown daily into seething currents that begin beyond their ken and frequently sweep beyond their depth. Shouldered into canyons created by bleak, impenetrable tenements of brownstone and iron, shifting across noisy pavements before the exhaust-spewing lines of cars and trucks, they battle to save themselves from anonymity and the apathy of their elders. They form clubs or they run in gangs, and some learn to gamble with violence as quickly as they learn to step out of the path of cars. Roaming the parks and roads, scavenging for pride, for some kind of self-identification and for excitement, the gangs (125 in all New York) too often base their conduct on moviedom's version of swaggering honor, red-blooded achievement. They ",
+            "truncated": true,
+            "full_len": 2905
+          },
+          {
+            "id": "5fb24dcbc2b6f00d4a098565f44fce33",
+            "text": "The Oculus Go sets a new standard in which everyone can buy a relatively affordable virtual reality headset with no need for a computer and jump right into VR. It’s the perfect entry device, and if we can take a wild guess, it will sell like hot cakes, further solidifying the market position of Oculus in the VR space.\nBecause make no mistake, this is why this device costs $ 199 and $149 respectively. Facebook wants you in their Oculus ecosystem, and preferably forget about the rest.\nThe Oculus Go isn’t trying to be the best, simply to get the masses into VR as low-entry, affordable and most of al impressive entertainment.\nYes, that means you no longer need a big clunky computer to enjoy proper VR, and no longer teathered to cables!\nMind you, this won’t run the heavier games, but should cov",
+            "truncated": true,
+            "full_len": 2370
+          },
+          {
+            "id": "7d528989b9f22ce4fa3bcf80b39b053c",
+            "text": "According to the National Restaurant Association, Americans spend more than $825 billion—yes, billion—at restaurants each year. To turn a profit, restaurants generally charge about four times as much per dish as they paid for its individual ingredients—that’s a 400 percent markup!\nGet it to go and size up.\nBy taking your food to go, you can also save cash on costly meal add-ons, too. (Skip delivery, though—the tip and delivery premium are tough on the wallet.) “If you order something like chicken parm to-go, you can easily split it into two servings and beef up the meal with a make-at-home salad, which costs just a few bucks, a $2 glass of wine, and some fruit for dessert. In a restaurant, a meal like that could be $35 per person,” Becca tells us. Following her strategy, however, will cost",
+            "truncated": true,
+            "full_len": 5917
+          }
+        ]
       },
-      "n_docs_with_script_signal": 66123,
-      "avg_purity_among_scripted_docs": 0.9974320919690444,
-      "n_docs_below_0.85_purity": 210
+      "extraction": {
+        "n_docs": 66143,
+        "extraction_path_distribution": {
+          "passthrough": 43541,
+          "trafilatura": 3803,
+          "inline_tags_stripped": 7369,
+          "bs4": 11425,
+          "html_fallback_stripped": 5
+        },
+        "total_raw_chars": 426051159,
+        "total_extracted_chars": 402251545,
+        "chars_removed": 23799614
+      },
+      "normalize": {
+        "n_docs": 66143,
+        "content_type_distribution": {
+          "prose": 39178,
+          "code": 26965
+        },
+        "total_raw_chars": 402251545,
+        "total_clean_chars": 400646422,
+        "chars_removed": 1605123,
+        "n_empty_after_clean": 13,
+        "ghost_token_counts": {
+          "bracket_upper": 441,
+          "pipe_angle": 1,
+          "angle_bare": 4
+        },
+        "ghost_token_examples": {
+          "bracket_upper": [
+            "[User]"
+          ],
+          "pipe_angle": [
+            "<|endoftext|>"
+          ],
+          "angle_bare": [
+            "<input>",
+            "<input>"
+          ]
+        },
+        "noise_stats": {
+          "garbage_control_chars": 2170,
+          "zero_width_noise_chars": 1462,
+          "broken_utf_replacement_chars": 4666,
+          "n_docs_with_broken_utf": 127,
+          "zwnj_kept": 536,
+          "zwj_kept": 1252
+        },
+        "script_stats": {
+          "dominant_script_distribution": {
+            "latin": 58857,
+            "telugu": 1,
+            "gurmukhi": 509,
+            "bengali": 1445,
+            "gujarati": 782,
+            "devanagari": 1828,
+            "kannada": 797,
+            "malayalam": 837,
+            "oriya": 563,
+            "tamil": 504
+          },
+          "n_docs_with_script_signal": 66123,
+          "avg_purity_among_scripted_docs": 0.9974320919690444,
+          "n_docs_below_0.85_purity": 210
+        },
+        "ghost_token_note": "One caught case worth naming: the 2 <input> hits are a false positive — an HTML-spec diff document literally discussing the <input> element, not a chat-format marker. That's the \"flag, don't delete\" design working as intended."
+      }
+    },
+    {
+      "key": "c4_realnewslike",
+      "dataset": {
+        "label": "C4 — realnewslike",
+        "description": "A news-like English web-text slice of the C4 corpus (Common Crawl derived), streamed and sampled to 5,000 documents.",
+        "highlight": "Already extracted upstream (Common Crawl WET files), so almost nothing for the Extraction stage to do — 99.8% of documents pass straight through. Still real broken-UTF and control-character noise for Normalize+Clean to catch, and effectively zero ghost tokens or non-Latin script content — its own useful data point: not every dataset needs every strategy.",
+        "facts": [
+          [
+            "HF dataset",
+            "allenai/c4, config realnewslike"
+          ],
+          [
+            "Full size",
+            "~14M rows (~15GB)"
+          ],
+          [
+            "Sample size",
+            "5,000 rows (streamed, no download)"
+          ],
+          [
+            "Language",
+            "English"
+          ],
+          [
+            "Content",
+            "News-like web text; Common Crawl WET-extracted upstream, so already mostly de-HTML'd"
+          ]
+        ],
+        "samples": [
+          {
+            "id": "0",
+            "text": "After the martyrdom of St. Boniface, Vergilius was made Bishop of Salzburg (766 or 767) and laboured successfully for the upbuilding of his diocese as well as for the spread of the Faith in neighbouring heathen countries, especially in Carinthia. He died at Salzburg, 27 November, 789. In 1233 he was canonized by Gregory IX. His doctrine that the earth is a sphere was derived from the teaching of ancient geographers, and his belief in the existence of the antipodes was probably influenced by the accounts which the ancient Irish voyagers gave of their journeys. This, at least, is the opinion of Rettberg (\"Kirchengesch. Deutschlands\", II, 236).",
+            "truncated": false,
+            "full_len": 649
+          },
+          {
+            "id": "1",
+            "text": "\"Whoever gets him, they'll be getting a good one,\" David Montgomery said.\nINDIANAPOLIS — Hakeem Butler has been surrounded by some of the best wide receivers on the planet this week at the NFL Scouting Combine.\nIt’s an experience that might humble some. But for Butler, it has only enhanced his confidence.\nAs it stands, 22-year-old Butler is not regarded as the best wide receiver in this year’s NFL Draft. He’s projected by some experts to go as late as the third round. But when wide receivers were measured Thursday, Butler gained some attention: He led all receivers in height (6-foot-5 3/8), arm length (35 1/4 inches) and wingspan (83 7/8 inches).\nOn Thursday, running back David Montgomery, who played with Butler at Iowa State, captured the general vibe surrounding Butler here.\nButler says ",
+            "truncated": true,
+            "full_len": 2124
+          },
+          {
+            "id": "2",
+            "text": "8i announced today it has launched a web player, the 8i Portal, for its volumetric 3D video of people in virtual reality.\nUsing 8i’s technology and VR goggles, you’ll be able to walk around a person inside a virtual environment to see their entire being. The Wellington, New Zealand-based startup said its VR platform will allow you to view fully volumetric 3D video.\nPreviously, VR cameras could record a partial torso of a person, but the 8i Portal goes beyond that. It enables “complete freedom of movement,” and it gives you a sense of “presence,” or the feeling that you are there in the virtual space with the person. It creates a more “emotional connection with the person you are watching,” the company said in the video below.\n8i’s platform will let you create, experience, and share immersi",
+            "truncated": true,
+            "full_len": 1793
+          },
+          {
+            "id": "3",
+            "text": "The Arlington County Board plans to vote Saturday afternoon on giving Amazon $23 million and other incentives to build a headquarters campus in Crystal City, but only after hearing scores of northern Virginia residents and advocates testify for or against the project.\nThe five-member board is expected to support the plan, which was announced amid much hoopla on Nov. 13. The proposed county incentives are part of an agreement in which Amazon would occupy significant office space and bring at least 25,000 high-paying jobs to Arlington in coming years.\nOpponents hope to postpone the vote until after additional public hearings, where they want representatives of the online retail giant to answer questions directly from anyone in the community.\nThe Saturday hearing was scheduled to begin no ear",
+            "truncated": true,
+            "full_len": 4463
+          },
+          {
+            "id": "4",
+            "text": "Karl Kispert, principal of cyber and information security, has more than 28 years of experience in selling, managing and delivering information risk management, internal audit, regulatory and compliance programs, and information security and technology risk management.\nA former chief information security officer, Kispert has helped design and implement cybersecurity programs for many firms, according to the firm.\n“By adding this new service line, and bringing someone with Karl’s expertise to the firm, we can service yet another important aspect of our clients’ and prospects’ businesses, ensuring their continued success,” CEO Louis Grassi said in a written statement.\nServices will include full security programs, compliance, third party vendor risk assessment, threat management, and managed ",
+            "truncated": true,
+            "full_len": 818
+          },
+          {
+            "id": "5",
+            "text": "The Hawaii man who was fired after issuing the false ballistic missile alert in mid-January told reporters Friday that he was very upset over the incident but remained adamant that it appeared, at the time, to be a real-life attack.\nThe former state employee – a man in his 50s who asked to remain anonymous for his safety – said that he was “100 percent sure” that the drill on Jan. 13 was real, even though several other employees heard the word “exercise” repeated throughout the message, according to officials.\nOnce the man realized what had happened, he said he felt like he’d sustained a “body blow.” Since then, he’s reportedly been distressed to the point that he has had trouble eating and sleeping.\nDuring a news conference on Tuesday, investigating officer Brig. Gen. Bruce Oliveira share",
+            "truncated": true,
+            "full_len": 1860
+          },
+          {
+            "id": "6",
+            "text": "Shania Twain expected to break the charts with new album NOW!\nEven after a 15-year hiatus, she’s still the one! Shania Twain is on pace to top the charts with her new album NOW. The 16-song LP was released on Sept. 29 and is set to shoot past Demi Lovato and Miley Cyrus to claim the number one spot on Billboard’s Top 200. The Timmins native hopped on Twitter on Wednesday to announce that her album is already platinum in Canada!\nShortly after the release of the lead single “Life’s About to Get Good,” it hit number one on the Billboard 200. Of course, fans were simply dying to see how their favourite country icon was doing, so the new single rocked its way to the top of Billboard + Twitter Trending 140, too! So far, the song’s video has over four million views on YouTube and the number conti",
+            "truncated": true,
+            "full_len": 1614
+          },
+          {
+            "id": "7",
+            "text": "A version of this article appeared in the print edition of The Daily Star on July 12, 2018, on page 16.\nAssembled by Palestinian artist Said Baalbaki, the exhibition presents 50 of Abbo's sketches, etchings and object, as well as texts – all taken from Baalbaki's personal collection of work from, and publications on, the elusive sculptor. Baalbaki has no work of his own in this show.\nBorn in Safad, northern Palestine, around 1888-1890, Abbo was a farmer and fisherman who later took up carpentry and stone masonry. It was not until he moved to Berlin in 1911 to study sculpture that his artistic career took shape.\nBaalbaki has spent the last four years finding, and determining attribution for, 70 artworks and 100 texts mentioning the artist.\nBaalbaki says many of Abbo's sculptures didn't surv",
+            "truncated": true,
+            "full_len": 1225
+          }
+        ]
+      },
+      "extraction": {
+        "n_docs": 5000,
+        "extraction_path_distribution": {
+          "passthrough": 4991,
+          "bs4": 2,
+          "inline_tags_stripped": 6,
+          "trafilatura": 1
+        },
+        "total_raw_chars": 13024445,
+        "total_extracted_chars": 13023808,
+        "chars_removed": 637
+      },
+      "normalize": {
+        "n_docs": 5000,
+        "content_type_distribution": {
+          "prose": 4999,
+          "code": 1
+        },
+        "total_raw_chars": 13023808,
+        "total_clean_chars": 13019925,
+        "chars_removed": 3883,
+        "n_empty_after_clean": 0,
+        "ghost_token_counts": {},
+        "ghost_token_examples": {},
+        "noise_stats": {
+          "garbage_control_chars": 188,
+          "zero_width_noise_chars": 33,
+          "broken_utf_replacement_chars": 380,
+          "n_docs_with_broken_utf": 42,
+          "zwnj_kept": 0,
+          "zwj_kept": 0
+        },
+        "script_stats": {
+          "dominant_script_distribution": {
+            "latin": 5000
+          },
+          "n_docs_with_script_signal": 5000,
+          "avg_purity_among_scripted_docs": 0.9999104896675651,
+          "n_docs_below_0.85_purity": 1
+        }
+      }
+    },
+    {
+      "key": "openr1_math",
+      "dataset": {
+        "label": "open-r1/OpenR1-Math-220k",
+        "description": "A math/olympiad reasoning dataset — problem, solution, and answer fields joined into one text field — streamed and sampled to 5,000 documents.",
+        "highlight": "Heavy LaTeX markup causes real content-type ambiguity: about 10% of documents (498 of 5,000) get classified as \"code\" by the whitespace-preservation heuristic, because LaTeX array/matrix blocks are line-structured the same way source code is. Concrete evidence for the \"math\" content-type gap discussed earlier — this dataset is the reason to actually build it.",
+        "facts": [
+          [
+            "HF dataset",
+            "open-r1/OpenR1-Math-220k, config default"
+          ],
+          [
+            "Full size",
+            "93.7k rows (default config; 450k across all configs)"
+          ],
+          [
+            "Sample size",
+            "5,000 rows (streamed, no download)"
+          ],
+          [
+            "Language",
+            "English"
+          ],
+          [
+            "Content",
+            "Math/olympiad problems — problem + solution + answer fields joined via --text-fields"
+          ]
+        ],
+        "samples": [
+          {
+            "id": "0",
+            "text": "## Task B-1.3.\n\nA ship traveling along a river has covered $24 \\mathrm{~km}$ upstream and $28 \\mathrm{~km}$ downstream. For this journey, it took half an hour less than for traveling $30 \\mathrm{~km}$ upstream and $21 \\mathrm{~km}$ downstream, or half an hour more than for traveling $15 \\mathrm{~km}$ upstream and $42 \\mathrm{~km}$ downstream, assuming that both the ship and the river move uniformly.\n\nDetermine the speed of the ship in still water and the speed of the river.\n\n## Solution.\n\nLet $t$ be the time required for the boat to travel $24 \\mathrm{~km}$ upstream and $28 \\mathrm{~km}$ downstream, $v_{R}$ the speed of the river, and $v_{B}$ the speed of the boat. When the boat is traveling upstream, its speed is $v_{B}-v_{R}$, and when it is traveling downstream, its speed is $v_{B}+v_{R",
+            "truncated": true,
+            "full_len": 2211
+          },
+          {
+            "id": "1",
+            "text": "3. (6 points) A construction company was building a tunnel. When $\\frac{1}{3}$ of the tunnel was completed at the original speed, they started using new equipment, which increased the construction speed by $20 \\%$ and reduced the working hours to $80 \\%$ of the original. As a result, it took a total of 185 days to complete the tunnel. If they had not used the new equipment and continued at the original speed, it would have taken $\\qquad$ days to complete the tunnel.\n\n3. (6 points) A construction company builds a tunnel. When $\\frac{1}{3}$ of the tunnel is completed at the original speed, new equipment is used, increasing the construction speed by $20 \\%$ and reducing the daily working hours to $80 \\%$ of the original. As a result, the tunnel is completed in 185 days. If the new equipment w",
+            "truncated": true,
+            "full_len": 1303
+          },
+          {
+            "id": "2",
+            "text": "Prove that number $1$ can be represented as a sum of a finite number $n$ of real numbers, less than $1,$ not necessarily  distinct, which contain in their decimal representation only the digits $0$ and/or $7.$ Which is the least possible number $n$?\n\n1. **Restate the problem in a more manageable form:**\n   We need to prove that the number \\(1\\) can be represented as a sum of a finite number \\(n\\) of real numbers, each less than \\(1\\), and each containing only the digits \\(0\\) and \\(7\\) in their decimal representation. We also need to find the least possible value of \\(n\\).\n\n2. **Reformulate the problem using a known rational number:**\n   Consider the rational number \\(\\frac{1}{7} = 0.\\overline{142857}\\). We need to express \\(\\frac{1}{7}\\) as a sum of \\(n\\) real numbers, each less than \\(\\f",
+            "truncated": true,
+            "full_len": 2248
+          },
+          {
+            "id": "3",
+            "text": "4. Given the three sides of an obtuse triangle are 3, $4, x$, then the range of values for $x$ is ( ).\n(A) $1<x<7$.\n(B) $5 \\ll x<7$.\n(C) $1<x<\\sqrt{7}$.\n(D) $5<x<7$ or $1<x<\\sqrt{7}$.\n\n$D$\n\nD",
+            "truncated": false,
+            "full_len": 191
+          },
+          {
+            "id": "4",
+            "text": "1. Solve the equation: $\\frac{8 x+13}{3}=\\frac{19-12 x}{2}-\\left(16 x-\\frac{7-4 x}{6}\\right)$.\n\n1. $\\frac{8 x+13}{3}=\\frac{19-12 x}{2}-\\left(16 x-\\frac{7-4 x}{6}\\right)$\n\n$\\frac{8 x+13}{3}=\\frac{19-12 x}{2}-16 x+\\frac{7-4 x}{6} / \\cdot 6$\n\n1 BOD\n\n$2 \\cdot(8 x+13)=3 \\cdot(19-12 x)-96 x+7-4 x \\quad 1$ BOD\n\n$16 x+26=57-36 x-96 x+7-4 x \\quad 1$ BOD\n\n$16 x+36 x+96 x+4 x=57+7-26$\n\n$152 x=38 \\quad /: 152$\n\n1 BOD\n\n$x=\\frac{38}{152}$\n\n1 BOD\n\n$x=\\frac{1}{4}$\n\n1 BOD\n\nTOTAL 6 POINTS\n\nNote: If the student has not fully simplified the fraction, the solution should be evaluated with 5, not 6 points.\n\n\\frac{1}{4}",
+            "truncated": false,
+            "full_len": 604
+          },
+          {
+            "id": "5",
+            "text": "A right-angled triangle has side lengths that are integers. What could be the last digit of the area's measure, if the length of the hypotenuse is not divisible by 5?\n\nLet the lengths of the legs be $a$ and $b$, and the length of the hypotenuse be $c$. According to the Pythagorean theorem, we then have\n\n$$\na^{2}+b^{2}=c^{2}\n$$\n\nA square number can give a remainder of 0, 1, or 4 when divided by 5. If neither $a$ nor $b$ is divisible by 5, then the left side of (1) can give a remainder of 2 (in the form $1+1$), 0 (in the form $1+4$), or 3 (in the form $4+4$) when divided by 5. Since 2 and 3 cannot be the remainder of a square number $-c^{2}$ when divided by 5, and 0 is excluded by the condition, if the length of the hypotenuse is not divisible by 5, then the length of one of the legs will be",
+            "truncated": true,
+            "full_len": 2716
+          },
+          {
+            "id": "6",
+            "text": "Let $a_n\\ (n\\geq 1)$ be the value for which $\\int_x^{2x} e^{-t^n}dt\\ (x\\geq 0)$ is maximal. Find $\\lim_{n\\to\\infty} \\ln a_n.$\n\n1. Define the integral \\( I_n(x) = \\int_x^{2x} e^{-t^n} \\, dt \\). We need to find the value of \\( x \\) that maximizes \\( I_n(x) \\).\n\n2. To find the maximum, we first compute the derivative of \\( I_n(x) \\) with respect to \\( x \\):\n   \\[\n   I_n'(x) = \\frac{d}{dx} \\left( \\int_x^{2x} e^{-t^n} \\, dt \\right)\n   \\]\n   Using the Leibniz rule for differentiation under the integral sign, we get:\n   \\[\n   I_n'(x) = e^{-(2x)^n} \\cdot 2 - e^{-x^n}\n   \\]\n   Simplifying, we have:\n   \\[\n   I_n'(x) = 2e^{-(2x)^n} - e^{-x^n}\n   \\]\n\n3. Set the derivative equal to zero to find the critical points:\n   \\[\n   2e^{-(2x)^n} - e^{-x^n} = 0\n   \\]\n   \\[\n   2e^{-(2x)^n} = e^{-x^n}\n   \\]\n   Tak",
+            "truncated": true,
+            "full_len": 1966
+          },
+          {
+            "id": "7",
+            "text": "11. Given that the internal angles $A, B, C$ of $\\triangle ABC$ have opposite sides $a, b, c$ respectively, and $\\sqrt{3} b \\cos \\frac{A+B}{2}=c \\sin B$.\n(1) Find the size of $\\angle C$;\n(2) If $a+b=\\sqrt{3} c$, find $\\sin A$.\n\n(1) $\\sqrt{3} \\sin B \\cos \\frac{A+B}{2}=\\sin C \\sin B \\Rightarrow \\sqrt{3} \\sin \\frac{C}{2}=\\sin C \\Rightarrow \\cos \\frac{C}{2}=\\frac{\\sqrt{3}}{2}$,\n\nso $\\frac{C}{2}=30^{\\circ} \\Rightarrow C=60^{\\circ}$.\n$$\n\\begin{array}{l}\n\\text { (2) } \\sin A+\\sin B=\\sqrt{3} \\sin C=\\frac{3}{2} \\Rightarrow \\sin A+\\sin \\left(120^{\\circ}-A\\right) \\\\\n=\\sin A+\\frac{\\sqrt{3}}{2} \\cos A+\\frac{1}{2} \\sin A=\\frac{3}{2} \\sin A+\\frac{\\sqrt{3}}{2} \\cos A=\\frac{3}{2} \\\\\n\\Rightarrow \\frac{\\sqrt{3}}{2} \\sin A+\\frac{1}{2} \\cos A=\\sin \\left(A+30^{\\circ}\\right)=\\frac{\\sqrt{3}}{2} \\Rightarrow A=30^{",
+            "truncated": true,
+            "full_len": 917
+          }
+        ]
+      },
+      "extraction": {
+        "n_docs": 5000,
+        "extraction_path_distribution": {
+          "passthrough": 4864,
+          "bs4": 127,
+          "inline_tags_stripped": 9
+        },
+        "total_raw_chars": 6133356,
+        "total_extracted_chars": 6116623,
+        "chars_removed": 16733
+      },
+      "normalize": {
+        "n_docs": 5000,
+        "content_type_distribution": {
+          "prose": 4502,
+          "code": 498
+        },
+        "total_raw_chars": 6116623,
+        "total_clean_chars": 6085892,
+        "chars_removed": 30731,
+        "n_empty_after_clean": 0,
+        "ghost_token_counts": {},
+        "ghost_token_examples": {},
+        "noise_stats": {
+          "garbage_control_chars": 10,
+          "zero_width_noise_chars": 2,
+          "broken_utf_replacement_chars": 370,
+          "n_docs_with_broken_utf": 30,
+          "zwnj_kept": 0,
+          "zwj_kept": 0
+        },
+        "script_stats": {
+          "dominant_script_distribution": {
+            "latin": 5000
+          },
+          "n_docs_with_script_signal": 5000,
+          "avg_purity_among_scripted_docs": 0.9999998114985861,
+          "n_docs_below_0.85_purity": 0
+        }
+      }
     }
-  }
+  ]
 }
 </script>
 
@@ -752,8 +1132,8 @@
     return path.split('.').reduce(function (o, k) { return (o == null) ? undefined : o[k]; }, ctx);
   }
 
-  function computeDerived(d) {
-    var ex = d.extraction, nz = d.normalize;
+  function computeDerived(profile) {
+    var ex = profile.extraction, nz = profile.normalize;
     var ghostTotal = Object.keys(nz.ghost_token_counts).reduce(function (a, k) { return a + nz.ghost_token_counts[k]; }, 0);
     var scriptDist = nz.script_stats.dominant_script_distribution;
     var latinDocs = scriptDist.latin || 0;
@@ -778,9 +1158,13 @@
     });
   }
 
-  function renderBars(elId, entries, mode) {
+  function renderBars(elId, entries, mode, emptyMessage) {
     var el = document.getElementById(elId);
     if (!el) return;
+    if (!entries.length) {
+      el.innerHTML = '<p style="font-size:13px;color:var(--ink-3);margin:4px 0;">' + (emptyMessage || 'Nothing to show for this dataset.') + '</p>';
+      return;
+    }
     var total = entries.reduce(function (a, e) { return a + e.value; }, 0);
     var max = Math.max.apply(null, entries.map(function (e) { return e.value; }).concat([1]));
     el.innerHTML = entries.map(function (e) {
@@ -797,13 +1181,9 @@
     }).join('');
   }
 
-  var ctx = Object.assign({}, DATA, { computed: computeDerived(DATA) });
-  bindAll(ctx);
-
   var catVars = ['--cat-1', '--cat-2', '--cat-3', '--cat-4', '--cat-5', '--cat-6', '--cat-7', '--cat-8'];
   function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 
-  // Extraction path — fixed canonical order/colors, independent of value rank.
   var extractionOrder = [
     ['passthrough', 'Passthrough'],
     ['inline_tags_stripped', 'Inline tags stripped'],
@@ -811,17 +1191,7 @@
     ['trafilatura', 'Trafilatura'],
     ['html_fallback_stripped', 'Regex fallback']
   ];
-  renderBars('chart-extraction', extractionOrder.map(function (pair, i) {
-    return { label: pair[1], value: DATA.extraction.extraction_path_distribution[pair[0]] || 0, color: cssVar(catVars[i]) };
-  }), 'share');
-
-  // Content type — fixed order.
   var contentTypeOrder = [['prose', 'Prose'], ['code', 'Code']];
-  renderBars('chart-contenttype', contentTypeOrder.map(function (pair, i) {
-    return { label: pair[1], value: DATA.normalize.content_type_distribution[pair[0]] || 0, color: cssVar(catVars[i]) };
-  }), 'share');
-
-  // Ghost token patterns — fixed canonical order across all 5 possible patterns.
   var ghostOrder = [
     ['pipe_angle', '<|pipe|>'],
     ['bracket_upper', '[bracket]'],
@@ -829,33 +1199,120 @@
     ['angle_bare', '<angle>'],
     ['double_angle_sys', '<<SYS>>']
   ];
-  var ghostCounts = DATA.normalize.ghost_token_counts;
-  var ghostEntries = ghostOrder
-    .map(function (pair, i) { return { key: pair[0], label: pair[1], value: ghostCounts[pair[0]] || 0, color: cssVar(catVars[i]) }; })
-    .filter(function (e) { return e.value > 0; });
-  renderBars('chart-ghost', ghostEntries, 'relative');
-
-  var examplesEl = document.getElementById('ghost-examples');
-  var examples = DATA.normalize.ghost_token_examples || {};
-  var exampleHtml = [];
-  Object.keys(examples).forEach(function (k) {
-    examples[k].forEach(function (ex) { exampleHtml.push('<span>' + ex.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>'); });
-  });
-  examplesEl.innerHTML = exampleHtml.join('');
-
-  // Script purity — 8 named Brahmic scripts in fixed alphabetical order; Latin
-  // excluded (shown separately above); anything else folds into "Other".
   var scriptOrder = ['bengali', 'devanagari', 'gujarati', 'gurmukhi', 'kannada', 'malayalam', 'oriya', 'tamil'];
   var scriptLabels = { bengali: 'Bengali', devanagari: 'Devanagari', gujarati: 'Gujarati', gurmukhi: 'Gurmukhi', kannada: 'Kannada', malayalam: 'Malayalam', oriya: 'Oriya', tamil: 'Tamil' };
-  var dist = DATA.normalize.script_stats.dominant_script_distribution;
-  var otherTotal = 0;
-  Object.keys(dist).forEach(function (k) {
-    if (k !== 'latin' && scriptOrder.indexOf(k) === -1) otherTotal += dist[k];
-  });
-  var scriptEntries = scriptOrder.map(function (k, i) {
-    return { label: scriptLabels[k], value: dist[k] || 0, color: cssVar(catVars[i]) };
-  });
-  if (otherTotal > 0) scriptEntries.push({ label: 'Other', value: otherTotal, color: cssVar('--baseline') });
-  renderBars('chart-script', scriptEntries, 'share');
+
+  function setFactsTable(facts) {
+    var tbody = document.getElementById('dataset-facts');
+    tbody.innerHTML = (facts || []).map(function (f) {
+      return '<tr><td>' + f[0] + '</td><td>' + f[1] + '</td></tr>';
+    }).join('');
+  }
+
+  function setConditional(textElId, wrapElId, text) {
+    var textEl = document.getElementById(textElId);
+    var wrapEl = wrapElId ? document.getElementById(wrapElId) : textEl.parentElement;
+    if (text) { textEl.textContent = text; wrapEl.style.display = ''; }
+    else { wrapEl.style.display = 'none'; }
+  }
+
+  function renderSamples(samples) {
+    var container = document.getElementById('sample-list');
+    container.innerHTML = '';
+    (samples || []).forEach(function (s) {
+      var item = document.createElement('div');
+      item.className = 'sample-item';
+
+      var head = document.createElement('div');
+      head.className = 'sample-item-head';
+      var idEl = document.createElement('span');
+      idEl.className = 'id';
+      idEl.textContent = 'id: ' + s.id;
+      var lenEl = document.createElement('span');
+      lenEl.className = 'len mono';
+      lenEl.textContent = (s.full_len || (s.text || '').length).toLocaleString('en-US') + ' chars';
+      head.appendChild(idEl);
+      head.appendChild(lenEl);
+      item.appendChild(head);
+
+      var textEl = document.createElement('pre');
+      textEl.className = 'sample-text';
+      textEl.textContent = s.text || ''; // textContent, never innerHTML -- raw text is untrusted
+      item.appendChild(textEl);
+
+      if (s.truncated) {
+        var trunc = document.createElement('div');
+        trunc.className = 'sample-truncated';
+        trunc.textContent = 'Truncated for display — showing the first ' + (s.text || '').length + ' of ' + (s.full_len || 0).toLocaleString('en-US') + ' characters.';
+        item.appendChild(trunc);
+      }
+
+      container.appendChild(item);
+    });
+    if (!(samples || []).length) {
+      container.innerHTML = '<p style="font-size:13px;color:var(--ink-3);margin:4px 0;">No samples fetched for this profile yet.</p>';
+    }
+  }
+
+  function renderProfile(profile) {
+    var ctx = Object.assign({}, profile, { computed: computeDerived(profile) });
+    bindAll(ctx);
+    setFactsTable(profile.dataset.facts);
+    renderSamples(profile.dataset.samples);
+
+    renderBars('chart-extraction', extractionOrder.map(function (pair, i) {
+      return { label: pair[1], value: profile.extraction.extraction_path_distribution[pair[0]] || 0, color: cssVar(catVars[i]) };
+    }), 'share');
+
+    renderBars('chart-contenttype', contentTypeOrder.map(function (pair, i) {
+      return { label: pair[1], value: profile.normalize.content_type_distribution[pair[0]] || 0, color: cssVar(catVars[i]) };
+    }), 'share');
+
+    var ghostCounts = profile.normalize.ghost_token_counts;
+    var ghostEntries = ghostOrder
+      .map(function (pair, i) { return { key: pair[0], label: pair[1], value: ghostCounts[pair[0]] || 0, color: cssVar(catVars[i]) }; })
+      .filter(function (e) { return e.value > 0; });
+    renderBars('chart-ghost', ghostEntries, 'relative', 'None flagged in this sample.');
+
+    var examplesEl = document.getElementById('ghost-examples');
+    var examples = profile.normalize.ghost_token_examples || {};
+    var exampleHtml = [];
+    Object.keys(examples).forEach(function (k) {
+      examples[k].forEach(function (ex) { exampleHtml.push('<span>' + ex.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>'); });
+    });
+    examplesEl.innerHTML = exampleHtml.join('');
+    var ghostNoteEl = document.getElementById('ghost-note');
+    if (ghostEntries.length > 0) {
+      ghostNoteEl.style.display = '';
+      document.getElementById('ghost-note-extra').textContent = profile.normalize.ghost_token_note || '';
+    } else {
+      ghostNoteEl.style.display = 'none';
+    }
+
+    var dist = profile.normalize.script_stats.dominant_script_distribution;
+    var otherTotal = 0;
+    Object.keys(dist).forEach(function (k) {
+      if (k !== 'latin' && scriptOrder.indexOf(k) === -1) otherTotal += dist[k];
+    });
+    var scriptEntries = scriptOrder.map(function (k, i) {
+      return { label: scriptLabels[k], value: dist[k] || 0, color: cssVar(catVars[i]) };
+    }).filter(function (e) { return e.value > 0; });
+    if (otherTotal > 0) scriptEntries.push({ label: 'Other', value: otherTotal, color: cssVar('--baseline') });
+    renderBars('chart-script', scriptEntries, 'share', 'No non-Latin scripts detected in this sample.');
+    setConditional('script-sanity-text', 'script-sanity-callout', profile.dataset.script_sanity_note || '');
+  }
+
+  function populatePicker() {
+    var sel = document.getElementById('profile-select');
+    sel.innerHTML = DATA.profiles.map(function (p, i) {
+      return '<option value="' + i + '">' + p.dataset.label + '</option>';
+    }).join('');
+    sel.addEventListener('change', function () {
+      renderProfile(DATA.profiles[parseInt(sel.value, 10)]);
+    });
+  }
+
+  populatePicker();
+  renderProfile(DATA.profiles[0]);
 })();
 </script>
