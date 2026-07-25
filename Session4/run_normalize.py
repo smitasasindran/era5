@@ -33,7 +33,14 @@ from pathlib import Path
 
 from pipeline.io_utils import load_documents
 from pipeline.normalize import analyze_noise, clean_text, content_hash, guess_content_type
+from pipeline.script_check import script_purity
 from pipeline.writers import open_writer
+
+# Docs with a dominant script below this purity ratio get counted in the
+# report as worth a look -- could be legitimate code-switching, or could be
+# a legacy-font mojibake artifact (see pipeline/script_check.py). Not a
+# cleaning decision, just a diagnostic threshold.
+LOW_SCRIPT_PURITY_THRESHOLD = 0.85
 
 
 def parse_args():
@@ -86,6 +93,10 @@ def main():
     total_zwnj_kept = 0
     total_zwj_kept = 0
     n_docs_with_broken_utf = 0
+    dominant_script_counts = Counter()
+    purity_sum = 0.0
+    n_docs_with_script_signal = 0
+    n_low_script_purity_docs = 0
 
     with open_writer(out_path) as writer:
         for doc in load_documents(args):
@@ -96,6 +107,7 @@ def main():
 
             cleaned, ghosts = clean_text(raw_text, content_type=ctype)
             noise = analyze_noise(raw_text, cleaned)
+            script_info = script_purity(cleaned)
 
             for pattern_name, matches in ghosts.items():
                 ghost_counts[pattern_name] += len(matches)
@@ -111,6 +123,8 @@ def main():
                 "clean_len": len(cleaned),
                 "ghost_tokens": {k: len(v) for k, v in ghosts.items() if v},
                 **noise,
+                "dominant_script": script_info["dominant_script"],
+                "script_purity": script_info["purity_ratio"],
             }
             writer.write(record)
 
@@ -127,6 +141,12 @@ def main():
                 n_docs_with_broken_utf += 1
             if not cleaned.strip():
                 n_empty_after_clean += 1
+            if script_info["dominant_script"]:
+                dominant_script_counts[script_info["dominant_script"]] += 1
+                purity_sum += script_info["purity_ratio"]
+                n_docs_with_script_signal += 1
+                if script_info["purity_ratio"] < LOW_SCRIPT_PURITY_THRESHOLD:
+                    n_low_script_purity_docs += 1
 
     report = {
         "n_docs": n_docs,
@@ -144,6 +164,14 @@ def main():
             "n_docs_with_broken_utf": n_docs_with_broken_utf,
             "zwnj_kept": total_zwnj_kept,
             "zwj_kept": total_zwj_kept,
+        },
+        "script_stats": {
+            "dominant_script_distribution": dict(dominant_script_counts),
+            "n_docs_with_script_signal": n_docs_with_script_signal,
+            "avg_purity_among_scripted_docs": (
+                purity_sum / n_docs_with_script_signal if n_docs_with_script_signal else None
+            ),
+            f"n_docs_below_{LOW_SCRIPT_PURITY_THRESHOLD}_purity": n_low_script_purity_docs,
         },
     }
 
