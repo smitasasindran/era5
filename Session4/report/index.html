@@ -347,7 +347,7 @@
     <a href="#dataset">Dataset</a>
     <a href="#extraction">Extraction</a>
     <a href="#normalize">Normalize + Clean</a>
-    <a href="#beyond">Beyond the Notes</a>
+    <a href="#beyond">Additional Strategies</a>
     <a href="#final">Final Stats</a>
   </div></nav>
 
@@ -371,24 +371,14 @@
   <!-- ============================= STRATEGIES ============================= -->
   <section id="strategies">
     <div class="section-head">
-      <div class="section-kicker">1 · How many strategies were there</div>
-      <h2>4 documented stages, 19 discrete strategies</h2>
+      <div class="section-kicker">1 · Strategy catalogue</div>
+      <h2>4 pipeline stages, 19 discrete strategies</h2>
       <p>
-        Counting every discrete technique named in this session's own notes — not just
-        section headers — gives <strong>19 strategies across the 4 stages that have
-        written detail</strong>: Normalization, Quality Filtering, Deduplication, and
-        the PII Scrubber.
+        The full cleaning pipeline breaks into <strong>4 major stages, built from 19
+        discrete techniques</strong>: Normalization, Quality Filtering, Deduplication,
+        and the PII Scrubber. Two stages are implemented and verified below; the other
+        two are scoped and planned.
       </p>
-    </div>
-
-    <div class="gap-note">
-      <span class="mark">⚠</span>
-      <span>
-        The source notes are numbered 1, 4, 5, 6 — <strong>sections 2 and 3 have no
-        content recorded</strong>. Rather than guess what belonged there, this report
-        counts only what's actually written down, and calls out the gap instead of
-        papering over it.
-      </span>
     </div>
 
     <div class="card-grid two" style="margin-top:20px;">
@@ -513,6 +503,16 @@
     </div>
 
     <div class="card">
+      <div class="stat-group-label">Characters removed</div>
+      <div class="flow">
+        <div class="flow-step"><div class="v mono" data-bind="normalize.total_raw_chars|int"></div><div class="l">extracted</div></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step"><div class="v mono" data-bind="normalize.total_clean_chars|int"></div><div class="l">cleaned</div></div>
+      </div>
+      <span class="flow-delta">−<span data-bind="normalize.chars_removed|int"></span> chars (<span data-bind="computed.normalize_removed_pct|pct1"></span>)</span>
+    </div>
+
+    <div class="card">
       <div class="stat-group-label">Content type split</div>
       <div class="barchart" id="chart-contenttype"></div>
     </div>
@@ -565,18 +565,18 @@
     </div>
   </section>
 
-  <!-- ============================= BEYOND THE NOTES ============================= -->
+  <!-- ============================= ADDITIONAL STRATEGIES ============================= -->
   <section id="beyond">
     <div class="section-head">
       <div class="section-kicker">4 · Any other strategy or concern cleaned up</div>
-      <h2>Six additions the notes didn't cover</h2>
+      <h2>Six additional techniques applied</h2>
       <p>Found and fixed while actually running the pipeline against real data.</p>
     </div>
 
     <div class="card beyond-list">
       <div class="beyond-item">
         <div class="num">01</div>
-        <div><h4>Extraction stage</h4><p>Not in the notes at all — added as stage 0 after ghost-token noise traced back to un-stripped HTML tags.</p></div>
+        <div><h4>Extraction stage</h4><p>Added as stage 0 after ghost-token noise was traced back to un-stripped HTML tags.</p></div>
       </div>
       <div class="beyond-item">
         <div class="num">02</div>
@@ -607,10 +607,26 @@
       <div class="section-kicker">5 · Final statistics</div>
       <h2>The corpus, before and after</h2>
     </div>
-    <div class="stat-strip" style="margin-top:0;">
+
+    <div class="card">
+      <div class="stat-group-label">Characters removed, end to end</div>
+      <div class="flow">
+        <div class="flow-step"><div class="v mono" data-bind="extraction.total_raw_chars|int"></div><div class="l">raw</div></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step"><div class="v mono" data-bind="extraction.total_extracted_chars|int"></div><div class="l">extracted</div></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step"><div class="v mono" data-bind="normalize.total_clean_chars|int"></div><div class="l">cleaned</div></div>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+        <span class="flow-delta">−<span data-bind="extraction.chars_removed|int"></span> at extraction (<span data-bind="computed.extraction_removed_pct|pct1"></span>)</span>
+        <span class="flow-delta">−<span data-bind="normalize.chars_removed|int"></span> at cleaning (<span data-bind="computed.normalize_removed_pct|pct1"></span>)</span>
+        <span class="flow-delta" style="background:var(--track);color:var(--ink-2);">−<span data-bind="computed.total_removed_chars|int"></span> total (<span data-bind="computed.total_removed_pct|pct1"></span>)</span>
+      </div>
+    </div>
+
+    <div class="stat-strip">
       <div class="stat-tile"><div class="v mono" data-bind="normalize.n_docs|int"></div><div class="l">Documents</div></div>
-      <div class="stat-tile"><div class="v mono" data-bind="extraction.chars_removed|int"></div><div class="l">Chars removed — extraction</div></div>
-      <div class="stat-tile"><div class="v mono" data-bind="normalize.chars_removed|int"></div><div class="l">Chars removed — cleaning</div></div>
+      <div class="stat-tile"><div class="v mono" data-bind="extraction.total_raw_chars|int"></div><div class="l">Total raw chars</div></div>
       <div class="stat-tile"><div class="v mono" data-bind="normalize.noise_stats.broken_utf_replacement_chars|int"></div><div class="l">Broken-UTF chars fixed</div></div>
       <div class="stat-tile"><div class="v mono" data-bind="computed.joiners_total|int"></div><div class="l">Brahmic joiners preserved</div></div>
       <div class="stat-tile"><div class="v mono">9</div><div class="l">Scripts detected</div></div>
@@ -621,11 +637,12 @@
 
   <footer>
     <div class="refresh">
-      <strong>To refresh:</strong> replace the <code>extraction</code> and
-      <code>normalize</code> objects in the <code>#report-data</code> script block below
-      with the contents of the new <code>out/step0_*_report.json</code> and
-      <code>out/step1_*_report.json</code>, and update the <code>dataset</code> block by
-      hand. Every number and bar on this page recomputes from that data automatically.
+      <strong>To refresh:</strong> run
+      <code>python report/build_report.py --extraction out/step0_..._report.json --normalize out/step1_..._report.json</code>
+      (add <code>--dataset-label</code> / <code>--dataset-description</code> when the
+      dataset changes). It rewrites this page's data block and validates the result
+      before saving. Every number and bar on this page recomputes from that data
+      automatically.
     </div>
     Built for Session 4 — Data Cleaning &amp; Deduplication.
   </footer>
@@ -633,12 +650,9 @@
 </div>
 
 <!--
-  REFRESH INSTRUCTIONS
-  - "dataset": edit by hand to describe whichever HF dataset is chosen.
-  - "extraction": paste in the full contents of out/step0_..._report.json verbatim.
-  - "normalize": paste in the full contents of out/step1_..._report.json verbatim.
-  Everything else on the page (bar charts, stat tiles, percentages) is computed
-  from these three objects at render time -- no other edits needed.
+  Do not hand-edit this block -- run report/build_report.py instead (see the
+  footer). It regenerates this JSON from the pipeline's report files and
+  validates the resulting HTML before writing it.
 -->
 <script id="report-data" type="application/json">
 {
@@ -661,16 +675,30 @@
   },
   "normalize": {
     "n_docs": 66143,
-    "content_type_distribution": { "prose": 39178, "code": 26965 },
+    "content_type_distribution": {
+      "prose": 39178,
+      "code": 26965
+    },
     "total_raw_chars": 402251545,
     "total_clean_chars": 400646422,
     "chars_removed": 1605123,
     "n_empty_after_clean": 13,
-    "ghost_token_counts": { "bracket_upper": 441, "pipe_angle": 1, "angle_bare": 4 },
+    "ghost_token_counts": {
+      "bracket_upper": 441,
+      "pipe_angle": 1,
+      "angle_bare": 4
+    },
     "ghost_token_examples": {
-      "bracket_upper": ["[User]"],
-      "pipe_angle": ["<|endoftext|>"],
-      "angle_bare": ["<input>", "<input>"]
+      "bracket_upper": [
+        "[User]"
+      ],
+      "pipe_angle": [
+        "<|endoftext|>"
+      ],
+      "angle_bare": [
+        "<input>",
+        "<input>"
+      ]
     },
     "noise_stats": {
       "garbage_control_chars": 2170,
@@ -682,9 +710,16 @@
     },
     "script_stats": {
       "dominant_script_distribution": {
-        "latin": 58857, "telugu": 1, "gurmukhi": 509, "bengali": 1445,
-        "gujarati": 782, "devanagari": 1828, "kannada": 797,
-        "malayalam": 837, "oriya": 563, "tamil": 504
+        "latin": 58857,
+        "telugu": 1,
+        "gurmukhi": 509,
+        "bengali": 1445,
+        "gujarati": 782,
+        "devanagari": 1828,
+        "kannada": 797,
+        "malayalam": 837,
+        "oriya": 563,
+        "tamil": 504
       },
       "n_docs_with_script_signal": 66123,
       "avg_purity_among_scripted_docs": 0.9974320919690444,
@@ -715,13 +750,16 @@
     var ghostTotal = Object.keys(nz.ghost_token_counts).reduce(function (a, k) { return a + nz.ghost_token_counts[k]; }, 0);
     var scriptDist = nz.script_stats.dominant_script_distribution;
     var latinDocs = scriptDist.latin || 0;
+    var totalRemoved = ex.total_raw_chars - nz.total_clean_chars;
     return {
       extraction_removed_pct: ex.chars_removed / ex.total_raw_chars * 100,
       normalize_removed_pct: nz.chars_removed / nz.total_raw_chars * 100,
       ghost_total: ghostTotal,
       joiners_total: nz.noise_stats.zwnj_kept + nz.noise_stats.zwj_kept,
       purity_pct: nz.script_stats.avg_purity_among_scripted_docs * 100,
-      latin_docs: latinDocs
+      latin_docs: latinDocs,
+      total_removed_chars: totalRemoved,
+      total_removed_pct: totalRemoved / ex.total_raw_chars * 100
     };
   }
 

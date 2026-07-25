@@ -10,3 +10,7 @@ python run_normalize.py --source local \
   --text-field text --content-type auto \
   --output out/step1_capstone_clean.parquet \
   --report out/step1_capstone_clean_report.json
+
+python report/build_report.py \
+  --extraction out/step0_..._report.json \
+  --normalize out/step1_..._report.json [--dataset-label "..."] [--dataset-description "..."]
