@@ -1,0 +1,816 @@
+<title>Clean Corpus Report — Session 4</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  /* ============================= TOKENS ============================= */
+  :root {
+    color-scheme: light;
+    --page:        #f4f5f3;
+    --card:        #fcfcfb;
+    --card-raised: #ffffff;
+    --ink:         #181d24;
+    --ink-2:       #565f6b;
+    --ink-3:       #8a9099;
+    --accent:      #b06a12;
+    --accent-soft: #f1e2cd;
+    --hairline:    rgba(24, 29, 36, 0.12);
+    --hairline-2:  rgba(24, 29, 36, 0.07);
+    --grid:        #e1e0d9;
+    --baseline:    #c3c2b7;
+    --track:       #eceae3;
+
+    /* categorical (dataviz reference palette, light steps) */
+    --cat-1: #2a78d6; /* blue */
+    --cat-2: #eb6834; /* orange */
+    --cat-3: #1baf7a; /* aqua */
+    --cat-4: #eda100; /* yellow */
+    --cat-5: #e87ba4; /* magenta */
+    --cat-6: #008300; /* green */
+    --cat-7: #4a3aa7; /* violet */
+    --cat-8: #e34948; /* red */
+
+    /* status (fixed, never themed) */
+    --status-good:     #0ca30c;
+    --status-warning:  #fab219;
+    --status-serious:  #ec835a;
+    --status-critical: #d03b3b;
+
+    --shadow: 0 1px 2px rgba(24,29,36,0.04), 0 8px 24px -12px rgba(24,29,36,0.14);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --page:        #14171c;
+      --card:        #1a1a19;
+      --card-raised: #1f2126;
+      --ink:         #f2f1ec;
+      --ink-2:       #b8bec7;
+      --ink-3:       #7d8590;
+      --accent:      #e0a53d;
+      --accent-soft: #3a2f1c;
+      --hairline:    rgba(255,255,255,0.11);
+      --hairline-2:  rgba(255,255,255,0.07);
+      --grid:        #2c2c2a;
+      --baseline:    #383835;
+      --track:       #26282c;
+
+      --cat-1: #3987e5;
+      --cat-2: #d95926;
+      --cat-3: #199e70;
+      --cat-4: #c98500;
+      --cat-5: #d55181;
+      --cat-6: #008300;
+      --cat-7: #9085e9;
+      --cat-8: #e66767;
+
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page:        #14171c;
+    --card:        #1a1a19;
+    --card-raised: #1f2126;
+    --ink:         #f2f1ec;
+    --ink-2:       #b8bec7;
+    --ink-3:       #7d8590;
+    --accent:      #e0a53d;
+    --accent-soft: #3a2f1c;
+    --hairline:    rgba(255,255,255,0.11);
+    --hairline-2:  rgba(255,255,255,0.07);
+    --grid:        #2c2c2a;
+    --baseline:    #383835;
+    --track:       #26282c;
+    --cat-1: #3987e5; --cat-2: #d95926; --cat-3: #199e70; --cat-4: #c98500;
+    --cat-5: #d55181; --cat-6: #008300; --cat-7: #9085e9; --cat-8: #e66767;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --page: #f4f5f3; --card: #fcfcfb; --card-raised: #ffffff;
+    --ink: #181d24; --ink-2: #565f6b; --ink-3: #8a9099;
+    --accent: #b06a12; --accent-soft: #f1e2cd;
+    --hairline: rgba(24,29,36,0.12); --hairline-2: rgba(24,29,36,0.07);
+    --grid: #e1e0d9; --baseline: #c3c2b7; --track: #eceae3;
+  }
+
+  /* ============================= BASE ============================= */
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 {
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    font-weight: 600;
+    text-wrap: balance;
+    margin: 0;
+    color: var(--ink);
+  }
+  a { color: var(--accent); }
+  .mono {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  code, .code-inline {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, monospace;
+    font-size: 0.88em;
+    background: var(--track);
+    border: 1px solid var(--hairline-2);
+    border-radius: 4px;
+    padding: 0.05em 0.4em;
+  }
+  ::selection { background: var(--accent-soft); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+
+  /* ============================= LAYOUT ============================= */
+  .page { max-width: 920px; margin: 0 auto; padding: 0 24px 96px; }
+
+  .mininav {
+    position: sticky; top: 0; z-index: 10;
+    background: color-mix(in srgb, var(--page) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--hairline);
+  }
+  .mininav-inner {
+    max-width: 920px; margin: 0 auto; padding: 0 24px;
+    display: flex; gap: 4px; overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .mininav-inner::-webkit-scrollbar { display: none; }
+  .mininav a {
+    flex: 0 0 auto;
+    color: var(--ink-2);
+    text-decoration: none;
+    font-size: 13.5px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    padding: 13px 12px;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+  }
+  .mininav a:hover { color: var(--ink); }
+
+  .hero { padding: 56px 0 40px; }
+  .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 14px;
+  }
+  .hero h1 { font-size: 38px; line-height: 1.16; max-width: 15ch; }
+  .hero p.lede {
+    margin: 18px 0 0;
+    max-width: 60ch;
+    font-size: 17px;
+    color: var(--ink-2);
+  }
+
+  .stat-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px;
+    background: var(--hairline);
+    border: 1px solid var(--hairline);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-top: 32px;
+  }
+  .stat-tile { background: var(--card); padding: 18px 18px 16px; }
+  .stat-tile .v { font-size: 26px; font-weight: 700; }
+  .stat-tile .l { font-size: 12.5px; color: var(--ink-3); margin-top: 4px; }
+
+  section { padding: 52px 0; border-top: 1px solid var(--hairline); scroll-margin-top: 56px; }
+  section:first-of-type { border-top: none; }
+  .section-head { margin-bottom: 28px; }
+  .section-kicker {
+    font-size: 12.5px; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--ink-3); margin-bottom: 8px;
+  }
+  .section-head h2 { font-size: 26px; }
+  .section-head p { color: var(--ink-2); margin: 10px 0 0; max-width: 68ch; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--hairline);
+    border-radius: 14px;
+    padding: 22px 24px;
+  }
+  .card + .card { margin-top: 14px; }
+  .card-grid { display: grid; gap: 14px; }
+  @media (min-width: 680px) {
+    .card-grid.two { grid-template-columns: 1fr 1fr; }
+  }
+
+  .stage-card h3 { font-size: 17px; display: flex; align-items: center; gap: 10px; }
+  .stage-card .stage-count { font-family: inherit; font-weight: 400; color: var(--ink-3); font-size: 14px; }
+  .stage-card ul { margin: 14px 0 0; padding: 0; list-style: none; }
+  .stage-card li {
+    font-size: 14.5px; color: var(--ink-2);
+    padding: 7px 0 7px 20px; position: relative;
+    border-top: 1px solid var(--hairline-2);
+  }
+  .stage-card li:first-child { border-top: none; }
+  .stage-card li::before {
+    content: "";
+    position: absolute; left: 0; top: 15px;
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent);
+  }
+
+  .chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11.5px; font-weight: 700; letter-spacing: 0.03em;
+    text-transform: uppercase;
+    padding: 3px 9px; border-radius: 999px;
+    white-space: nowrap;
+  }
+  .chip.built    { background: color-mix(in srgb, var(--status-good) 16%, transparent); color: var(--status-good); }
+  .chip.planned  { background: var(--track); color: var(--ink-3); }
+  .chip::before  { content: "●"; font-size: 8px; }
+
+  .gap-note {
+    display: flex; gap: 12px; align-items: flex-start;
+    background: var(--track); border-radius: 10px; padding: 14px 16px;
+    font-size: 13.5px; color: var(--ink-2); margin-top: 16px;
+  }
+  .gap-note .mark { color: var(--status-warning); font-weight: 700; }
+
+  .callout {
+    background: var(--accent-soft);
+    border-radius: 12px;
+    padding: 16px 18px;
+    font-size: 14px;
+    color: var(--ink);
+    margin-top: 16px;
+  }
+  .callout strong { color: var(--accent); }
+
+  /* -------- bar chart component -------- */
+  .barchart { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+  .barrow { display: grid; grid-template-columns: 148px 1fr auto; align-items: center; gap: 12px; padding: 7px 0; }
+  .barrow-label { font-size: 13.5px; color: var(--ink-2); text-align: right; }
+  .barrow-track {
+    height: 16px; background: var(--track); border-radius: 4px; overflow: hidden;
+    display: block; position: relative;
+  }
+  .barrow-fill {
+    display: block; height: 100%; border-radius: 4px 0 0 4px;
+    transition: width 0.4s ease;
+  }
+  .barrow-value { font-size: 13px; color: var(--ink); font-variant-numeric: tabular-nums; min-width: 96px; }
+  .barrow:hover .barrow-track { outline: 2px solid var(--hairline); outline-offset: 1px; }
+  @media (max-width: 600px) {
+    .barrow { grid-template-columns: 92px 1fr auto; }
+    .barrow-label { font-size: 12px; }
+  }
+
+  /* -------- noise / joiner tile groups -------- */
+  .stat-group-label {
+    font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+    display: flex; align-items: center; gap: 7px; margin-bottom: 10px;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .tile-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; }
+  .tile {
+    border: 1px solid var(--hairline); border-radius: 10px; padding: 13px 14px;
+    background: var(--card-raised);
+  }
+  .tile .v { font-size: 21px; font-weight: 700; }
+  .tile .l { font-size: 12px; color: var(--ink-3); margin-top: 3px; }
+
+  /* -------- ghost token example strip -------- */
+  .ghost-examples { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .ghost-examples span {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, monospace;
+    font-size: 13px;
+    background: var(--track);
+    border: 1px solid var(--hairline-2);
+    border-radius: 6px;
+    padding: 4px 9px;
+  }
+
+  /* -------- flow / funnel stat -------- */
+  .flow { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 4px; margin-top: 6px; }
+  .flow-step { text-align: center; }
+  .flow-step .v { font-size: 22px; font-weight: 700; }
+  .flow-step .l { font-size: 12px; color: var(--ink-3); }
+  .flow-arrow { color: var(--ink-3); font-size: 18px; padding: 0 4px; }
+  .flow-delta {
+    font-size: 12px; color: var(--status-critical); font-variant-numeric: tabular-nums;
+    background: color-mix(in srgb, var(--status-critical) 12%, transparent);
+    border-radius: 6px; padding: 2px 8px; margin-top: 4px; display: inline-block;
+  }
+
+  .beyond-list { display: grid; gap: 12px; }
+  .beyond-item { display: flex; gap: 14px; }
+  .beyond-item .num {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, monospace;
+    color: var(--accent); font-weight: 700; font-size: 13px; padding-top: 2px; flex: 0 0 22px;
+  }
+  .beyond-item h4 { margin: 0; font-size: 15px; font-weight: 700; color: var(--ink); }
+  .beyond-item p { margin: 4px 0 0; font-size: 13.5px; color: var(--ink-2); }
+
+  footer {
+    border-top: 1px solid var(--hairline);
+    margin-top: 40px; padding-top: 28px;
+    font-size: 13px; color: var(--ink-3);
+  }
+  footer .refresh {
+    background: var(--track); border-radius: 10px; padding: 14px 16px; margin-bottom: 18px;
+    color: var(--ink-2);
+  }
+  footer code { font-size: 0.92em; }
+
+  .table-wrap { overflow-x: auto; }
+  table.sourcemix { border-collapse: collapse; width: 100%; font-size: 13.5px; margin-top: 10px; }
+  table.sourcemix th, table.sourcemix td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--hairline-2); }
+  table.sourcemix th { color: var(--ink-3); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+  table.sourcemix td.num { text-align: right; font-variant-numeric: tabular-nums; }
+</style>
+
+<div class="page">
+
+  <nav class="mininav"><div class="mininav-inner">
+    <a href="#strategies">Strategies</a>
+    <a href="#dataset">Dataset</a>
+    <a href="#extraction">Extraction</a>
+    <a href="#normalize">Normalize + Clean</a>
+    <a href="#beyond">Beyond the Notes</a>
+    <a href="#final">Final Stats</a>
+  </div></nav>
+
+  <header class="hero">
+    <div class="eyebrow">Session 4 — Data Cleaning &amp; Deduplication</div>
+    <h1>Stripping the noise, keeping the joiners.</h1>
+    <p class="lede">
+      A two-stage cleaning pipeline — Extraction, then Normalize + Clean — run over a
+      66,143-document corpus spanning English, code, math, and nine Brahmic scripts.
+      The hard part isn't stripping garbage characters; it's knowing which invisible
+      characters <em>are</em> the garbage.
+    </p>
+    <div class="stat-strip">
+      <div class="stat-tile"><div class="v mono" data-bind="normalize.n_docs"></div><div class="l">Documents processed</div></div>
+      <div class="stat-tile"><div class="v mono">2 / 6</div><div class="l">Pipeline stages built</div></div>
+      <div class="stat-tile"><div class="v mono">19</div><div class="l">Strategies catalogued</div></div>
+      <div class="stat-tile"><div class="v mono" data-bind="computed.joiners_total|int"></div><div class="l">Brahmic joiners preserved</div></div>
+    </div>
+  </header>
+
+  <!-- ============================= STRATEGIES ============================= -->
+  <section id="strategies">
+    <div class="section-head">
+      <div class="section-kicker">1 · How many strategies were there</div>
+      <h2>4 documented stages, 19 discrete strategies</h2>
+      <p>
+        Counting every discrete technique named in this session's own notes — not just
+        section headers — gives <strong>19 strategies across the 4 stages that have
+        written detail</strong>: Normalization, Quality Filtering, Deduplication, and
+        the PII Scrubber.
+      </p>
+    </div>
+
+    <div class="gap-note">
+      <span class="mark">⚠</span>
+      <span>
+        The source notes are numbered 1, 4, 5, 6 — <strong>sections 2 and 3 have no
+        content recorded</strong>. Rather than guess what belonged there, this report
+        counts only what's actually written down, and calls out the gap instead of
+        papering over it.
+      </span>
+    </div>
+
+    <div class="card-grid two" style="margin-top:20px;">
+      <div class="card stage-card">
+        <h3>1 · Normalization <span class="stage-count">8 strategies</span> <span class="chip built">Built</span></h3>
+        <ul>
+          <li>NFC Unicode normalization</li>
+          <li>Strip C0 / C1 control characters</li>
+          <li>Strip zero-width noise (ZWSP), BOM, bidi overrides</li>
+          <li>HTML entity unescaping</li>
+          <li>Strip the U+FFFD replacement character</li>
+          <li>Collapse whitespace runs</li>
+          <li>Flag ghost special tokens instead of deleting them</li>
+          <li>Preserve Brahmic joiners (ZWNJ / ZWJ) — always</li>
+        </ul>
+      </div>
+      <div class="card stage-card">
+        <h3>4 · Quality Filtering <span class="stage-count">4 strategies</span> <span class="chip planned">Planned</span></h3>
+        <ul>
+          <li>Deterministic heuristics — mean word length, symbol-to-word ratio</li>
+          <li>ML classifier, distilled from a large model to a cheap ~95%-accurate copy</li>
+          <li>Language-aware rules — e.g. Sanskrit has no full stop</li>
+          <li>Synthetic / rephrased data as a quality lever</li>
+        </ul>
+      </div>
+      <div class="card stage-card">
+        <h3>5 · Deduplication <span class="stage-count">4 strategies</span> <span class="chip planned">Planned</span></h3>
+        <ul>
+          <li>Shingling — overlapping token windows (e.g. 50-token overlap)</li>
+          <li>Similarity-preserving hashing (MinHash) per shingle</li>
+          <li>Banding — hashes split into chunks for cheap comparison</li>
+          <li>Locality-Sensitive Hashing (LSH) candidate lookup</li>
+        </ul>
+      </div>
+      <div class="card stage-card">
+        <h3>6 · PII Scrubber <span class="stage-count">3 strategies</span> <span class="chip planned">Planned</span></h3>
+        <ul>
+          <li>Regex layer — emails, phone numbers, network addresses</li>
+          <li>NER / name-detection layer</li>
+          <li>Source-aware policy — keep for news, scrub for Reddit</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= DATASET ============================= -->
+  <section id="dataset">
+    <div class="section-head">
+      <div class="section-kicker">2 · What dataset was picked</div>
+      <h2 data-bind="dataset.label"></h2>
+      <p data-bind="dataset.description"></p>
+    </div>
+
+    <div class="callout">
+      <strong>This is an interim placeholder.</strong> The final dataset for this
+      assignment will be a single HuggingFace dataset in the
+      <code>size_categories:10M&lt;n&lt;100M</code> range. This capstone benchmark shard
+      is what the pipeline has been built and tested against so far — the Extraction
+      and Normalize + Clean numbers below will refresh from the same
+      <code>step0</code>/<code>step1</code> report JSON once the real dataset is chosen;
+      nothing else on this page needs to change.
+    </div>
+
+    <div class="table-wrap">
+      <table class="sourcemix">
+        <thead><tr><th>Signal</th><th>Breakdown</th></tr></thead>
+        <tbody>
+          <tr><td>Domains</td><td>web, qa, code, science, math, news, instruction, social, encyclopedia, education</td></tr>
+          <tr><td>Languages</td><td>English + 10 Indic languages (bn, mr, hi, ml, kn, gu, or, pa, ta, as)</td></tr>
+          <tr><td>Source mix</td><td>Starcoder, C4, RefinedWeb, Common Crawl (head/middle/tail), StackExchange, Reddit, peS2o, proof-pile-2, RedPajama-arXiv, Sangraha (ai4bharat), NCERT, MegaWika</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============================= EXTRACTION ============================= -->
+  <section id="extraction">
+    <div class="section-head">
+      <div class="section-kicker">3 · What was cleaned — Extraction</div>
+      <h2>Pulling the article out of the page</h2>
+      <p>
+        Web-scraped <code>text</code> fields often still carry the page around the
+        article: nav bars, cookie banners, footers — and it's exactly this leftover
+        HTML that was producing ghost-token noise (<code>&lt;h3&gt;</code>,
+        <code>&lt;video&gt;</code>) downstream. Extraction runs three tiers in order —
+        <strong>trafilatura</strong> for genuine HTML pages, a <strong>BeautifulSoup</strong>
+        structural pass (drop <code>nav</code>/<code>footer</code>/<code>script</code>/
+        <code>table</code>, and anything whose class/id names a cookie banner or
+        sidebar), then a <strong>regex fallback</strong> for text with just a few
+        leftover inline tags — so nothing is ever dropped outright, only degraded
+        gracefully.
+      </p>
+    </div>
+
+    <div class="card">
+      <div class="stat-group-label">Which tier handled each document</div>
+      <div class="barchart" id="chart-extraction"></div>
+    </div>
+
+    <div class="card">
+      <div class="stat-group-label">Characters removed</div>
+      <div class="flow">
+        <div class="flow-step"><div class="v mono" data-bind="extraction.total_raw_chars|int"></div><div class="l">raw</div></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step"><div class="v mono" data-bind="extraction.total_extracted_chars|int"></div><div class="l">extracted</div></div>
+      </div>
+      <span class="flow-delta">−<span data-bind="extraction.chars_removed|int"></span> chars (<span data-bind="computed.extraction_removed_pct|pct1"></span>)</span>
+    </div>
+  </section>
+
+  <!-- ============================= NORMALIZE + CLEAN ============================= -->
+  <section id="normalize">
+    <div class="section-head">
+      <div class="section-kicker">3 · What was cleaned — Normalize + Clean</div>
+      <h2>The 8-step <code>clean_text()</code> pass</h2>
+      <p>
+        NFC-normalize → repair mojibake (ftfy) → unescape HTML entities → strip the
+        replacement character → strip invisible noise (never touching ZWNJ/ZWJ) →
+        flag ghost special tokens → de-hyphenate wrapped lines (prose only) → tidy
+        whitespace — collapsed for prose, structure preserved for code.
+      </p>
+    </div>
+
+    <div class="card">
+      <div class="stat-group-label">Content type split</div>
+      <div class="barchart" id="chart-contenttype"></div>
+    </div>
+
+    <div class="card">
+      <div class="stat-group-label">
+        <span class="dot" style="background:var(--status-critical)"></span> Noise removed
+        &nbsp;·&nbsp;
+        <span class="dot" style="background:var(--status-good)"></span> Brahmic joiners preserved
+      </div>
+      <div class="tile-row">
+        <div class="tile"><div class="v mono" style="color:var(--status-critical)" data-bind="normalize.noise_stats.garbage_control_chars|int"></div><div class="l">Garbage control chars</div></div>
+        <div class="tile"><div class="v mono" style="color:var(--status-critical)" data-bind="normalize.noise_stats.zero_width_noise_chars|int"></div><div class="l">Zero-width noise chars</div></div>
+        <div class="tile"><div class="v mono" style="color:var(--status-critical)" data-bind="normalize.noise_stats.broken_utf_replacement_chars|int"></div><div class="l">Broken-UTF chars (<span data-bind="normalize.noise_stats.n_docs_with_broken_utf|int"></span> docs)</div></div>
+        <div class="tile"><div class="v mono" style="color:var(--status-good)" data-bind="normalize.noise_stats.zwnj_kept|int"></div><div class="l">ZWNJ kept</div></div>
+        <div class="tile"><div class="v mono" style="color:var(--status-good)" data-bind="normalize.noise_stats.zwj_kept|int"></div><div class="l">ZWJ kept</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="stat-group-label">Ghost special tokens flagged (not deleted)</div>
+      <div class="barchart" id="chart-ghost"></div>
+      <div class="ghost-examples" id="ghost-examples"></div>
+      <p style="font-size:13px;color:var(--ink-3);margin:12px 0 0;">
+        These are decisions for whoever builds the tokenizer next, not automatic
+        deletions. One caught case worth naming: the 2 <code>&lt;input&gt;</code> hits
+        above are a false positive — an HTML-spec diff document literally discussing
+        the <code>&lt;input&gt;</code> element, not a chat-format marker. That's the
+        "flag, don't delete" design working as intended.
+      </p>
+    </div>
+
+    <div class="card">
+      <div class="stat-group-label">Script purity (dominant script per document, Latin excluded)</div>
+      <p style="font-size:13px;color:var(--ink-3);margin:0 0 4px;">
+        <span class="mono" data-bind="computed.latin_docs|int"></span> documents are
+        Latin-dominant (English, code, math) and are excluded from this view so the
+        Brahmic scripts aren't dwarfed. Average purity across all script-bearing
+        documents: <strong data-bind="computed.purity_pct|pct2"></strong>.
+      </p>
+      <div class="barchart" id="chart-script"></div>
+      <div class="callout" style="margin-top:16px;">
+        <strong>Sanity check, not a pipeline dependency:</strong> this distribution was
+        computed purely from cleaned text, with no language label in the loop — yet it
+        lines up with this file's own declared languages within single digits
+        (Devanagari 1,828 vs. hi+mr 1,830; Bengali 1,445 vs. bn+as 1,471). The pipeline
+        itself never reads that column; this cross-check only happened because the
+        column happened to exist on this particular file.
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= BEYOND THE NOTES ============================= -->
+  <section id="beyond">
+    <div class="section-head">
+      <div class="section-kicker">4 · Any other strategy or concern cleaned up</div>
+      <h2>Six additions the notes didn't cover</h2>
+      <p>Found and fixed while actually running the pipeline against real data.</p>
+    </div>
+
+    <div class="card beyond-list">
+      <div class="beyond-item">
+        <div class="num">01</div>
+        <div><h4>Extraction stage</h4><p>Not in the notes at all — added as stage 0 after ghost-token noise traced back to un-stripped HTML tags.</p></div>
+      </div>
+      <div class="beyond-item">
+        <div class="num">02</div>
+        <div><h4>Mojibake repair (ftfy)</h4><p>NFC alone can't fix double-encoded UTF-8 — every mojibake character is already "validly" encoded, just the wrong one.</p></div>
+      </div>
+      <div class="beyond-item">
+        <div class="num">03</div>
+        <div><h4>De-hyphenation</h4><p>Rejoins PDF/OCR-style line-wrapped words ("exam-\nple" → "example"), prose only — never touches code.</p></div>
+      </div>
+      <div class="beyond-item">
+        <div class="num">04</div>
+        <div><h4>&lt;table&gt; dropped, not flattened</h4><p>Flattening a table with <code>get_text()</code> jumbles every cell together — worse noise than just dropping it.</p></div>
+      </div>
+      <div class="beyond-item">
+        <div class="num">05</div>
+        <div><h4>Ghost-token vocabulary restricted</h4><p>An unrestricted pattern also matched HTML tags (<code>&lt;h3&gt;</code>), acronyms (<code>[ERISA]</code>), and even bracketed plurals (<code>word[s]</code>) — narrowed to a curated conversation-role vocabulary.</p></div>
+      </div>
+      <div class="beyond-item">
+        <div class="num">06</div>
+        <div><h4>Script-purity diagnostic</h4><p>Text-only signal (no language label needed) that catches legacy-font mojibake and language-switching — see the chart above.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= FINAL STATS ============================= -->
+  <section id="final">
+    <div class="section-head">
+      <div class="section-kicker">5 · Final statistics</div>
+      <h2>The corpus, before and after</h2>
+    </div>
+    <div class="stat-strip" style="margin-top:0;">
+      <div class="stat-tile"><div class="v mono" data-bind="normalize.n_docs|int"></div><div class="l">Documents</div></div>
+      <div class="stat-tile"><div class="v mono" data-bind="extraction.chars_removed|int"></div><div class="l">Chars removed — extraction</div></div>
+      <div class="stat-tile"><div class="v mono" data-bind="normalize.chars_removed|int"></div><div class="l">Chars removed — cleaning</div></div>
+      <div class="stat-tile"><div class="v mono" data-bind="normalize.noise_stats.broken_utf_replacement_chars|int"></div><div class="l">Broken-UTF chars fixed</div></div>
+      <div class="stat-tile"><div class="v mono" data-bind="computed.joiners_total|int"></div><div class="l">Brahmic joiners preserved</div></div>
+      <div class="stat-tile"><div class="v mono">9</div><div class="l">Scripts detected</div></div>
+      <div class="stat-tile"><div class="v mono" data-bind="computed.purity_pct|pct1"></div><div class="l">Avg. script purity</div></div>
+      <div class="stat-tile"><div class="v mono" data-bind="computed.ghost_total|int"></div><div class="l">Ghost tokens flagged</div></div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="refresh">
+      <strong>To refresh:</strong> replace the <code>extraction</code> and
+      <code>normalize</code> objects in the <code>#report-data</code> script block below
+      with the contents of the new <code>out/step0_*_report.json</code> and
+      <code>out/step1_*_report.json</code>, and update the <code>dataset</code> block by
+      hand. Every number and bar on this page recomputes from that data automatically.
+    </div>
+    Built for Session 4 — Data Cleaning &amp; Deduplication.
+  </footer>
+
+</div>
+
+<!--
+  REFRESH INSTRUCTIONS
+  - "dataset": edit by hand to describe whichever HF dataset is chosen.
+  - "extraction": paste in the full contents of out/step0_..._report.json verbatim.
+  - "normalize": paste in the full contents of out/step1_..._report.json verbatim.
+  Everything else on the page (bar charts, stat tiles, percentages) is computed
+  from these three objects at render time -- no other edits needed.
+-->
+<script id="report-data" type="application/json">
+{
+  "dataset": {
+    "label": "Capstone benchmark shard (interim placeholder)",
+    "description": "A 66,143-document shard assembled for a separate capstone project, blending roughly two dozen source corpora across web text, code, math, and 10 Indic languages. Used here to build and test the pipeline while a final 10M–100M HuggingFace dataset is chosen."
+  },
+  "extraction": {
+    "n_docs": 66143,
+    "extraction_path_distribution": {
+      "passthrough": 43541,
+      "trafilatura": 3803,
+      "inline_tags_stripped": 7369,
+      "bs4": 11425,
+      "html_fallback_stripped": 5
+    },
+    "total_raw_chars": 426051159,
+    "total_extracted_chars": 402251545,
+    "chars_removed": 23799614
+  },
+  "normalize": {
+    "n_docs": 66143,
+    "content_type_distribution": { "prose": 39178, "code": 26965 },
+    "total_raw_chars": 402251545,
+    "total_clean_chars": 400646422,
+    "chars_removed": 1605123,
+    "n_empty_after_clean": 13,
+    "ghost_token_counts": { "bracket_upper": 441, "pipe_angle": 1, "angle_bare": 4 },
+    "ghost_token_examples": {
+      "bracket_upper": ["[User]"],
+      "pipe_angle": ["<|endoftext|>"],
+      "angle_bare": ["<input>", "<input>"]
+    },
+    "noise_stats": {
+      "garbage_control_chars": 2170,
+      "zero_width_noise_chars": 1462,
+      "broken_utf_replacement_chars": 4666,
+      "n_docs_with_broken_utf": 127,
+      "zwnj_kept": 536,
+      "zwj_kept": 1252
+    },
+    "script_stats": {
+      "dominant_script_distribution": {
+        "latin": 58857, "telugu": 1, "gurmukhi": 509, "bengali": 1445,
+        "gujarati": 782, "devanagari": 1828, "kannada": 797,
+        "malayalam": 837, "oriya": 563, "tamil": 504
+      },
+      "n_docs_with_script_signal": 66123,
+      "avg_purity_among_scripted_docs": 0.9974320919690444,
+      "n_docs_below_0.85_purity": 210
+    }
+  }
+}
+</script>
+
+<script>
+(function () {
+  var DATA = JSON.parse(document.getElementById('report-data').textContent);
+
+  function fmt(v, kind) {
+    if (v === null || v === undefined || Number.isNaN(v)) return "—";
+    if (kind === "pct1") return v.toFixed(1) + "%";
+    if (kind === "pct2") return v.toFixed(2) + "%";
+    if (kind === "int") return Math.round(v).toLocaleString('en-US');
+    return typeof v === 'number' ? v.toLocaleString('en-US') : v;
+  }
+
+  function resolve(path, ctx) {
+    return path.split('.').reduce(function (o, k) { return (o == null) ? undefined : o[k]; }, ctx);
+  }
+
+  function computeDerived(d) {
+    var ex = d.extraction, nz = d.normalize;
+    var ghostTotal = Object.keys(nz.ghost_token_counts).reduce(function (a, k) { return a + nz.ghost_token_counts[k]; }, 0);
+    var scriptDist = nz.script_stats.dominant_script_distribution;
+    var latinDocs = scriptDist.latin || 0;
+    return {
+      extraction_removed_pct: ex.chars_removed / ex.total_raw_chars * 100,
+      normalize_removed_pct: nz.chars_removed / nz.total_raw_chars * 100,
+      ghost_total: ghostTotal,
+      joiners_total: nz.noise_stats.zwnj_kept + nz.noise_stats.zwj_kept,
+      purity_pct: nz.script_stats.avg_purity_among_scripted_docs * 100,
+      latin_docs: latinDocs
+    };
+  }
+
+  function bindAll(ctx) {
+    document.querySelectorAll('[data-bind]').forEach(function (el) {
+      var parts = el.getAttribute('data-bind').split('|');
+      var v = resolve(parts[0], ctx);
+      el.textContent = fmt(v, parts[1]);
+    });
+  }
+
+  function renderBars(elId, entries, mode) {
+    var el = document.getElementById(elId);
+    if (!el) return;
+    var total = entries.reduce(function (a, e) { return a + e.value; }, 0);
+    var max = Math.max.apply(null, entries.map(function (e) { return e.value; }).concat([1]));
+    el.innerHTML = entries.map(function (e) {
+      var pct = mode === 'share' ? (total ? e.value / total * 100 : 0) : (e.value / max * 100);
+      var valueLabel = e.value.toLocaleString('en-US') +
+        (mode === 'share' && total ? ' · ' + (e.value / total * 100).toFixed(1) + '%' : '');
+      return (
+        '<div class="barrow" title="' + e.label + ': ' + e.value.toLocaleString('en-US') + '">' +
+          '<span class="barrow-label">' + e.label + '</span>' +
+          '<span class="barrow-track"><span class="barrow-fill" style="width:' + pct + '%;background:' + e.color + '"></span></span>' +
+          '<span class="barrow-value mono">' + valueLabel + '</span>' +
+        '</div>'
+      );
+    }).join('');
+  }
+
+  var ctx = Object.assign({}, DATA, { computed: computeDerived(DATA) });
+  bindAll(ctx);
+
+  var catVars = ['--cat-1', '--cat-2', '--cat-3', '--cat-4', '--cat-5', '--cat-6', '--cat-7', '--cat-8'];
+  function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+  // Extraction path — fixed canonical order/colors, independent of value rank.
+  var extractionOrder = [
+    ['passthrough', 'Passthrough'],
+    ['inline_tags_stripped', 'Inline tags stripped'],
+    ['bs4', 'BeautifulSoup'],
+    ['trafilatura', 'Trafilatura'],
+    ['html_fallback_stripped', 'Regex fallback']
+  ];
+  renderBars('chart-extraction', extractionOrder.map(function (pair, i) {
+    return { label: pair[1], value: DATA.extraction.extraction_path_distribution[pair[0]] || 0, color: cssVar(catVars[i]) };
+  }), 'share');
+
+  // Content type — fixed order.
+  var contentTypeOrder = [['prose', 'Prose'], ['code', 'Code']];
+  renderBars('chart-contenttype', contentTypeOrder.map(function (pair, i) {
+    return { label: pair[1], value: DATA.normalize.content_type_distribution[pair[0]] || 0, color: cssVar(catVars[i]) };
+  }), 'share');
+
+  // Ghost token patterns — fixed canonical order across all 5 possible patterns.
+  var ghostOrder = [
+    ['pipe_angle', '<|pipe|>'],
+    ['bracket_upper', '[bracket]'],
+    ['pipe_wrapped_angle', '|<pipe>|'],
+    ['angle_bare', '<angle>'],
+    ['double_angle_sys', '<<SYS>>']
+  ];
+  var ghostCounts = DATA.normalize.ghost_token_counts;
+  var ghostEntries = ghostOrder
+    .map(function (pair, i) { return { key: pair[0], label: pair[1], value: ghostCounts[pair[0]] || 0, color: cssVar(catVars[i]) }; })
+    .filter(function (e) { return e.value > 0; });
+  renderBars('chart-ghost', ghostEntries, 'relative');
+
+  var examplesEl = document.getElementById('ghost-examples');
+  var examples = DATA.normalize.ghost_token_examples || {};
+  var exampleHtml = [];
+  Object.keys(examples).forEach(function (k) {
+    examples[k].forEach(function (ex) { exampleHtml.push('<span>' + ex.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>'); });
+  });
+  examplesEl.innerHTML = exampleHtml.join('');
+
+  // Script purity — 8 named Brahmic scripts in fixed alphabetical order; Latin
+  // excluded (shown separately above); anything else folds into "Other".
+  var scriptOrder = ['bengali', 'devanagari', 'gujarati', 'gurmukhi', 'kannada', 'malayalam', 'oriya', 'tamil'];
+  var scriptLabels = { bengali: 'Bengali', devanagari: 'Devanagari', gujarati: 'Gujarati', gurmukhi: 'Gurmukhi', kannada: 'Kannada', malayalam: 'Malayalam', oriya: 'Oriya', tamil: 'Tamil' };
+  var dist = DATA.normalize.script_stats.dominant_script_distribution;
+  var otherTotal = 0;
+  Object.keys(dist).forEach(function (k) {
+    if (k !== 'latin' && scriptOrder.indexOf(k) === -1) otherTotal += dist[k];
+  });
+  var scriptEntries = scriptOrder.map(function (k, i) {
+    return { label: scriptLabels[k], value: dist[k] || 0, color: cssVar(catVars[i]) };
+  });
+  if (otherTotal > 0) scriptEntries.push({ label: 'Other', value: otherTotal, color: cssVar('--baseline') });
+  renderBars('chart-script', scriptEntries, 'share');
+})();
+</script>
