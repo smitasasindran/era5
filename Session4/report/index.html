@@ -267,6 +267,11 @@
     width: 6px; height: 6px; border-radius: 50%;
     background: var(--accent);
   }
+  .stage-card li .li-term { color: var(--ink); font-weight: 600; }
+  .stage-card li .li-note {
+    display: block; font-size: 12.5px; color: var(--ink-3);
+    font-weight: 400; margin-top: 2px; text-align: left;
+  }
 
   .chip {
     display: inline-flex; align-items: center; gap: 5px;
@@ -464,14 +469,14 @@
       <div class="card stage-card">
         <h3>2 · Normalization <span class="stage-count">8 strategies</span> <span class="chip built">Built</span></h3>
         <ul>
-          <li>NFC Unicode normalization</li>
-          <li>Strip C0 / C1 control characters</li>
-          <li>Strip zero-width noise (ZWSP), BOM, bidi overrides</li>
-          <li>HTML entity unescaping</li>
-          <li>Strip the U+FFFD replacement character</li>
-          <li>Collapse whitespace runs</li>
-          <li>Flag ghost special tokens instead of deleting them</li>
-          <li>Preserve Brahmic joiners (ZWNJ / ZWJ) — always</li>
+          <li><span class="li-term">NFC Unicode normalization</span><span class="li-note">A character with more than one valid encoding always ends up stored the same way.</span></li>
+          <li><span class="li-term">Strip C0 / C1 control characters</span><span class="li-note">Legacy control bytes that render as invisible garbage and bloat the tokenizer.</span></li>
+          <li><span class="li-term">Strip zero-width noise (ZWSP), BOM, bidi overrides</span><span class="li-note">Invisible characters with no linguistic meaning — unlike the Brahmic joiners kept below.</span></li>
+          <li><span class="li-term">HTML entity unescaping</span><span class="li-note">Decodes escaped entities back into the real characters they represent.</span></li>
+          <li><span class="li-term">Strip the U+FFFD replacement character</span><span class="li-note">The literal "undecodable byte" marker some upstream tool already gave up on.</span></li>
+          <li><span class="li-term">Collapse whitespace runs</span><span class="li-note">Multiple spaces/tabs/newlines collapse to one for prose; code keeps its structure.</span></li>
+          <li><span class="li-term">Flag ghost special tokens instead of deleting them</span><span class="li-note">Surfaces things like &lt;|endoftext|&gt; so a human decides the tokenizer's real vocabulary.</span></li>
+          <li><span class="li-term">Preserve Brahmic joiners (ZWNJ / ZWJ) — always</span><span class="li-note">These control conjunct formation in Devanagari, Bengali, and others — stripping them breaks the script.</span></li>
         </ul>
       </div>
       <div class="card stage-card">
