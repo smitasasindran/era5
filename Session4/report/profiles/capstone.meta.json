@@ -1,0 +1,13 @@
+{
+  "label": "Capstone benchmark shard (mixed)",
+  "description": "A 66,143-document shard assembled for a separate capstone project, blending roughly two dozen source corpora across web text, code, math, and 10 Indic languages.",
+  "highlight": "Broadest coverage — 10 domains, 11 languages/scripts, and a code/math mix in one file. Best for seeing script-purity and ghost-token detection across many languages at once, though it's relatively pre-cleaned going in, so Extraction and Normalize+Clean have comparatively little left to remove.",
+  "facts": [
+    ["Domains", "web, qa, code, science, math, news, instruction, social, encyclopedia, education"],
+    ["Languages", "English + 10 Indic languages (bn, mr, hi, ml, kn, gu, or, pa, ta, as)"],
+    ["Source mix", "Starcoder, C4, RefinedWeb, Common Crawl (head/middle/tail), StackExchange, Reddit, peS2o, proof-pile-2, RedPajama-arXiv, Sangraha (ai4bharat), NCERT, MegaWika"],
+    ["Sample size", "Full shard — all 66,143 rows"]
+  ],
+  "script_sanity_note": "This distribution was computed purely from cleaned text, with no language label in the loop — yet it lines up with this file's own declared languages within single digits (Devanagari 1,828 vs. hi+mr 1,830; Bengali 1,445 vs. bn+as 1,471). The pipeline itself never reads that column; this cross-check only happened because the column happened to exist on this particular file.",
+  "ghost_token_note": "One caught case worth naming: the 2 <input> hits are a false positive — an HTML-spec diff document literally discussing the <input> element, not a chat-format marker. That's the \"flag, don't delete\" design working as intended."
+}

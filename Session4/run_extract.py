@@ -21,6 +21,16 @@ Stream a raw HF dataset, then normalize the result:
 Extract a local parquet file, kept as parquet all the way through:
     python run_extract.py --source local --path ./data/raw.parquet \\
         --text-field text --output out/step0_extracted.parquet
+
+Source code (or any other known-non-HTML text) should skip HTML detection
+entirely -- a code file that happens to embed an HTML string (a Qt "About"
+dialog, a docstring with sample markup, ...) can otherwise fool
+looks_like_html_document() into running trafilatura/BeautifulSoup on the
+whole file, which then confidently "extracts" that embedded fragment as the
+main content and silently discards the surrounding code:
+    python run_extract.py --source hf --dataset some/code-dataset \\
+        --config python --streaming --text-field content \\
+        --content-hint not-html --output out/step0_extracted.parquet
 """
 
 import argparse
@@ -55,7 +65,18 @@ def parse_args():
     )
 
     p.add_argument("--text-field", default="text", help="Field/column holding the raw document text")
+    p.add_argument(
+        "--text-fields", default=None,
+        help="Comma-separated columns to join instead of --text-field, for structured "
+             "datasets that split a document across fields (e.g. problem,solution,answer)",
+    )
     p.add_argument("--limit", type=int, default=None, help="Stop after N documents (omit for all)")
+    p.add_argument(
+        "--content-hint", choices=["auto", "html", "not-html"], default="auto",
+        help="'auto' (default) detects per-document; 'not-html' skips HTML detection "
+             "entirely (use for code/structured-text sources); 'html' forces every doc "
+             "through the HTML extraction tiers",
+    )
     p.add_argument(
         "--output", required=True,
         help="Output path for extracted documents. Extension picks the format: .parquet or .jsonl",
@@ -69,6 +90,8 @@ def main():
     out_path = Path(args.output)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
+    is_html_hint = {"auto": None, "html": True, "not-html": False}[args.content_hint]
+
     path_counts = Counter()
     n_docs = 0
     total_raw_chars = 0
@@ -77,7 +100,7 @@ def main():
     with open_writer(out_path) as writer:
         for doc in load_documents(args):
             raw_text = doc.get("text") or ""
-            extracted, meta = extract_content(raw_text)
+            extracted, meta = extract_content(raw_text, is_html_hint=is_html_hint)
 
             record = {
                 "id": doc.get("id"),

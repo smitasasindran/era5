@@ -1,0 +1,50 @@
+[
+  {
+    "id": "0",
+    "text": "from rich.console import Console\nconsole = Console()\n\nimport argparse\n\nfrom blobber.ui.banner import get_banner\nfrom blobber.modules.status import request\nfrom blobber.modules.blobs import blob_handler\n\ndef initialize() -> None:\n    \"\"\" Initiates Blobber \"\"\"\n    get_banner()\n\n    parser = argparse.ArgumentParser(\n        prog='Blobber',\n        description='Attacking Azure Blob Storage Service'\n    )\n    \n    parser.add_argument('-u', help=\"Specify the target URL to be used\", required=True)\n    parser.add_argument('-f', help=\"Filter by extension based on file name. Example: .pdf\", required=False, default=None)\n    args = parser.parse_args()\n\n    url = args.u\n    file_filter = args.f\n\n    status(url, file_filter)\n\ndef status(url: str, file_filter: str) -> None:\n    \"\"\"Wrapper to check the s",
+    "truncated": true,
+    "full_len": 1071
+  },
+  {
+    "id": "1",
+    "text": "\"\"\" \nThis module aims to enumerate and get Name, Last-Modified, Content-Length and Content-Typpe blob value.\n\"\"\"\n\nfrom lxml import etree\nfrom rich.console import Console\nconsole = Console()\n\ndef blob_handler(content: str, file_filter: str) -> None:\n    try:\n        content_bytes = content.encode('utf-8')\n        root = etree.fromstring(content_bytes)\n        \n        blobs = root.xpath(\".//Blob\")\n        if not blobs:\n            console.print(\"[[yellow]![/]] Nenhum blob encontrado.\")\n            return\n        \n        for blob in blobs:\n            url_element = blob.find(\"Url\")\n            url = url_element.text.strip() if url_element is not None else \"N/A\"\n\n            file_name = blob.findtext(\".//Name\", default=\"N/A\").strip()\n            last_modified = blob.findtext(\".//Last-Modifie",
+    "truncated": true,
+    "full_len": 1809
+  },
+  {
+    "id": "2",
+    "text": "\"\"\"\nThis module checks the status from the Azure Container passed\n\"\"\"\n\nfrom rich.console import Console\nconsole = Console()\nfrom requests import get\nfrom urllib3 import disable_warnings\ndisable_warnings()\n\nfrom blobber.modules.errors import error_handler\n\ndef request(url: str) -> tuple:\n    \"\"\"\n    Perform a GET request to the given URL, handle errors, and retry if necessary.\n    \"\"\"\n\n    url = f\"{url}/?restype=container&comp=list\"\n\n    try:\n        response = get(url, verify=False, timeout=10)\n        if response.ok:\n            console.print(f\"[[green]+[/]] Connected successfully to [green]{url}[/]\")\n            return response\n\n        # Handle errors\n        error_handler_response = error_handler(url, response)\n        if error_handler_response:\n            return error_handler_respons",
+    "truncated": true,
+    "full_len": 1092
+  },
+  {
+    "id": "3",
+    "text": "\"\"\"\nThis module handle the common errors when interacting with Azure Blobs\n\"\"\"\n\nfrom rich.console import Console\nconsole = Console()\nfrom requests import get\nfrom urllib3 import disable_warnings\ndisable_warnings()\n\nerrors_list = {\n    \"InvalidQueryParameterValue\": \"Value for one of the query parameters specified in the request URI is invalid.\",\n    \"FeatureVersionMismatch\": \"Trying to add 'x-ms-version: 2020-04-08' header on the request.\",\n    \"ResourceNotFound\": \"Invalid container or blob file specified in the URL.\",\n    \"AccountIsDisabled\": \"The specified account is disabled.\"\n}\n\ndef error_handler(url: str, response) -> tuple:\n    \"\"\"\n    Handles errors in Azure Blob responses and retries if specific errors occur.\n    \"\"\"\n    \n    try:\n        if isinstance(response, str):\n            re",
+    "truncated": true,
+    "full_len": 2492
+  },
+  {
+    "id": "4",
+    "text": "from rich.console import Console\nconsole = Console()\nfrom os import path, chdir\nfrom pathlib import Path\nfrom zipfile import ZipFile, BadZipFile\nfrom shutil import rmtree\n\nfrom androguard.core.apk import APK\nfrom androguard.core.dex import DEX\n\nfrom src.apepe.modules.suggest import suggest_sslpinning\nfrom src.apepe.modules.deeplink import scraper\nfrom src.apepe.modules.exported import exported\n\nfrom loguru import logger\nlogger.remove(0)\n\n\ndef perform_checks(apk_file, list_scripts, deeplink) -> None:\n    \"\"\"\n    This function is responsible to check if the APK file exists and\n    if the extension is .apk\n    \"\"\"\n\n    global args_list_scripts\n    args_list_scripts = list_scripts\n\n    global args_deeplink\n    args_deeplink = deeplink\n\n    file_name: str = apk_file\n    check_if_file: bool = pa",
+    "truncated": true,
+    "full_len": 5812
+  },
+  {
+    "id": "5",
+    "text": "import json\nimport re\n\nfrom rich.console import Console\nconsole = Console()\nfrom pathlib import Path\n\nfrom androguard.core.dex import DEX\nfrom androguard.core.apk import APK\n\nfrom lxml.etree import tostring\n\nDEEPLINK_PATTERN = r'\\b\\w+://[^\\s]+'\n\n\ndef dex_handler(file_path: Path) -> list:\n    \"\"\"\n    Extract readable strings from a .dex file and filter for deeplinks,\n    excluding those that start with 'http://', 'https://' or 'parse'\n    \"\"\"\n    results = []\n\n    try:\n        with file_path.open('rb') as dex_file:\n            content = DEX(dex_file.read())\n            strings = content.get_strings()\n            results = [\n                s for s in strings \n                if isinstance(s, str) \n                and re.search(DEEPLINK_PATTERN, s) \n                and not ('http://' in s or",
+    "truncated": true,
+    "full_len": 4821
+  },
+  {
+    "id": "6",
+    "text": "from rich.console import Console\nconsole = Console()\n\ndef exported(target) -> None:\n    \"\"\"\n    Lists activities, services, receivers, and providers from AndroidManifest.xml file.\n    \"\"\"\n\n    manifest = target.get_android_manifest_xml()\n    endpoints = [\"activity\", \"service\", \"receiver\", \"provider\"]\n\n    for endpoint in endpoints:\n        console.print(f\"\\n[green][+][/] {endpoint.capitalize()}:\", highlight=False)\n\n        if(endpoint == \"activity\"):\n            console.print(f\" [green]\\\\_[/] Main Activity: [yellow]{target.get_main_activity()}[/]\")\n\n        for element in manifest.findall(f\".//{endpoint}\"):\n            name = element.get(\"{http://schemas.android.com/apk/res/android}name\")\n            exported = element.get(\"{http://schemas.android.com/apk/res/android}exported\")\n\n          ",
+    "truncated": true,
+    "full_len": 1131
+  },
+  {
+    "id": "7",
+    "text": "from random import choice\n\ndef get_file_data(path) -> str:\n    \" Return the content inside text file \"\n\n    with open(path) as file:\n        return file.read()\n\n\ndef get_usernames() -> list:\n    \" Get all usernames inside usernames.txt file \"\n\n    raw = get_file_data('src/core/data/usernames.txt')\n    raw = raw.split('\\n')\n    return raw\n\n\ndef get_passwords() -> list:\n    \" Get all passwords inside passwords.txt file \"\n\n    raw = get_file_data('src/core/data/passwords.txt')\n    raw = raw.split('\\n')\n    return raw\n\n\ndef user_agent() -> str:\n    \"\"\"  Return a random user-agent from user-agents.txt file \"\"\"\n\n    user_agents_file: str = \"src/core/data/user-agents.txt\"\n\n    with open(user_agents_file, 'r+') as user_agents:\n        user_agent = user_agents.readlines()\n        user_agent = choic",
+    "truncated": true,
+    "full_len": 1031
+  }
+]

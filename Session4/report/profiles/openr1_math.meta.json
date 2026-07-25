@@ -1,0 +1,12 @@
+{
+  "label": "open-r1/OpenR1-Math-220k",
+  "description": "A math/olympiad reasoning dataset — problem, solution, and answer fields joined into one text field — streamed and sampled to 5,000 documents.",
+  "highlight": "Heavy LaTeX markup causes real content-type ambiguity: about 10% of documents (498 of 5,000) get classified as \"code\" by the whitespace-preservation heuristic, because LaTeX array/matrix blocks are line-structured the same way source code is. Concrete evidence for the \"math\" content-type gap discussed earlier — this dataset is the reason to actually build it.",
+  "facts": [
+    ["HF dataset", "open-r1/OpenR1-Math-220k, config default"],
+    ["Full size", "93.7k rows (default config; 450k across all configs)"],
+    ["Sample size", "5,000 rows (streamed, no download)"],
+    ["Language", "English"],
+    ["Content", "Math/olympiad problems — problem + solution + answer fields joined via --text-fields"]
+  ]
+}

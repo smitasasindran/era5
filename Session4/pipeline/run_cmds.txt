@@ -11,6 +11,39 @@ python run_normalize.py --source local \
   --output out/step1_capstone_clean.parquet \
   --report out/step1_capstone_clean_report.json
 
-python report/build_report.py \
-  --extraction out/step0_..._report.json \
-  --normalize out/step1_..._report.json [--dataset-label "..."] [--dataset-description "..."]
+
+python run_normalize.py --source local \
+  --path out/step0_githubcode_py_extracted.parquet \
+  --text-field text --content-type auto \
+  --output out/step1_githubcode_py_clean.parquet \
+  --report out/step1_githubcode_py_clean_report.json
+
+#python report/build_report.py \
+#  --extraction out/step0_..._report.json \
+#  --normalize out/step1_..._report.json [--dataset-label "..."] [--dataset-description "..."]
+
+python report/fetch_samples.py --source hf --dataset hasankursun/github-code-2025-language-split \
+  --config python --split train --streaming \
+  --text-field content -n 8 --max-chars 800 \
+  --output report/profiles/github_code_python.samples.json
+
+
+
+
+python report/build_report.py --profile-key capstone \
+  --meta report/profiles/capstone.meta.json \
+  --extraction out/step0_capstone_extracted_report.json \
+  --normalize out/step1_capstone_clean_report.json \
+  --samples report/profiles/capstone.samples.json
+echo "---"
+python report/build_report.py --profile-key c4_realnewslike \
+  --meta report/profiles/c4_realnewslike.meta.json \
+  --extraction out/step0_c4_realnewslike_extracted_report.json \
+  --normalize out/step1_c4_realnewslike_clean_report.json \
+  --samples report/profiles/c4_realnewslike.samples.json
+echo "---"
+python report/build_report.py --profile-key openr1_math \
+  --meta report/profiles/openr1_math.meta.json \
+  --extraction out/step0_openr1math_extracted_report.json \
+  --normalize out/step1_openr1math_clean_report.json \
+  --samples report/profiles/openr1_math.samples.json

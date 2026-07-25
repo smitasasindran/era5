@@ -1,0 +1,12 @@
+{
+  "label": "GitHub Code 2025 — Python",
+  "description": "Real-world GitHub Python source files (the \"content\" field), streamed and sampled to 5,000 documents from a 55-language, 143M-row code corpus.",
+  "highlight": "Surfaced a real bug, not just a data quirk: a Python file embedding real HTML (a Qt \"About\" dialog's setHtml(...) call) fooled the HTML-document detector into running trafilatura on the whole file, which confidently extracted an unrelated fragment and silently discarded most of the actual code. Fixed with a new --content-hint not-html flag that bypasses ALL tag-stripping for known-code sources — even the \"lightweight\" tier was unsafe, since <...> in code is often a Flask route param, a chained comparison, or a generic, not markup. Separately, ~99.5% of documents are correctly classified as \"code\" by the content-type heuristic (compare to ~90% on the math dataset), and its ghost-token hits are almost all code that legitimately manipulates tokenizer special tokens (checking for <|endoftext|>, mocking a tokenizer's <bos>/<eos>) rather than contamination — except [prompt] and [cls], which are false positives from Python identifiers that happen to collide with the ghost-token vocabulary (a list literal and a class-method parameter, not special tokens).",
+  "facts": [
+    ["HF dataset", "hasankursun/github-code-2025-language-split, config python"],
+    ["Full size", "28.9M rows (Python config); 143.7M rows across all 55 languages"],
+    ["Sample size", "5,000 rows (streamed, no download)"],
+    ["Content", "Real GitHub Python source files, the \"content\" field"],
+    ["Extraction setting", "--content-hint not-html (source code, not prose or HTML)"]
+  ]
+}

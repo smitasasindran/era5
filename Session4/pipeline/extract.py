@@ -163,9 +163,24 @@ def _extract_with_bs4(html_str):
 
 
 def extract_content(raw, is_html_hint=None):
-    """Returns (extracted_text, meta) where meta = {"path": <which tier ran>}."""
+    """Returns (extracted_text, meta) where meta = {"path": <which tier ran>}.
+
+    is_html_hint=False means "the caller already knows this is not HTML or
+    prose at all" (source code, structured data, ...) -- not just "skip the
+    full-document tiers". _TAG_RE's "<...>" pattern isn't just markup: it
+    also matches Flask/Werkzeug route params (/users/<user_id>), chained
+    comparisons (a < b > c), C++/Java generics, and shift operators, so even
+    the "lightweight" tag-stripping tier can silently corrupt real code.
+    False therefore bypasses ALL tag-stripping and returns the text
+    untouched; None (the default) keeps the normal auto-detection behavior,
+    where the lightweight tier still legitimately catches a few incidental
+    HTML tags leaked into otherwise-prose text.
+    """
     if not raw:
         return "", {"path": "empty"}
+
+    if is_html_hint is False:
+        return raw, {"path": "passthrough"}
 
     is_html = is_html_hint if is_html_hint is not None else looks_like_html_document(raw)
 

@@ -109,6 +109,23 @@ check("lightweight tier keeps text before the table", "Before table" in lightwei
 check("lightweight tier keeps text after the table", "after table" in lightweight_result)
 check("lightweight tier drops table cell content", "Alice" not in lightweight_result and "90" not in lightweight_result)
 
+# 6. is_html_hint=False (source code): "<...>" in code isn't markup -- it's
+# Flask/Werkzeug route params, chained comparisons, generics, shift operators.
+# Even the "lightweight" tag-stripping tier must NOT touch code when the
+# caller already knows it isn't HTML/prose at all.
+raw_flask_route = "@app.route('/v1/chats/<chat_id>', methods=['DELETE'])\ndef delete_chat(chat_id):\n    pass"
+extracted_auto, meta_auto = extract_content(raw_flask_route)
+extracted_hint, meta_hint = extract_content(raw_flask_route, is_html_hint=False)
+show("Flask route param, auto-detect", raw_flask_route, extracted_auto, meta_auto)
+show("Flask route param, is_html_hint=False", raw_flask_route, extracted_hint, meta_hint)
+check("is_html_hint=False leaves the route param untouched", extracted_hint == raw_flask_route)
+check("is_html_hint=False reports passthrough", meta_hint["path"] == "passthrough")
+
+raw_chained_comparison = "if self.current_rect.width() < 10 or self.current_rect.height() < 10:\n    pass\n# see docs at <https://example.com>"
+extracted_chain, meta_chain = extract_content(raw_chained_comparison, is_html_hint=False)
+show("Chained comparison + unrelated angle brackets, is_html_hint=False", raw_chained_comparison, extracted_chain, meta_chain)
+check("is_html_hint=False leaves chained comparisons untouched", extracted_chain == raw_chained_comparison)
+
 print(f"\n{checks_run - checks_failed}/{checks_run} checks passed.")
 if checks_failed:
     sys.exit(1)

@@ -1,0 +1,50 @@
+[
+  {
+    "id": "0",
+    "text": "## Task B-1.3.\n\nA ship traveling along a river has covered $24 \\mathrm{~km}$ upstream and $28 \\mathrm{~km}$ downstream. For this journey, it took half an hour less than for traveling $30 \\mathrm{~km}$ upstream and $21 \\mathrm{~km}$ downstream, or half an hour more than for traveling $15 \\mathrm{~km}$ upstream and $42 \\mathrm{~km}$ downstream, assuming that both the ship and the river move uniformly.\n\nDetermine the speed of the ship in still water and the speed of the river.\n\n## Solution.\n\nLet $t$ be the time required for the boat to travel $24 \\mathrm{~km}$ upstream and $28 \\mathrm{~km}$ downstream, $v_{R}$ the speed of the river, and $v_{B}$ the speed of the boat. When the boat is traveling upstream, its speed is $v_{B}-v_{R}$, and when it is traveling downstream, its speed is $v_{B}+v_{R",
+    "truncated": true,
+    "full_len": 2211
+  },
+  {
+    "id": "1",
+    "text": "3. (6 points) A construction company was building a tunnel. When $\\frac{1}{3}$ of the tunnel was completed at the original speed, they started using new equipment, which increased the construction speed by $20 \\%$ and reduced the working hours to $80 \\%$ of the original. As a result, it took a total of 185 days to complete the tunnel. If they had not used the new equipment and continued at the original speed, it would have taken $\\qquad$ days to complete the tunnel.\n\n3. (6 points) A construction company builds a tunnel. When $\\frac{1}{3}$ of the tunnel is completed at the original speed, new equipment is used, increasing the construction speed by $20 \\%$ and reducing the daily working hours to $80 \\%$ of the original. As a result, the tunnel is completed in 185 days. If the new equipment w",
+    "truncated": true,
+    "full_len": 1303
+  },
+  {
+    "id": "2",
+    "text": "Prove that number $1$ can be represented as a sum of a finite number $n$ of real numbers, less than $1,$ not necessarily  distinct, which contain in their decimal representation only the digits $0$ and/or $7.$ Which is the least possible number $n$?\n\n1. **Restate the problem in a more manageable form:**\n   We need to prove that the number \\(1\\) can be represented as a sum of a finite number \\(n\\) of real numbers, each less than \\(1\\), and each containing only the digits \\(0\\) and \\(7\\) in their decimal representation. We also need to find the least possible value of \\(n\\).\n\n2. **Reformulate the problem using a known rational number:**\n   Consider the rational number \\(\\frac{1}{7} = 0.\\overline{142857}\\). We need to express \\(\\frac{1}{7}\\) as a sum of \\(n\\) real numbers, each less than \\(\\f",
+    "truncated": true,
+    "full_len": 2248
+  },
+  {
+    "id": "3",
+    "text": "4. Given the three sides of an obtuse triangle are 3, $4, x$, then the range of values for $x$ is ( ).\n(A) $1<x<7$.\n(B) $5 \\ll x<7$.\n(C) $1<x<\\sqrt{7}$.\n(D) $5<x<7$ or $1<x<\\sqrt{7}$.\n\n$D$\n\nD",
+    "truncated": false,
+    "full_len": 191
+  },
+  {
+    "id": "4",
+    "text": "1. Solve the equation: $\\frac{8 x+13}{3}=\\frac{19-12 x}{2}-\\left(16 x-\\frac{7-4 x}{6}\\right)$.\n\n1. $\\frac{8 x+13}{3}=\\frac{19-12 x}{2}-\\left(16 x-\\frac{7-4 x}{6}\\right)$\n\n$\\frac{8 x+13}{3}=\\frac{19-12 x}{2}-16 x+\\frac{7-4 x}{6} / \\cdot 6$\n\n1 BOD\n\n$2 \\cdot(8 x+13)=3 \\cdot(19-12 x)-96 x+7-4 x \\quad 1$ BOD\n\n$16 x+26=57-36 x-96 x+7-4 x \\quad 1$ BOD\n\n$16 x+36 x+96 x+4 x=57+7-26$\n\n$152 x=38 \\quad /: 152$\n\n1 BOD\n\n$x=\\frac{38}{152}$\n\n1 BOD\n\n$x=\\frac{1}{4}$\n\n1 BOD\n\nTOTAL 6 POINTS\n\nNote: If the student has not fully simplified the fraction, the solution should be evaluated with 5, not 6 points.\n\n\\frac{1}{4}",
+    "truncated": false,
+    "full_len": 604
+  },
+  {
+    "id": "5",
+    "text": "A right-angled triangle has side lengths that are integers. What could be the last digit of the area's measure, if the length of the hypotenuse is not divisible by 5?\n\nLet the lengths of the legs be $a$ and $b$, and the length of the hypotenuse be $c$. According to the Pythagorean theorem, we then have\n\n$$\na^{2}+b^{2}=c^{2}\n$$\n\nA square number can give a remainder of 0, 1, or 4 when divided by 5. If neither $a$ nor $b$ is divisible by 5, then the left side of (1) can give a remainder of 2 (in the form $1+1$), 0 (in the form $1+4$), or 3 (in the form $4+4$) when divided by 5. Since 2 and 3 cannot be the remainder of a square number $-c^{2}$ when divided by 5, and 0 is excluded by the condition, if the length of the hypotenuse is not divisible by 5, then the length of one of the legs will be",
+    "truncated": true,
+    "full_len": 2716
+  },
+  {
+    "id": "6",
+    "text": "Let $a_n\\ (n\\geq 1)$ be the value for which $\\int_x^{2x} e^{-t^n}dt\\ (x\\geq 0)$ is maximal. Find $\\lim_{n\\to\\infty} \\ln a_n.$\n\n1. Define the integral \\( I_n(x) = \\int_x^{2x} e^{-t^n} \\, dt \\). We need to find the value of \\( x \\) that maximizes \\( I_n(x) \\).\n\n2. To find the maximum, we first compute the derivative of \\( I_n(x) \\) with respect to \\( x \\):\n   \\[\n   I_n'(x) = \\frac{d}{dx} \\left( \\int_x^{2x} e^{-t^n} \\, dt \\right)\n   \\]\n   Using the Leibniz rule for differentiation under the integral sign, we get:\n   \\[\n   I_n'(x) = e^{-(2x)^n} \\cdot 2 - e^{-x^n}\n   \\]\n   Simplifying, we have:\n   \\[\n   I_n'(x) = 2e^{-(2x)^n} - e^{-x^n}\n   \\]\n\n3. Set the derivative equal to zero to find the critical points:\n   \\[\n   2e^{-(2x)^n} - e^{-x^n} = 0\n   \\]\n   \\[\n   2e^{-(2x)^n} = e^{-x^n}\n   \\]\n   Tak",
+    "truncated": true,
+    "full_len": 1966
+  },
+  {
+    "id": "7",
+    "text": "11. Given that the internal angles $A, B, C$ of $\\triangle ABC$ have opposite sides $a, b, c$ respectively, and $\\sqrt{3} b \\cos \\frac{A+B}{2}=c \\sin B$.\n(1) Find the size of $\\angle C$;\n(2) If $a+b=\\sqrt{3} c$, find $\\sin A$.\n\n(1) $\\sqrt{3} \\sin B \\cos \\frac{A+B}{2}=\\sin C \\sin B \\Rightarrow \\sqrt{3} \\sin \\frac{C}{2}=\\sin C \\Rightarrow \\cos \\frac{C}{2}=\\frac{\\sqrt{3}}{2}$,\n\nso $\\frac{C}{2}=30^{\\circ} \\Rightarrow C=60^{\\circ}$.\n$$\n\\begin{array}{l}\n\\text { (2) } \\sin A+\\sin B=\\sqrt{3} \\sin C=\\frac{3}{2} \\Rightarrow \\sin A+\\sin \\left(120^{\\circ}-A\\right) \\\\\n=\\sin A+\\frac{\\sqrt{3}}{2} \\cos A+\\frac{1}{2} \\sin A=\\frac{3}{2} \\sin A+\\frac{\\sqrt{3}}{2} \\cos A=\\frac{3}{2} \\\\\n\\Rightarrow \\frac{\\sqrt{3}}{2} \\sin A+\\frac{1}{2} \\cos A=\\sin \\left(A+30^{\\circ}\\right)=\\frac{\\sqrt{3}}{2} \\Rightarrow A=30^{",
+    "truncated": true,
+    "full_len": 917
+  }
+]

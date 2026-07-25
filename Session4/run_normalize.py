@@ -65,6 +65,11 @@ def parse_args():
     )
 
     p.add_argument("--text-field", default="text", help="Field/column holding the raw document text")
+    p.add_argument(
+        "--text-fields", default=None,
+        help="Comma-separated columns to join instead of --text-field, for structured "
+             "datasets that split a document across fields (e.g. problem,solution,answer)",
+    )
     p.add_argument("--content-type", choices=["prose", "code", "auto"], default="auto")
     p.add_argument("--limit", type=int, default=None, help="Stop after N documents (omit for all)")
     p.add_argument(

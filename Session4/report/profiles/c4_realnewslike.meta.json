@@ -1,0 +1,12 @@
+{
+  "label": "C4 — realnewslike",
+  "description": "A news-like English web-text slice of the C4 corpus (Common Crawl derived), streamed and sampled to 5,000 documents.",
+  "highlight": "Already extracted upstream (Common Crawl WET files), so almost nothing for the Extraction stage to do — 99.8% of documents pass straight through. Still real broken-UTF and control-character noise for Normalize+Clean to catch, and effectively zero ghost tokens or non-Latin script content — its own useful data point: not every dataset needs every strategy.",
+  "facts": [
+    ["HF dataset", "allenai/c4, config realnewslike"],
+    ["Full size", "~14M rows (~15GB)"],
+    ["Sample size", "5,000 rows (streamed, no download)"],
+    ["Language", "English"],
+    ["Content", "News-like web text; Common Crawl WET-extracted upstream, so already mostly de-HTML'd"]
+  ]
+}
