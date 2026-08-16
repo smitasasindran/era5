@@ -1,0 +1,12 @@
+# Default profile: the real vendored corpus.
+# Run with: python scripts/run_pipeline.py
+# (or explicitly: python scripts/run_pipeline.py --config configs/pipeline.yaml)
+
+corpus: data/corpus/small_shard.parquet
+tokenizer_dir: data/tokenizer
+shards_dir: data/shards
+manifests_dir: data/manifests
+
+vocab_size: 8000
+shard_token_budget: 50000
+packing_policy: greedy # greedy | best_fit

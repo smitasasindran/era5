@@ -1,0 +1,16 @@
+# Toy profile: the tiny 11-document hand-authored fixture (tds/toy_corpus.py).
+# Fast, human-checkable end-to-end validation before trusting the same code
+# against the real corpus. Same data/ output dirs as the default profile --
+# switching between profiles clears and rebuilds them, it doesn't keep two
+# builds side by side (see IMPLEMENTATION_NOTES.md).
+#
+# Run with: python scripts/run_pipeline.py --config configs/pipeline_toy.yaml
+
+corpus: toy
+tokenizer_dir: data/tokenizer
+shards_dir: data/shards
+manifests_dir: data/manifests
+
+vocab_size: 300 # tiny corpus -> tiny vocab is enough
+shard_token_budget: 90 # deliberately small: forces multiple shards despite short docs
+packing_policy: greedy # greedy | best_fit

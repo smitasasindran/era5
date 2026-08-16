@@ -10,7 +10,7 @@ the "what we planned" half.
 
 | Component | Status | Key files |
 |---|---|---|
-| Shard Builder & Manifest Store | done | `tds/corpus.py`, `tds/tokenizer_utils.py`, `tds/manifest_store.py`, `tds/shard_builder.py`, `scripts/run_pipeline.py` |
+| Shard Builder & Manifest Store | done | `tds/corpus.py`, `tds/tokenizer_utils.py`, `tds/manifest_store.py`, `tds/shard_builder.py`, `tds/config.py`, `configs/*.yaml`, `scripts/run_pipeline.py` |
 | Eval / Test Firewall | not started | |
 | Curriculum & Mixture Compiler | not started | |
 | Cursor | not started | |
@@ -42,33 +42,49 @@ Two corpus sources, both under `data/corpus/`:
   and its output verified by eye in under a second before trusting the
   same code against the larger real file.
 
-One script runs the whole pipeline for either corpus:
+One script runs the whole pipeline, driven entirely by a config file
+(`tds/config.py`, `PipelineConfig`) rather than a long CLI flag list:
 
 ```
-python scripts/run_pipeline.py                    # real corpus (default)
-python scripts/run_pipeline.py --corpus toy         # tiny fixture
-python scripts/run_pipeline.py --corpus path/to/other.parquet
+python scripts/run_pipeline.py                                    # configs/pipeline.yaml (real corpus)
+python scripts/run_pipeline.py --config configs/pipeline_toy.yaml   # tiny fixture
 ```
 
-It always writes to the same `data/tokenizer/`, `data/shards/`,
-`data/manifests/` — there is only ever one "current" build on disk, not a
-parallel tree per corpus. Since the tokenizer is trained *from* whichever
-corpus is passed in, switching corpora necessarily produces a new frozen
-tokenizer (new `tokenizer_hash`), which would make any shards left over
-from the *previous* corpus invalid alongside the new ones — and the
-manifest store would (correctly) refuse to mix them in, since e.g.
+`--config` is the only remaining CLI flag. Every tunable — `corpus`,
+`tokenizer_dir`, `shards_dir`, `manifests_dir`, `vocab_size`,
+`shard_token_budget`, `packing_policy` — lives in the YAML file, so the
+full parameter set for a given run is readable at a glance in one place
+instead of reconstructed from a command line. `PipelineConfig.from_yaml()`
+rejects unknown keys (catches typos) and fills in defaults for anything
+omitted; `.resolved()` makes relative directory paths absolute against the
+repo root regardless of the caller's current working directory. Two
+ready-made profiles ship in `configs/`: `pipeline.yaml` (real corpus,
+defaults) and `pipeline_toy.yaml` (the tiny fixture, small vocab/budget). A
+one-off variation (e.g. trying `best_fit` packing) is a matter of copying
+one of those files and pointing `--config` at the copy — not adding a new
+flag to the script.
+
+Regardless of which profile runs, it always writes to the config's
+`tokenizer_dir`/`shards_dir`/`manifests_dir` — by default the same
+`data/tokenizer/`, `data/shards/`, `data/manifests/` for every profile, so
+there is only ever one "current" build on disk unless a config explicitly
+names different directories. Since the tokenizer is trained *from*
+whichever corpus the config names, switching corpora necessarily produces
+a new frozen tokenizer (new `tokenizer_hash`), which would make any shards
+left over from the *previous* corpus invalid alongside the new ones — and
+the manifest store would (correctly) refuse to mix them in, since e.g.
 `shard-000000` from a toy build and `shard-000000` from a real build have
 different `content_hash` values, and that's exactly the kind of mutation
 `ManifestStore.append()` exists to reject. So every run of
 `run_pipeline.py` clears those three directories first, then rebuilds all
 three fully from whichever corpus was specified. That's a
-development/validation convenience for iterating on one corpus at a time —
+development/validation convenience for iterating on one profile at a time —
 not a relaxation of the immutability guarantee itself, which still holds
 within any single build.
 
 **Swapping in a different corpus file later:** drop a new parquet under
-`data/corpus/` and pass `--corpus <path>`. Two things to know before doing
-that:
+`data/corpus/` and point a config file's `corpus` field at it (or add a new
+`configs/*.yaml` profile for it). Two things to know before doing that:
 
 - The file must have `id`, `source`, `domain`, `language`, `text` columns
   by those exact names (see `CORPUS_COLUMNS` in `tds/corpus.py`); anything
@@ -154,6 +170,60 @@ honest placeholder values (`"unspecified"` / `"not_checked"` / `"none"`)
 rather than fabricated ones, since neither corpus file carries that
 information and this component deliberately doesn't re-implement an
 admission pipeline (see design doc §8, scope assumptions).
+
+### Packing policy (document -> shard grouping)
+
+Two policies for how a lane's documents are grouped into shards, chosen via
+`--packing-policy {greedy,best_fit}` on `run_pipeline.py` (default
+`greedy`, matching original behavior) and recorded per-shard in the
+manifest's `packing_policy` field:
+
+- **`greedy`** (`tds.shard_builder._pack_greedy`) — preserves corpus
+  arrival order, filling each shard until the next document would overflow
+  it. Simple, order-faithful, but arrival order can interact badly with
+  the budget: a run of items each just over half the budget forces a new
+  shard per item even though pairs of them would fit together if reordered.
+- **`best_fit`** (`tds.shard_builder._pack_best_fit`) — best-fit-decreasing:
+  sort documents longest-first, then place each into whichever open shard
+  has the least remaining room that still fits it, opening a new one only
+  when nothing does. An oversized document (bigger than the whole budget)
+  still gets an unshared shard under both policies — nothing else can fit
+  into its negative remaining room.
+
+Both policies share one invariant regardless of choice: no document is
+ever split across a shard boundary, and a document appears in exactly one
+shard's `document_spans`. One consequence worth knowing: the reported
+utilization (`tokens / (shard_count * budget)`) can exceed 100% for a lane
+whose only shard holds a single oversized document — the "capacity"
+denominator assumes `budget`-sized shards, but an unsplit oversized
+document is, correctly, bigger than that. Seen on the toy profile's
+`instruction` lane (one 140-token document against a 90-token budget →
+155.6%); not a bug, just a reminder that the metric assumes typically-sized
+documents.
+
+Real corpus, same tokenizer/corpus/budget, only the policy changed:
+
+```
+greedy:     47 shards -- e.g. general_web 89.4%, qa 90.9% of allocated shard capacity
+best_fit:   45 shards -- general_web 98.3%, qa 95.6% of allocated shard capacity
+```
+
+Tests (`tests/test_packing_policies.py`) split into two levels:
+
+- Pure algorithm tests on `_pack_greedy`/`_pack_best_fit` directly, with
+  item *sizes* controlled exactly (not routed through a real tokenizer) so
+  the combinatorial claims are exact: every item placed exactly once, no
+  bin exceeds budget (unless a single oversized item forces it), an
+  oversized item is always isolated under both policies, best-fit is
+  deterministic, and a concrete adversarial-arrival-order case (alternating
+  51/50-sized items against a 100 budget) where greedy is forced into 6
+  isolated shards while best-fit packs them into fewer.
+- Integration tests through `build_shards()` with a real (small, temp)
+  tokenizer confirming the policy is correctly wired end to end: rejects an
+  unknown policy name, manifests record the policy used, no lost/duplicated
+  documents, spans still partition contiguously, on-disk hash still matches,
+  and — on a realistic mixed-length synthetic corpus — best-fit never uses
+  *more* shards than greedy.
 
 ### Real run
 
