@@ -11,7 +11,7 @@ the "what we planned" half.
 | Component | Status | Key files |
 |---|---|---|
 | Shard Builder & Manifest Store | done | `tds/corpus.py`, `tds/tokenizer_utils.py`, `tds/manifest_store.py`, `tds/shard_builder.py`, `tds/config.py`, `configs/*.yaml`, `scripts/run_pipeline.py` |
-| Eval / Test Firewall | not started | |
+| Eval / Test Firewall | done | `tds/hashing.py`, `tds/eval_registry.py`, `tds/eval_firewall.py`, `configs/eval_registry*.yaml`, `scripts/build_eval_registry.py` |
 | Curriculum & Mixture Compiler | not started | |
 | Cursor | not started | |
 | OPUS Selector (stub) | not started | |
@@ -229,28 +229,42 @@ Tests (`tests/test_packing_policies.py`) split into two levels:
 
 ```
 $ python scripts/run_pipeline.py
+Config: configs/pipeline.yaml
+  corpus=data/corpus/small_shard.parquet vocab_size=8000 shard_token_budget=50000 packing_policy=greedy
 Cleared data/tokenizer, data/shards, data/manifests
 Loaded 852 documents from data/corpus/small_shard.parquet
+[PASS] eval_shard_blocked: 2 document(s) blocked
+    doc-000000 (source_document_id=5e5a8b86a3ab7c221c7da1329fc9d0b0) matches benchmark=session6-real-holdout-v1 version=v1
+    doc-000500 (source_document_id=4bddb69b053e4a43849a403e0de21d443be01202) matches benchmark=session6-real-holdout-v1 version=v1
+Admitted 850/852 documents to the training pool
 Trained tokenizer -> data/tokenizer/tokenizer.json
-tokenizer_hash: sha256:ab94d8076f693546bd6fc30ec9b043f6e506749b6562694737743ccb68c2ca71
-vocab_size: 8000
+tokenizer_hash: sha256:32f4aec77e728a6613c014374d6b3e5efa81b301640aab4a9157783ebeb1df83
 
-Built 47 shards, 2090730 tokens total
+Built 46 shards (greedy packing), 2086631 tokens total
 Lanes: ['code', 'general_web', 'indic', 'instruction', 'math_science', 'qa']
-  code: 7 shards, 318974 tokens
-  general_web: 11 shards, 491593 tokens
-  indic: 5 shards, 220821 tokens
-  instruction: 1 shards, 21881 tokens
-  math_science: 3 shards, 128852 tokens
-  qa: 20 shards, 908609 tokens
+  code: 7 shards, 318903 tokens, 91.1% of allocated shard capacity
+  general_web: 10 shards, 489429 tokens, 97.9% of allocated shard capacity
+  indic: 5 shards, 219112 tokens, 87.6% of allocated shard capacity
+  instruction: 1 shards, 21898 tokens, 43.8% of allocated shard capacity
+  math_science: 3 shards, 128818 tokens, 85.9% of allocated shard capacity
+  qa: 20 shards, 908471 tokens, 90.8% of allocated shard capacity
 ```
 
-Confirmed stable across corpus switches: running with `--corpus toy`, then
-plain (real corpus), then `--corpus toy` again each reproduces exactly the
-same shard_ids/hashes/token counts as the first time that corpus was built
-— the "clear, then rebuild" step doesn't introduce any nondeterminism.
+Note the shard/token counts here are naturally slightly lower than the
+figures earlier in this section (e.g. 46 shards vs. 47, 2086631 tokens vs.
+2090730) now that the eval firewall runs first and 2 real documents are
+held out of the training pool -- see §2 below. The tokenizer_hash also
+changed for the same reason: it's trained only on admitted documents, so
+excluding held-out content changes what the tokenizer learns, as it
+should.
 
-### Tests (`tests/`, 29 total, `python -m unittest discover -s tests`)
+Confirmed stable across corpus/profile switches: running with
+`--config configs/pipeline_toy.yaml`, then plain (real corpus), then the
+toy config again each reproduces exactly the same shard_ids/hashes/token
+counts as the first time that profile was built — the "clear, then
+rebuild" step doesn't introduce any nondeterminism.
+
+### Tests (`tests/`, `python -m unittest discover -s tests`)
 
 - `test_corpus.py` — lane-mapping rules (pure function); a smoke test
   against the real vendored corpus (document count, no empty text, unique
@@ -268,3 +282,135 @@ same shard_ids/hashes/token counts as the first time that corpus was built
   on-disk shard hash matches manifest, an oversized single document still
   gets its own unsplit shard, and rebuilding from the same inputs is
   byte-for-byte deterministic.
+- `test_config.py` — `PipelineConfig` and `EvalRegistryConfig`: defaults,
+  partial overrides, unknown-key rejection, missing-file handling, path
+  resolution, and that the mutable-default `held_out_document_ids` list
+  doesn't leak between separate config instances.
+
+## 2. Eval / Test Firewall
+
+### Why a separate registry, not a manifest field
+
+The shard manifest already has an `eval_overlap_status` field (currently a
+placeholder, `"none"`, per §1). That field alone can't *do* anything --
+it's just a label someone would have to set correctly by hand. The actual
+enforcement needs a second, independent object: a registry of held-out
+content hashes that gets checked *before* a document is ever tokenized,
+so a document never becomes a shard in the first place if it overlaps
+something held out. `eval_overlap_status` remains as a manifest-level
+summary field for now (still `"none"`, since anything that would have set
+it otherwise was already filtered out upstream and never reached the
+shard builder at all) -- the registry is where the real decision happens.
+
+### Matching by content, not identity
+
+`EvalRegistry` (`tds/eval_registry.py`) keys held-out entries by
+`sha256(raw text)`, computed via the same `tds/hashing.py` helper the
+shard builder already used for shard `content_hash` (factored out of
+`tokenizer_utils.py` into its own module for exactly this kind of reuse).
+`Document` (`tds/corpus.py`) now exposes `content_hash` as a computed
+property, not a stored field -- it's a pure function of `text`, so there's
+no way for it to drift out of sync with the document it describes.
+
+Matching on content hash rather than `document_id`/`source_id` is the
+point, not an implementation detail: a training corpus can accidentally
+contain a benchmark's questions verbatim under a completely unrelated
+source, and the firewall needs to catch that regardless of what id or
+lane the duplicate happens to carry. Proven directly: `tds/toy_corpus.py`
+now has a 12th document (`toy-0012`, source `toy_web_mirror`, lane
+`general_web`) that is an exact-text duplicate of `toy-0005` (source
+`toy_qa`, lane `qa`, document_id `doc-000004`, held out by
+`configs/eval_registry_toy.yaml`). Both get blocked, even though only
+`doc-000004` is named in the registry config:
+
+```
+[PASS] eval_shard_blocked: 2 document(s) blocked
+    doc-000004 (source_document_id=toy-0005) matches benchmark=session6-toy-holdout-v1 version=v1
+    doc-000011 (source_document_id=toy-0012) matches benchmark=session6-toy-holdout-v1 version=v1
+```
+
+### Where the firewall runs
+
+`filter_training_documents()` (`tds/eval_firewall.py`) runs immediately
+after `load_corpus()` in `scripts/run_pipeline.py`, before anything else
+touches the document list. It returns `(admitted, blocked)`; the original,
+unfiltered `documents` list is never referenced again in the script --
+**both** the tokenizer trainer and the shard builder are called with
+`admitted` only. This matters for the tokenizer specifically: if it were
+trained on the full document list, held-out text would still leak into
+the tokenizer's learned vocabulary even though no shard ever contained it
+-- a subtler form of the same contamination the firewall exists to
+prevent. Training the tokenizer only on admitted documents closes that
+gap.
+
+### Registry persistence vs. pipeline artifacts
+
+`data/eval_registry/` is deliberately **not** cleared by `run_pipeline.py`
+the way `data/tokenizer/`, `data/shards/`, and `data/manifests/` are.
+Those three are tightly coupled to one specific corpus build (a shard is
+only valid under the exact tokenizer that produced it), so switching
+corpora invalidates all three together. The eval registry has the opposite
+lifecycle: it's meant to accumulate held-out fingerprints across
+benchmarks -- and across corpora -- over time, via repeated runs of
+`scripts/build_eval_registry.py` (one config per benchmark; see
+`configs/eval_registry.yaml` for the real corpus, `configs/eval_registry_toy.yaml`
+for the toy fixture). Running both against the same `data/eval_registry/`
+accumulates 3 entries total, and each corpus's pipeline run only ever
+matches its own content -- registering the toy benchmark doesn't cause any
+false blocks when later running the real-corpus profile, since the hashes
+simply don't collide.
+
+`EvalRegistry.register_text()` is idempotent for an unchanged
+re-registration (same text, same benchmark_id) and raises
+`EvalRegistryError` if a content hash already claimed by one benchmark is
+registered again under a *different* benchmark_id -- deliberately strict,
+since a silent overwrite there would be exactly the kind of un-auditable
+mutation the manifest store's own mutation guard (§1) exists to prevent
+for shards.
+
+One consequence worth flagging: because the registry isn't rebuilt by
+`run_pipeline.py`, a fresh clone of this repo has to run
+`build_eval_registry.py` for each profile at least once before the
+firewall has anything to block (an empty registry is a valid state --
+"nothing has been flagged yet" -- so the pipeline still runs, it just
+blocks nothing). The eventual `run_demo.py` needs to call
+`build_eval_registry.py` for every profile it demonstrates before calling
+`run_pipeline.py`, or the demo's evidence for this requirement would be
+empty. Noted here so it isn't forgotten when that script is assembled.
+
+### Real corpus run
+
+Held out `doc-000000` (`C4`, `general_web`) and `doc-000500`
+(`sangraha_mr`, `indic`) -- deliberately two different lanes, so the demo
+doesn't look like it only works for one capability lane:
+
+```
+$ python scripts/build_eval_registry.py --config configs/eval_registry.yaml
+Registered doc-000000 -> sha256:debdc15b60197cac6d87a0f83b4b74a527fa11b4804bd48038a034e3f6928eda under benchmark 'session6-real-holdout-v1'
+Registered doc-000500 -> sha256:f3784bc05c9cfa34bb8ed888b9d2dd05a4fd0aaa638e5fe960386240ca0c6ce4 under benchmark 'session6-real-holdout-v1'
+
+Eval registry at data/eval_registry now holds 2 held-out hash(es) total.
+```
+
+Then `run_pipeline.py` (see updated §1 "Real run" above): 850/852
+documents admitted, 2 blocked, neither blocked `document_id` appears in
+any shard's `document_spans` in the resulting `data/manifests/index.jsonl`
+(checked directly, not just asserted).
+
+### Tests
+
+- `test_eval_registry.py` — register/get, idempotent re-registration,
+  registering the same hash under a *different* benchmark is rejected,
+  reload-from-disk recovers prior entries, accumulates correctly across
+  multiple distinct benchmarks.
+- `test_eval_firewall.py` — empty registry admits everything; a document
+  matching the registry is blocked and excluded from `admitted`; **the
+  concrete content-vs-identity case**: two documents with identical text
+  but different id/source/lane are both blocked while an unrelated third
+  document is admitted; admitted-list order is preserved (only blocked
+  entries are removed, nothing is reordered).
+- `test_eval_firewall_integration.py` — full path: register a held-out
+  text, filter a small document set, then actually run the *real*
+  `build_shards()` on the admitted set and assert neither blocked
+  `document_id` appears in any shard's `document_spans` -- not just that
+  the firewall's return value looks right in isolation.

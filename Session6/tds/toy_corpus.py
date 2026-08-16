@@ -2,9 +2,16 @@
 
 Not a replacement for the real corpus (data/corpus/small_shard.parquet) --
 this exists purely so the shard builder / manifest pipeline can be run and
-its output verified by eye in under a second: 11 short documents spanning
+its output verified by eye in under a second: 12 short documents spanning
 all 6 capability lanes the real corpus also produces, short enough that
 every one of them is readable right here.
+
+Document at index 4 (toy-0005, document_id "doc-000004") is the one
+registered as held-out by configs/eval_registry_toy.yaml. Document at
+index 11 (toy-0012) is a deliberate exact-text duplicate of it under a
+completely different source/domain/lane -- added specifically to prove the
+eval firewall matches on content hash, not on document id, source, or
+lane.
 """
 
 from __future__ import annotations
@@ -47,6 +54,18 @@ TOY_DOCUMENTS = [
      "Input: The city council met for three hours to discuss the new budget.\n"
      "Output: The council spent three hours discussing the budget."),
 ]
+
+# Exact-text duplicate of TOY_DOCUMENTS[4] (toy-0005), added under an
+# unrelated source/domain so the two share nothing except content -- this
+# is what proves the firewall matches on content hash, not identity.
+TOY_DOCUMENTS.append(
+    ("toy-0012", "toy_web_mirror", "web", "en", TOY_DOCUMENTS[4][4])
+)
+
+# document_id of the toy document configs/eval_registry_toy.yaml holds out.
+# Row position determines document_id (see tds.corpus.load_corpus), so this
+# only holds as long as TOY_DOCUMENTS' order doesn't change above index 4.
+TOY_HELD_OUT_DOCUMENT_ID = "doc-000004"
 
 
 def write_toy_corpus(out_path: str | Path = DEFAULT_TOY_CORPUS_PATH) -> Path:

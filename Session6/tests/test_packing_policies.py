@@ -154,7 +154,7 @@ class TestBuildShardsWithPackingPolicy(unittest.TestCase):
             self.assertEqual(spans[-1]["end_token"], m["token_count"])
 
     def test_best_fit_shard_hash_matches_file_on_disk(self):
-        from tds.tokenizer_utils import sha256_bytes
+        from tds.hashing import sha256_bytes
 
         manifests, config = self._build("best_fit")
         for m in manifests:

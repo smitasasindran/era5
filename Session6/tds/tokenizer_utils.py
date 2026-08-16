@@ -10,29 +10,18 @@ recorded when it was frozen.
 
 from __future__ import annotations
 
-import hashlib
 import json
 from pathlib import Path
 from typing import Iterable, Tuple
 
 from tokenizers import Tokenizer, decoders, models, pre_tokenizers, trainers
 
+from .hashing import sha256_file
+
 SPECIAL_TOKENS = ["<pad>", "<eos>", "<unk>"]
 
 TOKENIZER_FILENAME = "tokenizer.json"
 MANIFEST_FILENAME = "tokenizer_manifest.json"
-
-
-def sha256_file(path: str | Path) -> str:
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
-        for chunk in iter(lambda: f.read(1 << 20), b""):
-            h.update(chunk)
-    return "sha256:" + h.hexdigest()
-
-
-def sha256_bytes(data: bytes) -> str:
-    return "sha256:" + hashlib.sha256(data).hexdigest()
 
 
 def train_tokenizer(

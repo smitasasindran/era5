@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from tds.config import PipelineConfig  # noqa: E402
+from tds.config import EvalRegistryConfig, PipelineConfig  # noqa: E402
 
 
 class TestPipelineConfig(unittest.TestCase):
@@ -52,6 +52,45 @@ class TestPipelineConfig(unittest.TestCase):
         config = PipelineConfig(shards_dir="/already/absolute")
         resolved = config.resolved(root=Path("/some/root"))
         self.assertEqual(resolved.shards_dir, "/already/absolute")
+
+
+class TestEvalRegistryConfig(unittest.TestCase):
+    def test_defaults_when_yaml_is_empty(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "empty.yaml"
+            path.write_text("")
+            config = EvalRegistryConfig.from_yaml(path)
+            self.assertEqual(config, EvalRegistryConfig())
+
+    def test_held_out_document_ids_roundtrip(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "config.yaml"
+            path.write_text("held_out_document_ids:\n  - doc-000000\n  - doc-000500\n")
+            config = EvalRegistryConfig.from_yaml(path)
+            self.assertEqual(config.held_out_document_ids, ["doc-000000", "doc-000500"])
+
+    def test_unknown_key_is_rejected(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "config.yaml"
+            path.write_text("typo_field: 1\n")
+            with self.assertRaises(ValueError):
+                EvalRegistryConfig.from_yaml(path)
+
+    def test_default_held_out_list_does_not_leak_between_instances(self):
+        a = EvalRegistryConfig()
+        a.held_out_document_ids.append("doc-000000")
+        b = EvalRegistryConfig()
+        self.assertEqual(b.held_out_document_ids, [])
+
+    def test_resolved_makes_registry_dir_absolute_against_root(self):
+        config = EvalRegistryConfig(registry_dir="data/eval_registry")
+        resolved = config.resolved(root=Path("/some/root"))
+        self.assertEqual(resolved.registry_dir, str(Path("/some/root/data/eval_registry")))
+
+    def test_resolved_leaves_corpus_untouched(self):
+        config = EvalRegistryConfig(corpus="toy")
+        resolved = config.resolved(root=Path("/some/root"))
+        self.assertEqual(resolved.corpus, "toy")
 
 
 if __name__ == "__main__":

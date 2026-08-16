@@ -10,7 +10,8 @@ sys.path.insert(0, str(ROOT))
 
 from tds.corpus import Document  # noqa: E402
 from tds.shard_builder import ShardBuilderConfig, build_shards  # noqa: E402
-from tds.tokenizer_utils import sha256_bytes, train_tokenizer  # noqa: E402
+from tds.hashing import sha256_bytes  # noqa: E402
+from tds.tokenizer_utils import train_tokenizer  # noqa: E402
 
 WEB_SENTENCE = "the quick brown fox jumps over the lazy dog near the river bank. "
 CODE_SNIPPET = "def add(a, b):\n    return a + b\n\ndef sub(a, b):\n    return a - b\n"

@@ -29,8 +29,8 @@ from typing import Callable, List, Tuple
 import numpy as np
 
 from .corpus import Document
+from .hashing import sha256_bytes
 from .manifest_store import ManifestStore
-from .tokenizer_utils import sha256_bytes
 
 TokenizedDoc = Tuple[Document, List[int]]
 Bin = List[TokenizedDoc]

@@ -18,6 +18,8 @@ from typing import List, Optional
 
 import pyarrow.parquet as pq
 
+from .hashing import sha256_text
+
 # Languages tagged "indic" regardless of domain -- mirrors the course's
 # "indic" capability lane, which cuts across domain (a stackexchange
 # question in Hindi is still an indic-lane document, not a qa-lane one).
@@ -34,6 +36,16 @@ class Document:
     language: str
     capability_lane: str
     text: str
+
+    @property
+    def content_hash(self) -> str:
+        """sha256 of the raw text -- what the eval firewall matches on.
+
+        A property, not a stored field: it's a pure function of `text`, so
+        computing it on access means it can never silently drift out of
+        sync the way a separately-passed constructor argument could.
+        """
+        return sha256_text(self.text)
 
 
 def capability_lane_for(domain: str, language: str) -> str:

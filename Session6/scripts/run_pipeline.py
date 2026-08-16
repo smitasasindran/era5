@@ -29,6 +29,8 @@ tokenizer_dir in their config files.
 """
 
 import argparse
+import dataclasses
+import json
 import shutil
 import sys
 from pathlib import Path
@@ -38,6 +40,8 @@ sys.path.insert(0, str(ROOT))
 
 from tds.config import DEFAULT_CONFIG_PATH, PipelineConfig  # noqa: E402
 from tds.corpus import load_corpus  # noqa: E402
+from tds.eval_firewall import filter_training_documents  # noqa: E402
+from tds.eval_registry import EvalRegistry  # noqa: E402
 from tds.shard_builder import ShardBuilderConfig, build_shards  # noqa: E402
 from tds.tokenizer_utils import train_tokenizer  # noqa: E402
 from tds.toy_corpus import DEFAULT_TOY_CORPUS_PATH, write_toy_corpus  # noqa: E402
@@ -80,8 +84,33 @@ def main():
     documents = load_corpus(corpus_path)
     print(f"Loaded {len(documents)} documents from {corpus_path}")
 
+    # Eval/test firewall: runs before anything else touches these documents
+    # -- neither the tokenizer nor the shard builder below ever sees the
+    # original `documents` list again, only `admitted`. A held-out document
+    # is blocked by content hash, so it's caught even if some future corpus
+    # gives it a different document_id or source.
+    registry = EvalRegistry(config.eval_registry_dir)
+    admitted, blocked = filter_training_documents(documents, registry)
+
+    Path(config.manifests_dir).mkdir(parents=True, exist_ok=True)
+    blocked_log_path = Path(config.manifests_dir) / "eval_firewall_events.jsonl"
+    with open(blocked_log_path, "w") as f:
+        for event in blocked:
+            f.write(json.dumps(dataclasses.asdict(event)) + "\n")
+
+    if blocked:
+        print(f"[PASS] eval_shard_blocked: {len(blocked)} document(s) blocked")
+        for event in blocked:
+            print(
+                f"    {event.document_id} (source_document_id={event.source_document_id}) "
+                f"matches benchmark={event.benchmark_id} version={event.version_tag}"
+            )
+    else:
+        print("[INFO] eval firewall active: 0 documents blocked (no overlap with the registry found)")
+    print(f"Admitted {len(admitted)}/{len(documents)} documents to the training pool")
+
     tokenizer, tok_manifest = train_tokenizer(
-        (d.text for d in documents), config.tokenizer_dir, vocab_size=config.vocab_size
+        (d.text for d in admitted), config.tokenizer_dir, vocab_size=config.vocab_size
     )
     print(f"Trained tokenizer -> {config.tokenizer_dir}/tokenizer.json")
     print(f"tokenizer_hash: {tok_manifest['tokenizer_hash']}")
@@ -92,7 +121,7 @@ def main():
         manifests_dir=config.manifests_dir,
         packing_policy=config.packing_policy,
     )
-    manifests = build_shards(documents, tokenizer, tok_manifest["tokenizer_hash"], shard_config)
+    manifests = build_shards(admitted, tokenizer, tok_manifest["tokenizer_hash"], shard_config)
 
     total_tokens = sum(m["token_count"] for m in manifests)
     lanes = sorted({m["capability_lane"] for m in manifests})

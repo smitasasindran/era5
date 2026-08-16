@@ -1,4 +1,4 @@
-# Toy profile: the tiny 11-document hand-authored fixture (tds/toy_corpus.py).
+# Toy profile: the tiny 12-document hand-authored fixture (tds/toy_corpus.py).
 # Fast, human-checkable end-to-end validation before trusting the same code
 # against the real corpus. Same data/ output dirs as the default profile --
 # switching between profiles clears and rebuilds them, it doesn't keep two
@@ -10,6 +10,9 @@ corpus: toy
 tokenizer_dir: data/tokenizer
 shards_dir: data/shards
 manifests_dir: data/manifests
+# Shared, persistent registry of held-out content -- NOT cleared between
+# runs (see configs/eval_registry_toy.yaml / scripts/build_eval_registry.py).
+eval_registry_dir: data/eval_registry
 
 vocab_size: 300 # tiny corpus -> tiny vocab is enough
 shard_token_budget: 90 # deliberately small: forces multiple shards despite short docs
