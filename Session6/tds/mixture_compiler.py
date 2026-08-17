@@ -108,6 +108,14 @@ class CompiledSchedule:
     def stage_at_step(self, step: int) -> CompiledStage:
         return self.stages[self._stage_index_at_step(step)]
 
+    @property
+    def total_steps(self) -> int:
+        """Exclusive upper bound on valid steps -- the last stage's step_end.
+        Every schedule's first stage starts at step 0 (compile_curriculum
+        always seeds step_cursor at 0), so [0, total_steps) is the full
+        valid step range."""
+        return self.stages[-1].step_end
+
     def mixture_at_step(self, step: int) -> Dict[str, float]:
         """The effective mixture at `step`, linearly ramping from the
         previous stage's mixture to this stage's over the first

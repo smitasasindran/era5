@@ -13,7 +13,7 @@ the "what we planned" half.
 | Shard Builder & Manifest Store | done | `tds/corpus.py`, `tds/tokenizer_utils.py`, `tds/manifest_store.py`, `tds/shard_builder.py`, `tds/config.py`, `configs/*.yaml`, `scripts/run_pipeline.py` |
 | Eval / Test Firewall | done | `tds/hashing.py`, `tds/eval_registry.py`, `tds/eval_firewall.py`, `configs/eval_registry*.yaml`, `scripts/build_eval_registry.py` |
 | Curriculum & Mixture Compiler | done | `tds/mixture_compiler.py`, `tds/manifest_store.py` (`lane_token_totals`), `configs/curriculum*.yaml`, `scripts/compile_mixture.py` |
-| Cursor | not started | |
+| Cursor | done | `tds/cursor.py`, `tds/manifest_store.py` (`document_pool_by_lane`) |
 | OPUS Selector (stub) | not started | |
 | Packer | not started | |
 | Batch Assembler | not started | |
@@ -624,3 +624,159 @@ call `load_frozen_schedule()` rather than `compile_curriculum()` directly.
 - `PipelineConfig.curriculum` (in `test_config.py`): a relative path is
   resolved absolute the same way the existing dir fields are; a blank
   (default) value is left untouched rather than resolving to `root` itself.
+
+## 4. Cursor
+
+### What a "candidate" actually is
+
+`DATALOADER_DESIGN.md` §5.4 gives the cursor as pseudocode:
+
+```python
+def cursor(run_config, global_step):
+    stage = lookup_stage(run_config.curriculum, global_step)
+    lane = pick_lane(run_config.seed, stage, global_step)
+    k = picks_so_far_in_lane(run_config.seed, stage, lane, global_step)
+    shard_id, offset = lane_sequence(run_config.seed, lane)[k]
+    return CandidateItem(lane, shard_id, offset)
+```
+
+Two things needed pinning down before this could become real code:
+
+1. **What granularity does one candidate point at?** §5.6 (Packer) says the
+   packer "fills fixed-length sequences *from* accepted candidates" -- the
+   packer produces fixed-length windows, candidates are its raw material,
+   not already-cut windows themselves. So `(shard_id, offset)` is a
+   **document's** location: `offset` is that document's `start_token`
+   within the shard, taken straight from the shard's own manifest
+   `document_spans` (already built by the Shard Builder). This also fully
+   decouples the cursor from `sequence_length`, which varies by stage
+   (128 vs. 256 in `configs/curriculum.yaml`) -- windowing is entirely the
+   (not-yet-built) Packer's job.
+2. **What does `global_step` alone leave out?** `mixture_compiler.py`
+   already fixed `tokens_per_step = sequence_length * global_batch_size`,
+   i.e. one step = one full batch of `global_batch_size` sequences -- so a
+   single call can't return one `CandidateItem` per step, it needs a
+   **slot** within the step's batch too. `tds/cursor.py` flattens
+   `(global_step, slot)` into `slot_index = global_step * global_batch_size
+   + slot` and works in terms of that flat index internally.
+
+### Lane pools
+
+Added `ManifestStore.document_pool_by_lane()`: every document across every
+shard, grouped by `capability_lane`, as `(shard_id, document_id,
+start_token)` triples, sorted by `(shard_id, start_token)` before any
+shuffling -- so the *unshuffled* base order is itself reproducible rather
+than depending on dict or filesystem iteration order. This is the raw pool
+`lane_sequence` permutes.
+
+### How a lane's turn is picked
+
+The pseudocode's `pick_lane` is a "deterministic weighted pick" without
+saying how. Two real options were considered:
+
+- **Live weighted random sampling** (a single `random.Random` stream,
+  advanced one call at a time) -- rejected: it's stateful, so answering
+  "what would slot 47,000 be" means replaying every draw before it in
+  order, which is exactly the kind of hidden iterator state the whole
+  design exists to avoid.
+- **Exact proportional round-robin** (give each lane its precise target
+  share every N draws) -- rejected: `mixture_at_step` changes *every step*
+  during a warmup ramp, so there's no simple closed form for "how many of
+  the last N draws should this lane have gotten" once the target itself is
+  a moving function of step.
+
+What's implemented instead: `pick_lane(seed, weights, global_step, slot)`
+computes a uniform value in `[0, 1)` via SHA-256 of `(seed, global_step,
+slot)` -- a counter-based hash, not a stream -- and compares it against the
+mixture's cumulative weight thresholds. Any `(step, slot)` can be evaluated
+in complete isolation, in any order, with no history. The cost: realized
+lane shares only *converge* to the target mixture over many draws rather
+than exactly matching it immediately -- an honest, reproducible trade-off,
+and one that gives the eventual "planned vs. actual shares" audit
+something real to report rather than a trivial exact match.
+
+**Renormalizing under scarcity:** if a stage's effective mixture doesn't
+sum to 1.0 (`unallocated_share > 0`, e.g. `toy-expansion` at 25.67%
+unmet -- see §3), `pick_lane` renormalizes across only the lanes with
+positive weight. A real batch slot can't literally be "left empty" for the
+unmet fraction; the compiler's `unallocated_share` stays a legitimate
+pre-flight warning for the operator, not something the cursor tries to
+paper over silently -- it just still has to hand back *some* real document
+for every slot.
+
+### `picks_so_far_in_lane`: O(n) replay, not a closed form
+
+Unlike proportional round-robin, counting "how many of the hash-based
+picks so far landed on lane L" has no shortcut -- it genuinely requires
+enumerating them. `iter_candidates(seed, schedule, lane_pools)` does this
+the efficient way: a single forward generator maintaining a running
+per-lane counter (O(1) amortized per slot), rather than replaying from
+slot 0 at *every single slot* (which would be O(n) per slot, O(n^2)
+overall for consuming a whole run). `cursor(seed, schedule, lane_pools,
+global_step, slot)` is a thin point-query convenience built from the same
+generator (one `itertools.islice`) -- used for one-off lookups and tests,
+not for bulk consumption.
+
+Resume and replay both reduce to the same operation here: start
+`iter_candidates` fresh from slot 0 and advance it to the point of
+interest. That's a real O(n) computation, not O(1) -- but at this
+project's scale (the real corpus's compiled schedule tops out at 1,659
+steps x 8 batch = 13,272 slots) it's a sub-second replay, not the kind of
+cost the "pure function, no persisted state" principle was trying to avoid
+(replaying a live shuffle buffer's mutation history, or restoring
+serialized iterator internals).
+
+### Verification against the real and toy manifests
+
+Ran against the actual frozen `data/manifests/` + `data/mixture_schedule*.json`
+for both profiles (toy corpus for human-checkable output, then the real
+corpus restored as the resting state afterward, per the usual protocol --
+see §3's shared-`data/manifests/` note):
+
+```
+$ python -c "... iter_candidates('demo-seed-1', schedule, lane_pools) ..."
+lanes with pools: {'code': 2, 'general_web': 2, 'indic': 2, 'instruction': 1, 'math_science': 2, 'qa': 1}
+CandidateItem(global_step=0, slot=0, lane='code', shard_id='shard-000000', document_id='doc-000003', token_offset=23, pick_index=0, epoch=0)
+CandidateItem(global_step=0, slot=1, lane='code', shard_id='shard-000000', document_id='doc-000002', token_offset=0, pick_index=1, epoch=0)
+CandidateItem(global_step=1, slot=1, lane='qa', shard_id='shard-000008', document_id='doc-000005', token_offset=0, pick_index=0, epoch=0)
+CandidateItem(global_step=2, slot=0, lane='qa', shard_id='shard-000008', document_id='doc-000005', token_offset=0, pick_index=1, epoch=1)
+...
+point query step=5 slot=1 matches bulk iteration: OK
+replay of steps slice [10:20) matches original: OK
+```
+
+`qa`'s toy-corpus pool has exactly one document -- every draw from `qa`
+after the first is a repeat with an incrementing `epoch`, visibly matching
+the `scarce_reduced`/`repeat_factor` story the mixture compiler already
+reported for that lane. The point-query-vs-bulk and replay-slice checks
+are exactly the crash/resume and replay guarantees the assignment asks the
+final demo to prove, exercised here in miniature before the Batch
+Assembler/Checkpoint/Resume machinery that will do it for real exists.
+
+### Tests (`tests/test_cursor.py`, plus `ManifestStore` additions)
+
+- `pick_lane`: deterministic for identical inputs; never returns a
+  zero-weight lane across 200 draws; raises when no lane has positive
+  weight; renormalizes correctly when weights sum below 1.0 (a
+  single-lane mixture at weight 0.3 is still picked every time); different
+  seeds diverge.
+- `lane_sequence`: deterministic for identical inputs; is a true
+  permutation of the pool (same multiset, different order); different
+  epochs reshuffle; raises on an empty pool.
+- `iter_candidates`: the first `len(pool)` items for a single-lane
+  schedule cover the pool exactly once (`epoch=0`, `pick_index` 0..n-1);
+  the next `len(pool)` items are the same documents reshuffled (`epoch=1`);
+  stops exactly at `schedule.total_steps * global_batch_size` items.
+- `cursor`: a point query matches the corresponding item from bulk
+  iteration exactly; an out-of-range `slot` is rejected.
+- Replay determinism (the property this component exists to prove): two
+  independent fresh calls to `iter_candidates` with the same
+  `(seed, schedule, lane_pools)` produce an identical stream; slicing out
+  a historical interval from a fresh generator matches that same interval
+  from the original run; a different seed diverges somewhere in the
+  stream.
+- Scarcity awareness: under `scarcity_policy="defer"`, the deferred lane
+  (`effective_weight == 0`) is never drawn.
+- `ManifestStore.document_pool_by_lane()`: groups and flattens spans
+  correctly by lane; sorted by `(shard_id, start_token)` regardless of
+  append order; empty for a fresh store.

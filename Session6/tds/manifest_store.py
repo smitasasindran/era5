@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 
 class ManifestStoreError(Exception):
@@ -48,6 +48,21 @@ class ManifestStore:
         for manifest in self._by_id.values():
             totals[manifest["capability_lane"]] += manifest["token_count"]
         return dict(totals)
+
+    def document_pool_by_lane(self) -> Dict[str, List[Tuple[str, str, int]]]:
+        """Every document, grouped by capability_lane, as (shard_id,
+        document_id, start_token) triples -- the raw material the Cursor
+        draws from and permutes deterministically. Sorted by
+        (shard_id, start_token) before any shuffling, so the *unshuffled*
+        base order is itself reproducible rather than depending on dict or
+        filesystem iteration order."""
+        pools: Dict[str, List[Tuple[str, str, int]]] = defaultdict(list)
+        for shard_id in sorted(self._by_id):
+            manifest = self._by_id[shard_id]
+            lane = manifest["capability_lane"]
+            for span in sorted(manifest["document_spans"], key=lambda s: s["start_token"]):
+                pools[lane].append((shard_id, span["document_id"], span["start_token"]))
+        return dict(pools)
 
     def append(self, manifest: dict) -> None:
         """Register a shard manifest.

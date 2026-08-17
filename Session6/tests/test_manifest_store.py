@@ -11,7 +11,11 @@ from tds.manifest_store import ManifestStore, ManifestStoreError  # noqa: E402
 
 
 def make_manifest(
-    shard_id="shard-000000", content_hash="sha256:aaa", capability_lane="general_web", token_count=10
+    shard_id="shard-000000",
+    content_hash="sha256:aaa",
+    capability_lane="general_web",
+    token_count=10,
+    document_spans=None,
 ):
     return {
         "shard_id": shard_id,
@@ -20,8 +24,12 @@ def make_manifest(
         "capability_lane": capability_lane,
         "token_count": token_count,
         "document_count": 1,
-        "document_spans": [],
+        "document_spans": document_spans if document_spans is not None else [],
     }
+
+
+def span(document_id, start_token, end_token):
+    return {"document_id": document_id, "start_token": start_token, "end_token": end_token}
 
 
 class TestManifestStore(unittest.TestCase):
@@ -80,6 +88,63 @@ class TestManifestStore(unittest.TestCase):
     def test_lane_token_totals_is_empty_for_a_fresh_store(self):
         store = ManifestStore(self.dir)
         self.assertEqual(store.lane_token_totals(), {})
+
+    def test_document_pool_by_lane_groups_and_flattens_spans(self):
+        store = ManifestStore(self.dir)
+        store.append(
+            make_manifest(
+                "shard-000000",
+                "sha256:a",
+                capability_lane="code",
+                document_spans=[span("doc-a", 0, 10), span("doc-b", 10, 25)],
+            )
+        )
+        store.append(
+            make_manifest(
+                "shard-000001",
+                "sha256:b",
+                capability_lane="qa",
+                document_spans=[span("doc-c", 0, 5)],
+            )
+        )
+        pools = store.document_pool_by_lane()
+        self.assertEqual(
+            pools["code"], [("shard-000000", "doc-a", 0), ("shard-000000", "doc-b", 10)]
+        )
+        self.assertEqual(pools["qa"], [("shard-000001", "doc-c", 0)])
+
+    def test_document_pool_by_lane_is_sorted_by_shard_then_start_token(self):
+        store = ManifestStore(self.dir)
+        # Appended out of shard_id order, and with spans out of start_token order.
+        store.append(
+            make_manifest(
+                "shard-000001",
+                "sha256:b",
+                capability_lane="code",
+                document_spans=[span("doc-c", 20, 30), span("doc-b", 0, 20)],
+            )
+        )
+        store.append(
+            make_manifest(
+                "shard-000000",
+                "sha256:a",
+                capability_lane="code",
+                document_spans=[span("doc-a", 0, 5)],
+            )
+        )
+        pools = store.document_pool_by_lane()
+        self.assertEqual(
+            pools["code"],
+            [
+                ("shard-000000", "doc-a", 0),
+                ("shard-000001", "doc-b", 0),
+                ("shard-000001", "doc-c", 20),
+            ],
+        )
+
+    def test_document_pool_by_lane_is_empty_for_a_fresh_store(self):
+        store = ManifestStore(self.dir)
+        self.assertEqual(store.document_pool_by_lane(), {})
 
 
 if __name__ == "__main__":
