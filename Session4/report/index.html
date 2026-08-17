@@ -416,6 +416,79 @@
     max-height: 170px; overflow-y: auto;
   }
   .sample-truncated { font-size: 11px; color: var(--ink-3); padding: 0 12px 10px; }
+
+  /* -------- clean_text() live demo -------- */
+  .cleandemo-presets { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 14px; }
+  .cleandemo-preset-btn {
+    font: inherit; font-size: 12.5px; font-weight: 600; color: var(--ink-2);
+    background: var(--track); border: 1px solid var(--hairline); border-radius: 999px;
+    padding: 6px 13px; cursor: pointer;
+  }
+  .cleandemo-preset-btn:hover { border-color: var(--accent); color: var(--ink); }
+  .cleandemo-preset-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  .cleandemo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 720px) { .cleandemo-grid { grid-template-columns: 1fr; } }
+  .cleandemo-pane-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--ink-3); margin-bottom: 6px;
+  }
+  .cleandemo-charcount { font-weight: 400; text-transform: none; letter-spacing: 0; font-size: 11.5px; }
+  .cleandemo-textarea {
+    width: 100%; min-height: 190px; max-height: 260px; overflow-y: auto;
+    box-sizing: border-box; resize: vertical;
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, monospace;
+    font-size: 12.5px; line-height: 1.6;
+    background: var(--card-raised); color: var(--ink);
+    border: 1px solid var(--hairline); border-radius: 10px; padding: 12px;
+    white-space: pre-wrap; word-break: break-word; text-align: left; hyphens: none;
+  }
+  .cleandemo-output { cursor: text; }
+
+  .cleandemo-legend {
+    display: flex; flex-wrap: wrap; gap: 14px; margin: 12px 0 2px;
+    font-size: 12px; color: var(--ink-3);
+  }
+  .cleandemo-legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .cx-dot { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+  .cx-dot-removed { background: var(--status-critical); }
+  .cx-dot-decoded { background: var(--status-good); }
+  .cx-dot-joiner { background: var(--cat-7); }
+  .cx-dot-ghost { background: var(--status-warning); }
+
+  .cx-badge {
+    display: inline-block; font-size: 10.5px; font-weight: 700; border-radius: 5px;
+    padding: 0 5px; margin: 0 1px; line-height: 1.6; white-space: nowrap;
+  }
+  .cx-removed { background: color-mix(in srgb, var(--status-critical) 16%, transparent); color: var(--status-critical); text-decoration: line-through; }
+  .cx-joiner { background: color-mix(in srgb, var(--cat-7) 18%, transparent); color: var(--cat-7); }
+  .cx-ghost { background: color-mix(in srgb, var(--status-warning) 20%, transparent); color: color-mix(in srgb, var(--status-warning) 70%, var(--ink)); border-bottom: 2px solid var(--status-warning); font-weight: 700; padding: 0 3px; }
+  .cx-decoded { border-bottom: 2px solid var(--status-good); }
+
+  .cleandemo-toggles {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 4px 16px;
+    margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--hairline-2);
+  }
+  .cleandemo-toggle-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 6px 0; cursor: pointer;
+  }
+  .cleandemo-toggle-label { font-size: 13px; color: var(--ink-2); }
+  .cx-switch { position: relative; display: inline-block; width: 34px; height: 19px; flex: 0 0 auto; }
+  .cx-switch input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+  .cx-switch .cx-slider {
+    position: absolute; inset: 0; background: var(--baseline); border-radius: 999px;
+    transition: background 0.15s ease;
+  }
+  .cx-switch .cx-slider::before {
+    content: ""; position: absolute; width: 15px; height: 15px; left: 2px; top: 2px;
+    background: #fff; border-radius: 50%; transition: transform 0.15s ease;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+  }
+  .cx-switch input:checked + .cx-slider { background: var(--accent); }
+  .cx-switch input:checked + .cx-slider::before { transform: translateX(15px); }
+  .cx-switch input:focus-visible + .cx-slider { outline: 2px solid var(--accent); outline-offset: 2px; }
 </style>
 
 <div class="page" lang="en">
@@ -598,6 +671,45 @@
         flag ghost special tokens → de-hyphenate wrapped lines (prose only) → tidy
         whitespace — collapsed for prose, structure preserved for code.
       </p>
+    </div>
+
+    <div class="card">
+      <div class="stat-group-label">Try it live — clean_text() in your browser</div>
+      <p style="font-size:13px;color:var(--ink-3);margin:0 0 4px;">
+        The same regexes and rules as <code>pipeline/normalize.py</code>, ported to
+        JavaScript. Edit the text or flip a toggle and it recomputes immediately — no
+        server, no dataset required. (ftfy's mojibake repair isn't reproduced here; it
+        needs a full encoding-correction library this demo doesn't carry.)
+      </p>
+
+      <div class="cleandemo-presets" id="cleandemo-presets"></div>
+
+      <div class="cleandemo-grid">
+        <div>
+          <div class="cleandemo-pane-head"><span>Before · raw (editable)</span><span class="mono cleandemo-charcount" id="cleandemo-before-count"></span></div>
+          <textarea id="cleandemo-input" class="cleandemo-textarea" spellcheck="false" maxlength="4000"></textarea>
+        </div>
+        <div>
+          <div class="cleandemo-pane-head"><span>After · what the tokenizer sees</span><span class="mono cleandemo-charcount" id="cleandemo-after-count"></span></div>
+          <div id="cleandemo-output" class="cleandemo-textarea cleandemo-output" tabindex="0"></div>
+        </div>
+      </div>
+
+      <div class="cleandemo-legend">
+        <span><span class="cx-dot cx-dot-removed"></span> removed noise</span>
+        <span><span class="cx-dot cx-dot-decoded"></span> decoded entity</span>
+        <span><span class="cx-dot cx-dot-joiner"></span> Brahmic joiner kept</span>
+        <span><span class="cx-dot cx-dot-ghost"></span> ghost token flagged</span>
+      </div>
+
+      <div class="cleandemo-toggles" id="cleandemo-toggles"></div>
+
+      <div class="tile-row" style="margin-top:16px;">
+        <div class="tile"><div class="v mono" id="cleandemo-stat-removed">0</div><div class="l">Chars removed</div></div>
+        <div class="tile"><div class="v mono" id="cleandemo-stat-ghost">0</div><div class="l">Ghost tokens flagged</div></div>
+        <div class="tile"><div class="v mono" id="cleandemo-stat-joiners">0</div><div class="l">Joiners preserved</div></div>
+        <div class="tile"><div class="v mono" id="cleandemo-stat-ctype">—</div><div class="l">Detected content type</div></div>
+      </div>
     </div>
 
     <div class="card">
@@ -1469,5 +1581,287 @@
 
   populatePicker();
   renderProfile(DATA.profiles[0]);
+
+  // =========================================================================
+  // clean_text() LIVE DEMO -- a JS port of pipeline/normalize.py's clean_text(),
+  // run entirely client-side so it works with no dataset/server. Mirrors the
+  // real regexes; ftfy's mojibake repair is the one step NOT reproduced here
+  // (it needs a full encoding-correction library this demo doesn't carry).
+  // =========================================================================
+  (function () {
+    var ROLE_TOKENS = [
+      "user", "system", "assistant", "human", "bot", "ai",
+      "instruction", "inst", "input", "output", "response",
+      "prompt", "context", "question", "answer",
+      "endoftext", "startoftext", "pad", "unk", "bos", "eos",
+      "sep", "cls", "mask", "im_start", "im_end", "sys", "s"
+    ];
+    var BRACKET_ROLE_TOKENS = ROLE_TOKENS.filter(function (t) { return t !== "s"; });
+
+    function escapeRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+    function altPattern(tokens) {
+      return tokens.slice().sort(function (a, b) { return b.length - a.length; }).map(escapeRe).join("|");
+    }
+    var ANGLE_ALT = altPattern(ROLE_TOKENS);
+    var BRACKET_ALT = altPattern(BRACKET_ROLE_TOKENS);
+    var GHOST_PATTERNS = [
+      { name: "pipe_angle", re: new RegExp("<\\|/?(?:" + BRACKET_ALT + ")\\|>", "gi") },
+      { name: "bracket_upper", re: new RegExp("\\[/?(?:" + BRACKET_ALT + ")\\]", "gi") },
+      { name: "pipe_wrapped_angle", re: new RegExp("\\|<\\/?(?:" + BRACKET_ALT + ")>\\|", "gi") },
+      { name: "angle_bare", re: new RegExp("<\\/?(?:" + ANGLE_ALT + ")>", "gi") },
+      { name: "double_angle_sys", re: /<<\s*\/?SYS\s*>>/gi }
+    ];
+
+    var CODE_HINT_RE = /(^[ \t]{2,}\S)|(\bdef \w+\(.*\):)|(\bimport \w+)|(;\s*$)|(=>|::)|(\{\s*$)/gm;
+    function guessContentType(s) {
+      var hits = (s.match(CODE_HINT_RE) || []).length;
+      return hits >= 3 ? "code" : "prose";
+    }
+
+    var NOISE_CATS = [
+      { label: "C0", lo: 0x00, hi: 0x08 }, { label: "C0", lo: 0x0B, hi: 0x0C }, { label: "C0", lo: 0x0E, hi: 0x1F }, { label: "C0", lo: 0x7F, hi: 0x7F },
+      { label: "C1", lo: 0x80, hi: 0x9F },
+      { label: "ZWSP", lo: 0x200B, hi: 0x200B },
+      { label: "LRM/RLM", lo: 0x200E, hi: 0x200F },
+      { label: "bidi", lo: 0x202A, hi: 0x202E },
+      { label: "word-joiner", lo: 0x2060, hi: 0x2064 },
+      { label: "BOM", lo: 0xFEFF, hi: 0xFEFF }
+    ];
+    function hex4(cp) { return "\\u" + ("000" + cp.toString(16)).slice(-4); }
+    function noiseLabel(cp) {
+      for (var i = 0; i < NOISE_CATS.length; i++) {
+        var c = NOISE_CATS[i];
+        if (cp >= c.lo && cp <= c.hi) return c.label;
+      }
+      return "noise";
+    }
+    function buildNoiseRegex(includeJoiners) {
+      var ranges = NOISE_CATS.map(function (c) { return c.lo === c.hi ? hex4(c.lo) : hex4(c.lo) + "-" + hex4(c.hi); });
+      if (includeJoiners) ranges.push("\\u200c-\\u200d");
+      return new RegExp("[" + ranges.join("") + "]", "g");
+    }
+
+    function htmlUnescapeOne(entity) {
+      var ta = document.getElementById("cleandemo-unescape-helper");
+      ta.innerHTML = entity;
+      return ta.value;
+    }
+    var ENTITY_RE = /&(#x[0-9a-fA-F]+|#\d+|[a-zA-Z][a-zA-Z0-9]*);/g;
+
+    function escapeHtml(s) {
+      return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    // Splits 'text'-type segments on regex matches; tagFn(match) returns:
+    //   null            -> leave the matched text unchanged
+    //   {type, ...}     -> replace the match with this one tagged segment
+    //   [{...}, {...}]  -> replace the match with several segments in order
+    function applyStage(segments, regex, tagFn) {
+      var flags = regex.flags.indexOf("g") === -1 ? regex.flags + "g" : regex.flags;
+      var out = [];
+      segments.forEach(function (seg) {
+        if (seg.type !== "text") { out.push(seg); return; }
+        var s = seg.text;
+        var re = new RegExp(regex.source, flags);
+        var lastIndex = 0, m;
+        while ((m = re.exec(s))) {
+          if (m.index > lastIndex) out.push({ type: "text", text: s.slice(lastIndex, m.index) });
+          var tag = tagFn(m);
+          if (tag == null) {
+            out.push({ type: "text", text: m[0] });
+          } else if (Array.isArray(tag)) {
+            tag.forEach(function (t) { out.push(t); });
+          } else {
+            out.push(tag);
+          }
+          lastIndex = m.index + m[0].length;
+          if (m[0].length === 0) re.lastIndex++;
+        }
+        if (lastIndex < s.length) out.push({ type: "text", text: s.slice(lastIndex) });
+      });
+      return out;
+    }
+
+    function cleanPipeline(raw, opts) {
+      var s = opts.nfc ? raw.normalize("NFC") : raw;
+      var contentType = guessContentType(s);
+      var segments = [{ type: "text", text: s }];
+
+      if (opts.htmlUnescape) {
+        segments = applyStage(segments, ENTITY_RE, function (m) {
+          var decoded = htmlUnescapeOne(m[0]);
+          if (decoded === m[0]) return null;
+          return { type: "decoded", text: decoded, label: m[0] };
+        });
+      }
+
+      if (opts.stripFFFD) {
+        segments = applyStage(segments, /\uFFFD/g, function () {
+          return { type: "removed", label: "U+FFFD", count: 1 };
+        });
+      }
+
+      if (opts.stripNoise) {
+        var noiseRe = buildNoiseRegex(!opts.preserveJoiners);
+        segments = applyStage(segments, noiseRe, function (m) {
+          var cp = m[0].codePointAt(0);
+          if (!opts.preserveJoiners && (cp === 0x200c || cp === 0x200d)) {
+            return { type: "removed", label: cp === 0x200c ? "ZWNJ" : "ZWJ", count: 1 };
+          }
+          return { type: "removed", label: noiseLabel(cp), count: 1 };
+        });
+      }
+
+      if (opts.preserveJoiners) {
+        segments = applyStage(segments, /[\u200c\u200d]/g, function (m) {
+          return { type: "joiner", text: m[0], label: m[0] === "\u200c" ? "ZWNJ" : "ZWJ" };
+        });
+      }
+
+      if (opts.ghostTokens) {
+        GHOST_PATTERNS.forEach(function (p) {
+          segments = applyStage(segments, p.re, function (m) {
+            return { type: "ghost", text: m[0], label: p.name };
+          });
+        });
+      }
+
+      if (opts.dehyphenate && contentType !== "code") {
+        segments = applyStage(segments, /(?<=[a-z])-\r?\n(?=[a-z])/g, function (m) {
+          return { type: "removed", label: "-\u21b5", count: m[0].length };
+        });
+      }
+
+      if (opts.collapseWs && contentType !== "code") {
+        segments = applyStage(segments, /\s+/g, function (m) {
+          if (m[0].length <= 1) return null;
+          return [{ type: "text", text: " " }, { type: "removed", label: m[0].length + "\u21921", count: m[0].length - 1 }];
+        });
+      }
+
+      return { segments: segments, contentType: contentType };
+    }
+
+    function renderSegments(segments) {
+      return segments.map(function (seg) {
+        var t = escapeHtml(seg.text || "");
+        if (seg.type === "text") return t;
+        if (seg.type === "decoded") return '<span class="cx-decoded" title="decoded from ' + escapeHtml(seg.label) + '">' + t + "</span>";
+        if (seg.type === "joiner") return '<span class="cx-badge cx-joiner" title="' + seg.label + ' preserved -- invisible in real text, shown here for clarity">' + seg.label + "</span>";
+        if (seg.type === "ghost") return '<span class="cx-badge cx-ghost" title="flagged as a possible special token (' + seg.label + ') -- kept, not deleted">' + t + "</span>";
+        if (seg.type === "removed") return '<span class="cx-badge cx-removed" title="removed">' + seg.label + "</span>";
+        return t;
+      }).join("");
+    }
+
+    function computeStats(segments) {
+      var removed = 0, ghost = 0, joiners = 0;
+      segments.forEach(function (seg) {
+        if (seg.type === "removed") removed += (seg.count || 1);
+        else if (seg.type === "ghost") ghost++;
+        else if (seg.type === "joiner") joiners++;
+      });
+      return { removed: removed, ghost: ghost, joiners: joiners };
+    }
+
+    var TOGGLE_DEFS = [
+      { key: "nfc", label: "NFC normalize", def: true },
+      { key: "stripNoise", label: "Strip control + zero-width, bidi, BOM", def: true },
+      { key: "htmlUnescape", label: "HTML entity unescape", def: true },
+      { key: "stripFFFD", label: "Strip U+FFFD replacement char", def: true },
+      { key: "dehyphenate", label: "De-hyphenate wrapped lines (prose)", def: true },
+      { key: "collapseWs", label: "Collapse whitespace (prose)", def: true },
+      { key: "ghostTokens", label: "Flag ghost special tokens", def: true },
+      { key: "preserveJoiners", label: "Preserve Brahmic joiners (ZWNJ/ZWJ)", def: true }
+    ];
+
+    var PRESETS = [
+      { key: "web", label: "English web scrape", text: "\uFEFFCookie notice: We &amp; our partners use cookies.\u200B By clicking &quot;Accept&quot; you consent.\n\uFFFD Multiple   spaces    and\ttabs   should   collapse." },
+      { key: "ghost", label: "Ghost tokens (chat log)", text: "User: Hi <|endoftext|> and [USER] said |<user>| something.\nSystem: <<SYS>>be nice<</SYS>> then <sep> continue." },
+      { key: "hindi", label: "Hindi (Devanagari)", text: "\u0915\u200c\u0937\u200b \u0928\u092e\u0938\u094d\u0924\u0947 \u2014 this word uses a ZWNJ to force a half-form; a stray ZWSP sits right after it." },
+      { key: "code", label: "Code snippet", text: "@app.route('/v1/chats/<chat_id>', methods=['DELETE'])\ndef delete_chat(chat_id):\n    \uFEFF# BOM leaked in from a bad save\n    return jsonify({'ok': True})   \n" },
+      { key: "mixed", label: "Mixed / worst case", text: "\uFEFF\u0915\u200c\u0937\u200b Report &amp; <|endoftext|> summary.\n\uFFFD Multiple   spaces.\n\u202Eevil bidi override\u202C then done." }
+    ];
+
+    var opts = {};
+    TOGGLE_DEFS.forEach(function (t) { opts[t.key] = t.def; });
+
+    var inputEl = document.getElementById("cleandemo-input");
+    var outputEl = document.getElementById("cleandemo-output");
+
+    function run() {
+      var raw = inputEl.value;
+      document.getElementById("cleandemo-before-count").textContent = raw.length.toLocaleString("en-US") + " chars";
+      var result = cleanPipeline(raw, opts);
+      outputEl.innerHTML = renderSegments(result.segments) || '<span style="color:var(--ink-3)">(empty)</span>';
+      var cleanedLen = result.segments.reduce(function (a, s) { return a + (s.type === "removed" ? 0 : (s.text || "").length); }, 0);
+      document.getElementById("cleandemo-after-count").textContent = cleanedLen.toLocaleString("en-US") + " chars";
+      var stats = computeStats(result.segments);
+      document.getElementById("cleandemo-stat-removed").textContent = stats.removed.toLocaleString("en-US");
+      document.getElementById("cleandemo-stat-ghost").textContent = stats.ghost.toLocaleString("en-US");
+      document.getElementById("cleandemo-stat-joiners").textContent = stats.joiners.toLocaleString("en-US");
+      document.getElementById("cleandemo-stat-ctype").textContent = result.contentType;
+    }
+
+    function renderToggles() {
+      var el = document.getElementById("cleandemo-toggles");
+      el.innerHTML = TOGGLE_DEFS.map(function (t) {
+        return (
+          '<label class="cleandemo-toggle-row">' +
+            '<span class="cleandemo-toggle-label">' + t.label + "</span>" +
+            '<span class="cx-switch"><input type="checkbox" data-toggle="' + t.key + '"' + (opts[t.key] ? " checked" : "") + '><span class="cx-slider"></span></span>' +
+          "</label>"
+        );
+      }).join("");
+      el.querySelectorAll("input[data-toggle]").forEach(function (input) {
+        input.addEventListener("change", function () {
+          opts[input.getAttribute("data-toggle")] = input.checked;
+          run();
+        });
+      });
+    }
+
+    function setActivePreset(key) {
+      document.querySelectorAll(".cleandemo-preset-btn").forEach(function (btn) {
+        btn.classList.toggle("active", btn.getAttribute("data-preset") === key);
+      });
+    }
+
+    function renderPresets() {
+      var el = document.getElementById("cleandemo-presets");
+      var buttons = PRESETS.map(function (p) {
+        return '<button type="button" class="cleandemo-preset-btn" data-preset="' + p.key + '">' + p.label + "</button>";
+      });
+      buttons.push('<button type="button" class="cleandemo-preset-btn" data-preset="current">Current dataset sample</button>');
+      el.innerHTML = buttons.join("");
+      el.querySelectorAll(".cleandemo-preset-btn").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var key = btn.getAttribute("data-preset");
+          if (key === "current") {
+            var sel = document.getElementById("profile-select");
+            var profile = DATA.profiles[parseInt(sel.value, 10)];
+            var samples = profile && profile.dataset.samples;
+            inputEl.value = (samples && samples[0] && samples[0].text) || "";
+          } else {
+            var preset = PRESETS.filter(function (p) { return p.key === key; })[0];
+            inputEl.value = preset.text;
+          }
+          setActivePreset(key);
+          run();
+        });
+      });
+    }
+
+    inputEl.addEventListener("input", function () { setActivePreset(null); run(); });
+
+    renderToggles();
+    renderPresets();
+    inputEl.value = PRESETS[0].text;
+    setActivePreset(PRESETS[0].key);
+    run();
+  })();
 })();
 </script>
+
+<!-- offscreen helper for HTML-entity decoding in the live demo, via the browser's own parser -->
+<textarea id="cleandemo-unescape-helper" style="position:absolute;left:-9999px;top:-9999px;" aria-hidden="true"></textarea>
