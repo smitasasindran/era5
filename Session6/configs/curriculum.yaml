@@ -4,7 +4,9 @@
 # to exercise cumulative scarcity tracking, protected floors, and the
 # "unallocated_share" reporting (see IMPLEMENTATION_NOTES.md §3).
 #
-# Run with: python scripts/compile_mixture.py --config configs/curriculum.yaml
+# Compiled automatically by `python scripts/run_pipeline.py` (see
+# configs/pipeline.yaml's `curriculum` field). To recompile standalone
+# without rebuilding shards: python scripts/compile_mixture.py --config configs/curriculum.yaml
 
 manifests_dir: data/manifests
 output_path: data/mixture_schedule.json

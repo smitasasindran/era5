@@ -13,3 +13,7 @@ eval_registry_dir: data/eval_registry
 vocab_size: 8000
 shard_token_budget: 50000
 packing_policy: greedy # greedy | best_fit
+
+# Compiled as this run's last step, against the manifests just built above.
+# Leave blank ("") to skip mixture compilation.
+curriculum: configs/curriculum.yaml

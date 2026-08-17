@@ -27,9 +27,14 @@ as `unallocated_share`, so it's visible rather than papered over.
 
 from __future__ import annotations
 
+import dataclasses
+import json
 import math
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+
+from .hashing import sha256_file
 
 
 class ScarcityError(Exception):
@@ -279,4 +284,112 @@ def compile_curriculum(
 
     return CompiledSchedule(
         global_batch_size=global_batch_size, scarcity_policy=scarcity_policy, stages=compiled_stages
+    )
+
+
+def print_schedule_report(schedule: CompiledSchedule) -> None:
+    """Human-readable stage-by-stage report, shared by run_pipeline.py (which
+    compiles the schedule as its last step) and the standalone
+    compile_mixture.py (for recompiling a curriculum without rebuilding
+    shards) so the two never drift into differently-formatted output."""
+    for cs in schedule.stages:
+        print(
+            f"Stage {cs.stage.stage!r}: steps [{cs.step_start}, {cs.step_end}), "
+            f"span {cs.stage_token_span} tokens, sequence_length={cs.stage.sequence_length}"
+        )
+        for lane, plan in sorted(cs.lane_plans.items()):
+            repeat_note = (
+                f", repeat_factor={plan.repeat_factor:.2f}x"
+                if plan.repeat_factor is not None and plan.repeat_factor > 1.0 + 1e-9
+                else ""
+            )
+            print(
+                f"    {lane:<14} target={plan.target_weight:.2%} effective={plan.effective_weight:.2%} "
+                f"[{plan.status}]{repeat_note}"
+            )
+        if cs.unallocated_share > 1e-9:
+            print(f"    [WARN] unallocated_share={cs.unallocated_share:.2%} of this stage is unmet")
+        print()
+
+
+def _manifest_path_for(schedule_path: Path) -> Path:
+    return schedule_path.with_name(schedule_path.stem + "_manifest" + schedule_path.suffix)
+
+
+def freeze_schedule(schedule: CompiledSchedule, schedule_path: str | Path) -> dict:
+    """Write the compiled schedule plus a hash-pinned manifest.
+
+    The resume/replay guarantee ("training stream = pure function of frozen
+    manifests, mixture config, seed, step") only holds if the "mixture
+    config" a resumed run reads back is the *exact* schedule compiled at the
+    start of the run -- not whatever compile_curriculum() would produce if
+    re-run against data/manifests/ as it exists *today*, which may have
+    grown new shards since. So this schedule gets frozen the same way the
+    tokenizer does: hash-verified on every load, never silently
+    recomputed live by a downstream consumer (e.g. the Cursor).
+    """
+    schedule_path = Path(schedule_path)
+    schedule_path.parent.mkdir(parents=True, exist_ok=True)
+
+    payload = dataclasses.asdict(schedule)
+    with open(schedule_path, "w") as f:
+        json.dump(payload, f, indent=2)
+
+    schedule_hash = sha256_file(schedule_path)
+    manifest = {
+        "schedule_hash": schedule_hash,
+        "global_batch_size": schedule.global_batch_size,
+        "scarcity_policy": schedule.scarcity_policy,
+        "stage_names": [cs.stage.stage for cs in schedule.stages],
+    }
+    manifest_path = _manifest_path_for(schedule_path)
+    with open(manifest_path, "w") as f:
+        json.dump(manifest, f, indent=2)
+
+    return manifest
+
+
+def load_frozen_schedule(schedule_path: str | Path) -> Tuple[CompiledSchedule, dict]:
+    """Load a previously frozen schedule, verifying its hash hasn't drifted."""
+    schedule_path = Path(schedule_path)
+    manifest_path = _manifest_path_for(schedule_path)
+
+    if not schedule_path.exists() or not manifest_path.exists():
+        raise FileNotFoundError(
+            f"No frozen mixture schedule at {schedule_path}. Run scripts/compile_mixture.py first."
+        )
+
+    with open(manifest_path) as f:
+        manifest = json.load(f)
+
+    actual_hash = sha256_file(schedule_path)
+    if actual_hash != manifest["schedule_hash"]:
+        raise ValueError(
+            "Frozen mixture schedule has changed since it was compiled: "
+            f"expected {manifest['schedule_hash']}, found {actual_hash}. "
+            "A changed schedule is a new artifact -- recompile to get a new "
+            "schedule_hash rather than editing this one in place."
+        )
+
+    with open(schedule_path) as f:
+        payload = json.load(f)
+
+    return _schedule_from_dict(payload), manifest
+
+
+def _schedule_from_dict(payload: dict) -> CompiledSchedule:
+    return CompiledSchedule(
+        global_batch_size=payload["global_batch_size"],
+        scarcity_policy=payload["scarcity_policy"],
+        stages=[_compiled_stage_from_dict(cs) for cs in payload["stages"]],
+    )
+
+
+def _compiled_stage_from_dict(d: dict) -> CompiledStage:
+    return CompiledStage(
+        stage=MixtureStage(**d["stage"]),
+        step_start=d["step_start"],
+        step_end=d["step_end"],
+        stage_token_span=d["stage_token_span"],
+        lane_plans={lane: LanePlan(**plan) for lane, plan in d["lane_plans"].items()},
     )

@@ -17,3 +17,7 @@ eval_registry_dir: data/eval_registry
 vocab_size: 300 # tiny corpus -> tiny vocab is enough
 shard_token_budget: 90 # deliberately small: forces multiple shards despite short docs
 packing_policy: greedy # greedy | best_fit
+
+# Compiled as this run's last step, against the manifests just built above.
+# Leave blank ("") to skip mixture compilation.
+curriculum: configs/curriculum_toy.yaml

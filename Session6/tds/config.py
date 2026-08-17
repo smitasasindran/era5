@@ -7,11 +7,13 @@ reconstructed from a command line.
 Three config shapes:
 
 - `PipelineConfig` drives scripts/run_pipeline.py (corpus -> tokenizer ->
-  shards, filtered through the eval firewall).
+  shards, filtered through the eval firewall, then optionally compiled into
+  a mixture schedule if `curriculum` names a CurriculumConfig YAML).
 - `EvalRegistryConfig` drives scripts/build_eval_registry.py (which
   documents get registered as held-out, under which benchmark).
 - `CurriculumConfig` drives scripts/compile_mixture.py (curriculum stages ->
-  a compiled schedule, checked against actual shard supply).
+  a compiled schedule, checked against actual shard supply) -- also loaded
+  directly by run_pipeline.py when its config's `curriculum` field is set.
 """
 
 from __future__ import annotations
@@ -66,6 +68,7 @@ class PipelineConfig:
     vocab_size: int = 8000
     shard_token_budget: int = 50_000
     packing_policy: str = "greedy"  # see tds.shard_builder.PACKING_POLICIES
+    curriculum: str = ""  # path to a CurriculumConfig YAML; "" skips mixture compilation
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> "PipelineConfig":
@@ -76,9 +79,13 @@ class PipelineConfig:
         so behavior doesn't depend on the caller's current working directory.
         `corpus` is left untouched here -- it may be the "toy" sentinel
         rather than a path; callers resolve it separately."""
-        return _resolved_dirs(
+        instance = _resolved_dirs(
             self, ("tokenizer_dir", "shards_dir", "manifests_dir", "eval_registry_dir"), root
         )
+        if instance.curriculum:
+            p = Path(instance.curriculum)
+            instance.curriculum = str(p if p.is_absolute() else root / p)
+        return instance
 
 
 @dataclass

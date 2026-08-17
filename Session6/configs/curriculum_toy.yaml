@@ -3,7 +3,10 @@
 # stage 2, easy enough to check by hand against the toy corpus's tiny
 # per-lane shard totals (see IMPLEMENTATION_NOTES.md §3).
 #
-# Run with: python scripts/compile_mixture.py --config configs/curriculum_toy.yaml
+# Compiled automatically by `python scripts/run_pipeline.py --config
+# configs/pipeline_toy.yaml` (see that file's `curriculum` field). To
+# recompile standalone without rebuilding shards:
+# python scripts/compile_mixture.py --config configs/curriculum_toy.yaml
 
 manifests_dir: data/manifests
 output_path: data/mixture_schedule_toy.json

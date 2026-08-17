@@ -23,8 +23,7 @@ data/eval_registry/
 # configs/curriculum*.yaml + whichever corpus's manifests are currently
 # built under data/manifests/. Like that config's manifests_dir, this reads
 # whatever corpus was last built there -- see IMPLEMENTATION_NOTES.md §3.
-data/mixture_schedule.json
-data/mixture_schedule_toy.json
+data/mixture_schedule*.json
 
 # Will hold the full-pipeline demo output once later stages exist.
 submission_artifacts/

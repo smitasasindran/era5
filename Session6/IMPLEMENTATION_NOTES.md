@@ -488,15 +488,26 @@ the line.
 
 `configs/curriculum.yaml` and `configs/curriculum_toy.yaml` both default
 `manifests_dir` to `data/manifests` -- the same shared directory
-`run_pipeline.py` builds into. `compile_mixture.py` reads whatever corpus's
-shards are *currently* built there; it does not build anything itself. So
-demoing the toy curriculum requires running
-`run_pipeline.py --config configs/pipeline_toy.yaml` first, or
-`compile_mixture.py` will silently check the toy stages' tiny token
-budgets against the real corpus's (much larger) supply and report no
-scarcity at all -- not wrong, just not the demonstration intended. Same
-consideration as `data/eval_registry/` in §2, noted here so the eventual
-`run_demo.py` sequences these correctly per profile.
+`run_pipeline.py` builds into. Run standalone, `compile_mixture.py` reads
+whatever corpus's shards are *currently* built there; it does not build
+anything itself, so demoing the toy curriculum this way still requires
+running `run_pipeline.py --config configs/pipeline_toy.yaml` first, or it
+will silently check the toy stages' tiny token budgets against the real
+corpus's (much larger) supply and report no scarcity at all -- not wrong,
+just not the demonstration intended. Same consideration as
+`data/eval_registry/` in §2.
+
+**This gotcha is closed for the common case.** `PipelineConfig` gained a
+`curriculum` field (a path to a `CurriculumConfig` YAML, blank to skip);
+both `configs/pipeline.yaml` and `configs/pipeline_toy.yaml` set it to
+their matching curriculum file. `run_pipeline.py` now compiles and freezes
+the mixture schedule as its last step, and does so against
+`config.manifests_dir` -- the manifests *that same run just built* --
+overriding whatever `manifests_dir` the curriculum YAML itself names.
+`compile_mixture.py` still exists standalone (for recompiling a curriculum
+against shards already on disk, without rebuilding them), sharing the
+report-printing logic (`print_schedule_report`) with `run_pipeline.py` so
+the two never drift into differently-formatted output. `python scripts/run_pipeline.py [--config ...]` is now the single command that runs the whole pipeline end to end.
 
 ### Real corpus run
 
@@ -533,6 +544,51 @@ floor there, and its supply was already fully claimed by
 20% (protected) in the same stage is the clearest single side-by-side
 illustration of what a protected floor actually buys a lane.
 
+### Freezing the compiled schedule (hash-pinned, like the tokenizer)
+
+`compile_mixture.py` originally wrote the schedule with a bare
+`json.dump(dataclasses.asdict(schedule))`. That's fine for a human to read,
+but it's the wrong shape for what this artifact is actually for: per
+`DATALOADER_DESIGN.md`, the training stream must be a pure function of
+*frozen* manifests + mixture config + seed + step, for resume/replay to
+hold. If a downstream consumer (the not-yet-built Cursor) read the mixture
+config by re-running `compile_curriculum()` against `data/manifests/` *at
+resume time*, that's not actually frozen -- if shards were rebuilt or added
+between the original run and a later resume, `lane_token_totals()` would
+return different numbers and scarcity resolution could come out
+differently, silently changing which lane a given step draws from. That's
+exactly the kind of drift the frozen-tokenizer pattern
+(`tokenizer_utils.load_frozen_tokenizer`) already exists to prevent for the
+vocabulary; the schedule needed the same treatment.
+
+Added to `tds/mixture_compiler.py`:
+
+- `freeze_schedule(schedule, schedule_path)` -- writes the schedule JSON,
+  then writes a sibling manifest (`mixture_schedule_manifest.json`, next to
+  `mixture_schedule.json`) containing its `schedule_hash` (sha256 of the
+  schedule file's bytes) plus `global_batch_size`/`scarcity_policy`/stage
+  names for quick inspection without loading the full schedule.
+- `load_frozen_schedule(schedule_path)` -- recomputes the hash and compares
+  against the manifest before doing anything else; raises `ValueError` on
+  mismatch (tampering, or a schedule file edited by hand), `FileNotFoundError`
+  if either file is missing. Only on a hash match does it reconstruct the
+  nested dataclasses (`MixtureStage` / `LanePlan` / `CompiledStage` /
+  `CompiledSchedule`) from the parsed JSON and hand back a fully
+  functional `CompiledSchedule` -- `mixture_at_step`/`stage_at_step` work
+  identically on a loaded schedule as on one still in memory from
+  `compile_curriculum()`.
+
+`compile_mixture.py` now calls `freeze_schedule()` instead of dumping JSON
+directly, and prints the resulting `schedule_hash`. The manifest file sits
+alongside the schedule under `data/`, so `.gitignore`'s
+`data/mixture_schedule.json` / `data/mixture_schedule_toy.json` entries
+were collapsed into one glob (`data/mixture_schedule*.json`) to cover both
+new manifest files too.
+
+This doesn't change anything about *how* the schedule is compiled -- it's
+purely about how it's handed off. The actual Cursor, when built, should
+call `load_frozen_schedule()` rather than `compile_curriculum()` directly.
+
 ### Tests (`tests/test_mixture_compiler.py`, plus `ManifestStore`/`CurriculumConfig` additions)
 
 - Stage validation: rejects no stages, weights not summing to 1.0, a floor
@@ -560,3 +616,11 @@ illustration of what a protected floor actually buys a lane.
   per-stage keys are both rejected, the mutable-default `stages` list
   doesn't leak between instances, `.resolved()` makes `manifests_dir`/
   `output_path` absolute while leaving `stages` itself untouched.
+- `freeze_schedule`/`load_frozen_schedule`: round-trip through disk
+  reproduces the same `mixture_at_step`/`stage_at_step` behavior as the
+  in-memory schedule and the same `schedule_hash`; loading with no frozen
+  schedule present raises `FileNotFoundError`; a single appended byte in
+  the schedule file after freezing is detected and raises `ValueError`.
+- `PipelineConfig.curriculum` (in `test_config.py`): a relative path is
+  resolved absolute the same way the existing dir fields are; a blank
+  (default) value is left untouched rather than resolving to `root` itself.

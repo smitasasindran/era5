@@ -1,8 +1,15 @@
 #!/usr/bin/env python
-"""Compile curriculum stages into an executable mixture schedule.
+"""Recompile a curriculum into an executable mixture schedule, without
+rebuilding shards.
 
     python scripts/compile_mixture.py                                     # configs/curriculum.yaml (real corpus)
     python scripts/compile_mixture.py --config configs/curriculum_toy.yaml  # toy corpus
+
+run_pipeline.py already runs this step automatically as part of a full
+pipeline run (when its config's `curriculum` field is set), compiling
+against the manifests that same run just built. Use this script standalone
+only when iterating on a curriculum YAML against shards that already
+exist on disk, without rerunning the tokenizer/shard-builder step.
 
 Reads the shard manifests already built by scripts/run_pipeline.py (for
 whichever corpus the curriculum targets) to find out how many tokens each
@@ -14,8 +21,6 @@ corpus first; this script does not build shards itself.
 """
 
 import argparse
-import dataclasses
-import json
 import sys
 from pathlib import Path
 
@@ -24,7 +29,12 @@ sys.path.insert(0, str(ROOT))
 
 from tds.config import DEFAULT_CURRICULUM_CONFIG_PATH, CurriculumConfig  # noqa: E402
 from tds.manifest_store import ManifestStore  # noqa: E402
-from tds.mixture_compiler import ScarcityError, compile_curriculum  # noqa: E402
+from tds.mixture_compiler import (  # noqa: E402
+    ScarcityError,
+    compile_curriculum,
+    freeze_schedule,
+    print_schedule_report,
+)
 
 
 def main():
@@ -56,30 +66,11 @@ def main():
         return  # unreachable, parser.error exits, but keeps type-checkers happy
 
     print()
-    for cs in schedule.stages:
-        print(
-            f"Stage {cs.stage.stage!r}: steps [{cs.step_start}, {cs.step_end}), "
-            f"span {cs.stage_token_span} tokens, sequence_length={cs.stage.sequence_length}"
-        )
-        for lane, plan in sorted(cs.lane_plans.items()):
-            repeat_note = (
-                f", repeat_factor={plan.repeat_factor:.2f}x"
-                if plan.repeat_factor is not None and plan.repeat_factor > 1.0 + 1e-9
-                else ""
-            )
-            print(
-                f"    {lane:<14} target={plan.target_weight:.2%} effective={plan.effective_weight:.2%} "
-                f"[{plan.status}]{repeat_note}"
-            )
-        if cs.unallocated_share > 1e-9:
-            print(f"    [WARN] unallocated_share={cs.unallocated_share:.2%} of this stage is unmet")
-        print()
+    print_schedule_report(schedule)
 
-    output_path = Path(config.output_path)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(output_path, "w") as f:
-        json.dump(dataclasses.asdict(schedule), f, indent=2)
-    print(f"Wrote compiled schedule -> {output_path}")
+    manifest = freeze_schedule(schedule, config.output_path)
+    print(f"Wrote compiled schedule -> {config.output_path}")
+    print(f"  schedule_hash={manifest['schedule_hash']}")
 
 
 if __name__ == "__main__":

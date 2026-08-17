@@ -1,4 +1,5 @@
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -9,6 +10,8 @@ from tds.mixture_compiler import (  # noqa: E402
     MixtureStage,
     ScarcityError,
     compile_curriculum,
+    freeze_schedule,
+    load_frozen_schedule,
 )
 
 
@@ -236,6 +239,46 @@ class TestMixtureAtStepAndWarmup(unittest.TestCase):
         mixture = self.schedule.mixture_at_step(105)  # halfway through the 10-step warmup
         self.assertAlmostEqual(mixture["code"], 0.5, places=6)
         self.assertAlmostEqual(mixture["qa"], 0.5, places=6)
+
+
+class TestFreezeAndLoad(unittest.TestCase):
+    def setUp(self):
+        self.tmpdir = tempfile.TemporaryDirectory()
+        self.schedule_path = Path(self.tmpdir.name) / "mixture_schedule.json"
+
+        stages = [
+            stage("a", 0, 800, {"code": 1.0}, seq_len=8),
+            stage("b", 800, 1600, {"code": 0.0, "qa": 1.0}, seq_len=8, warmup=80),
+        ]
+        self.schedule = compile_curriculum(stages, {"code": 100_000, "qa": 100_000}, global_batch_size=1)
+
+    def tearDown(self):
+        self.tmpdir.cleanup()
+
+    def test_freeze_then_load_roundtrip(self):
+        manifest = freeze_schedule(self.schedule, self.schedule_path)
+        loaded, loaded_manifest = load_frozen_schedule(self.schedule_path)
+
+        self.assertEqual(manifest["schedule_hash"], loaded_manifest["schedule_hash"])
+        self.assertEqual(loaded.global_batch_size, self.schedule.global_batch_size)
+        self.assertEqual(loaded.scarcity_policy, self.schedule.scarcity_policy)
+        self.assertEqual(loaded.stage_at_step(0).stage.stage, "a")
+        self.assertAlmostEqual(loaded.mixture_at_step(0)["code"], 1.0)
+        self.assertAlmostEqual(loaded.mixture_at_step(105)["code"], 0.5, places=6)
+        self.assertAlmostEqual(loaded.mixture_at_step(105)["qa"], 0.5, places=6)
+
+    def test_load_fails_without_a_frozen_schedule(self):
+        empty_path = Path(tempfile.mkdtemp()) / "mixture_schedule.json"
+        with self.assertRaises(FileNotFoundError):
+            load_frozen_schedule(empty_path)
+
+    def test_load_detects_tampering(self):
+        freeze_schedule(self.schedule, self.schedule_path)
+        with open(self.schedule_path, "a") as f:
+            f.write(" ")  # append a byte -- content changes, hash no longer matches
+
+        with self.assertRaises(ValueError):
+            load_frozen_schedule(self.schedule_path)
 
 
 if __name__ == "__main__":

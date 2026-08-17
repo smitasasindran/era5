@@ -54,6 +54,16 @@ class TestPipelineConfig(unittest.TestCase):
         resolved = config.resolved(root=Path("/some/root"))
         self.assertEqual(resolved.shards_dir, "/already/absolute")
 
+    def test_resolved_makes_curriculum_path_absolute_when_set(self):
+        config = PipelineConfig(curriculum="configs/curriculum.yaml")
+        resolved = config.resolved(root=Path("/some/root"))
+        self.assertEqual(resolved.curriculum, str(Path("/some/root/configs/curriculum.yaml")))
+
+    def test_resolved_leaves_blank_curriculum_untouched(self):
+        config = PipelineConfig()
+        resolved = config.resolved(root=Path("/some/root"))
+        self.assertEqual(resolved.curriculum, "")
+
 
 class TestEvalRegistryConfig(unittest.TestCase):
     def test_defaults_when_yaml_is_empty(self):

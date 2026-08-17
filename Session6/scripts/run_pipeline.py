@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-"""Run the tokenizer + shard-builder pipeline end to end, from a config file.
+"""Run the full pipeline end to end, from a config file: tokenizer -> shards
+-> (optionally) mixture schedule.
 
     python scripts/run_pipeline.py                                  # configs/pipeline.yaml (real corpus)
     python scripts/run_pipeline.py --config configs/pipeline_toy.yaml # tiny hand-authored fixture
@@ -9,6 +10,16 @@ policy) live in the config file -- see configs/pipeline.yaml and
 configs/pipeline_toy.yaml for the two ready-made profiles. To run a one-off
 variation (e.g. best_fit packing), copy one of those files and point
 --config at your copy, rather than passing flags here.
+
+If the config's `curriculum` field names a CurriculumConfig YAML (both
+ready-made profiles set this), the mixture schedule is compiled and frozen
+as the pipeline's last step, against the manifests this same run just
+built -- not whatever happens to be sitting in `data/manifests/` from some
+earlier run. That removes the old footgun where compiling a curriculum
+required first remembering to (re)run this script against the matching
+corpus (see IMPLEMENTATION_NOTES.md §3). Leave `curriculum` blank to skip
+this step, or run scripts/compile_mixture.py separately to recompile a
+curriculum without rebuilding shards.
 
 Because the tokenizer is trained *from* whichever corpus the config names,
 switching corpora necessarily means a new frozen tokenizer (a new
@@ -38,10 +49,17 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from tds.config import DEFAULT_CONFIG_PATH, PipelineConfig  # noqa: E402
+from tds.config import CurriculumConfig, DEFAULT_CONFIG_PATH, PipelineConfig  # noqa: E402
 from tds.corpus import load_corpus  # noqa: E402
 from tds.eval_firewall import filter_training_documents  # noqa: E402
 from tds.eval_registry import EvalRegistry  # noqa: E402
+from tds.manifest_store import ManifestStore  # noqa: E402
+from tds.mixture_compiler import (  # noqa: E402
+    ScarcityError,
+    compile_curriculum,
+    freeze_schedule,
+    print_schedule_report,
+)
 from tds.shard_builder import ShardBuilderConfig, build_shards  # noqa: E402
 from tds.tokenizer_utils import train_tokenizer  # noqa: E402
 from tds.toy_corpus import DEFAULT_TOY_CORPUS_PATH, write_toy_corpus  # noqa: E402
@@ -136,6 +154,36 @@ def main():
             f"  {lane}: {len(lane_manifests)} shards, {lane_tokens} tokens, "
             f"{utilization:.1%} of allocated shard capacity"
         )
+
+    if not config.curriculum:
+        return
+
+    print(f"\nCompiling mixture schedule from {config.curriculum}")
+    curriculum_config = CurriculumConfig.from_yaml(config.curriculum).resolved(root=ROOT)
+    # Compile against the manifests this run just built, not whatever
+    # manifests_dir the curriculum YAML happens to name -- that's what
+    # makes this step no longer depend on remembering to run the matching
+    # profile first (see IMPLEMENTATION_NOTES.md §3).
+    curriculum_config.manifests_dir = config.manifests_dir
+
+    lane_available_tokens = ManifestStore(curriculum_config.manifests_dir).lane_token_totals()
+    try:
+        schedule = compile_curriculum(
+            curriculum_config.stages,
+            lane_available_tokens,
+            curriculum_config.global_batch_size,
+            curriculum_config.scarcity_policy,
+        )
+    except ScarcityError as e:
+        parser.error(str(e))
+        return  # unreachable, parser.error exits, but keeps type-checkers happy
+
+    print()
+    print_schedule_report(schedule)
+
+    manifest = freeze_schedule(schedule, curriculum_config.output_path)
+    print(f"Wrote compiled schedule -> {curriculum_config.output_path}")
+    print(f"  schedule_hash={manifest['schedule_hash']}")
 
 
 if __name__ == "__main__":
