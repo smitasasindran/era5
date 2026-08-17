@@ -6,7 +6,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from tds.config import EvalRegistryConfig, PipelineConfig  # noqa: E402
+from tds.config import CurriculumConfig, EvalRegistryConfig, PipelineConfig  # noqa: E402
+from tds.mixture_compiler import MixtureStage  # noqa: E402
 
 
 class TestPipelineConfig(unittest.TestCase):
@@ -91,6 +92,77 @@ class TestEvalRegistryConfig(unittest.TestCase):
         config = EvalRegistryConfig(corpus="toy")
         resolved = config.resolved(root=Path("/some/root"))
         self.assertEqual(resolved.corpus, "toy")
+
+
+CURRICULUM_YAML = """
+global_batch_size: 4
+scarcity_policy: repeat
+stages:
+  - stage: foundation
+    token_start: 0
+    token_end: 100
+    sequence_length: 8
+    mixture:
+      code: 0.6
+      qa: 0.4
+    protected_floors:
+      qa: 0.1
+    warmup_tokens: 10
+"""
+
+
+class TestCurriculumConfig(unittest.TestCase):
+    def test_defaults_when_yaml_is_empty(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "empty.yaml"
+            path.write_text("")
+            config = CurriculumConfig.from_yaml(path)
+            self.assertEqual(config, CurriculumConfig())
+
+    def test_stages_parse_into_mixture_stage_instances(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "config.yaml"
+            path.write_text(CURRICULUM_YAML)
+            config = CurriculumConfig.from_yaml(path)
+            self.assertEqual(len(config.stages), 1)
+            self.assertIsInstance(config.stages[0], MixtureStage)
+            self.assertEqual(config.stages[0].mixture, {"code": 0.6, "qa": 0.4})
+            self.assertEqual(config.stages[0].protected_floors, {"qa": 0.1})
+            self.assertEqual(config.global_batch_size, 4)
+            self.assertEqual(config.scarcity_policy, "repeat")
+
+    def test_unknown_top_level_key_is_rejected(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "config.yaml"
+            path.write_text("typo_field: 1\n")
+            with self.assertRaises(ValueError):
+                CurriculumConfig.from_yaml(path)
+
+    def test_unknown_stage_key_is_rejected(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "config.yaml"
+            path.write_text("stages:\n  - stage: a\n    typo_field: 1\n")
+            with self.assertRaises(ValueError):
+                CurriculumConfig.from_yaml(path)
+
+    def test_default_stages_list_does_not_leak_between_instances(self):
+        a = CurriculumConfig()
+        a.stages.append(
+            MixtureStage(stage="x", token_start=0, token_end=10, sequence_length=1, mixture={"code": 1.0})
+        )
+        b = CurriculumConfig()
+        self.assertEqual(b.stages, [])
+
+    def test_resolved_makes_dirs_absolute_but_leaves_stages_untouched(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "config.yaml"
+            path.write_text(CURRICULUM_YAML)
+            config = CurriculumConfig.from_yaml(path)
+
+            resolved = config.resolved(root=Path("/some/root"))
+            self.assertEqual(resolved.manifests_dir, str(Path("/some/root/data/manifests")))
+            self.assertEqual(resolved.output_path, str(Path("/some/root/data/mixture_schedule.json")))
+            self.assertEqual(resolved.stages, config.stages)
 
 
 if __name__ == "__main__":

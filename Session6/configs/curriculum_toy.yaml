@@ -1,0 +1,38 @@
+# Curriculum for the toy corpus fixture -- tiny numbers, but the same
+# mechanics: qa runs scarce in stage 1, code and general_web run scarce in
+# stage 2, easy enough to check by hand against the toy corpus's tiny
+# per-lane shard totals (see IMPLEMENTATION_NOTES.md §3).
+#
+# Run with: python scripts/compile_mixture.py --config configs/curriculum_toy.yaml
+
+manifests_dir: data/manifests
+output_path: data/mixture_schedule_toy.json
+global_batch_size: 2
+scarcity_policy: reduce_share # repeat | reduce_share | defer
+
+stages:
+  - stage: toy-foundation
+    token_start: 0
+    token_end: 300
+    sequence_length: 8
+    mixture:
+      qa: 0.30
+      general_web: 0.25
+      indic: 0.20
+      code: 0.15
+      math_science: 0.10
+    protected_floors:
+      qa: 0.05
+    warmup_tokens: 0
+
+  - stage: toy-expansion
+    token_start: 300
+    token_end: 600
+    sequence_length: 16
+    mixture:
+      code: 0.30
+      math_science: 0.25
+      indic: 0.25
+      general_web: 0.20
+    protected_floors: {}
+    warmup_tokens: 50

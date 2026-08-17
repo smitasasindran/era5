@@ -4,12 +4,14 @@ Replaces what used to be a long list of CLI flags -- every parameter for a
 given run now lives in a single readable file instead of being
 reconstructed from a command line.
 
-Two config shapes:
+Three config shapes:
 
 - `PipelineConfig` drives scripts/run_pipeline.py (corpus -> tokenizer ->
   shards, filtered through the eval firewall).
 - `EvalRegistryConfig` drives scripts/build_eval_registry.py (which
   documents get registered as held-out, under which benchmark).
+- `CurriculumConfig` drives scripts/compile_mixture.py (curriculum stages ->
+  a compiled schedule, checked against actual shard supply).
 """
 
 from __future__ import annotations
@@ -20,9 +22,12 @@ from typing import List
 
 import yaml
 
+from .mixture_compiler import MixtureStage
+
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CONFIG_PATH = ROOT / "configs" / "pipeline.yaml"
 DEFAULT_EVAL_REGISTRY_CONFIG_PATH = ROOT / "configs" / "eval_registry.yaml"
+DEFAULT_CURRICULUM_CONFIG_PATH = ROOT / "configs" / "curriculum.yaml"
 
 
 def _from_yaml(cls, path: str | Path):
@@ -90,3 +95,61 @@ class EvalRegistryConfig:
 
     def resolved(self, root: Path = ROOT) -> "EvalRegistryConfig":
         return _resolved_dirs(self, ("registry_dir",), root)
+
+
+@dataclass
+class CurriculumConfig:
+    manifests_dir: str = "data/manifests"
+    output_path: str = "data/mixture_schedule.json"
+    global_batch_size: int = 8
+    scarcity_policy: str = "reduce_share"  # see tds.mixture_compiler.compile_curriculum
+    stages: List[MixtureStage] = field(default_factory=list)
+
+    @classmethod
+    def from_yaml(cls, path: str | Path) -> "CurriculumConfig":
+        """Custom (not `_from_yaml`): `stages` holds MixtureStage instances,
+        not raw dicts, so it needs its own parsing -- and correspondingly
+        `resolved()` below can't use the generic asdict()-based
+        `_resolved_dirs` either, since asdict() would flatten those nested
+        dataclasses into plain dicts that don't reconstruct automatically."""
+        path = Path(path)
+        if not path.exists():
+            raise FileNotFoundError(f"config file not found: {path}")
+
+        with open(path) as f:
+            raw = yaml.safe_load(f) or {}
+        raw = dict(raw)
+        stage_dicts = raw.pop("stages", [])
+
+        known = {f.name for f in fields(cls)}
+        unknown = set(raw) - known
+        if unknown:
+            raise ValueError(
+                f"unknown key(s) in {path}: {sorted(unknown)} -- known keys are {sorted(known)}"
+            )
+
+        stage_fields = {f.name for f in fields(MixtureStage)}
+        stages = []
+        for i, stage_dict in enumerate(stage_dicts):
+            unknown_stage_keys = set(stage_dict) - stage_fields
+            if unknown_stage_keys:
+                raise ValueError(
+                    f"unknown key(s) in stage #{i} of {path}: {sorted(unknown_stage_keys)} -- "
+                    f"known keys are {sorted(stage_fields)}"
+                )
+            stages.append(MixtureStage(**stage_dict))
+
+        return cls(stages=stages, **raw)
+
+    def resolved(self, root: Path = ROOT) -> "CurriculumConfig":
+        def resolve(value: str) -> str:
+            p = Path(value)
+            return str(p if p.is_absolute() else root / p)
+
+        return CurriculumConfig(
+            manifests_dir=resolve(self.manifests_dir),
+            output_path=resolve(self.output_path),
+            global_batch_size=self.global_batch_size,
+            scarcity_policy=self.scarcity_policy,
+            stages=self.stages,
+        )

@@ -12,7 +12,7 @@ the "what we planned" half.
 |---|---|---|
 | Shard Builder & Manifest Store | done | `tds/corpus.py`, `tds/tokenizer_utils.py`, `tds/manifest_store.py`, `tds/shard_builder.py`, `tds/config.py`, `configs/*.yaml`, `scripts/run_pipeline.py` |
 | Eval / Test Firewall | done | `tds/hashing.py`, `tds/eval_registry.py`, `tds/eval_firewall.py`, `configs/eval_registry*.yaml`, `scripts/build_eval_registry.py` |
-| Curriculum & Mixture Compiler | not started | |
+| Curriculum & Mixture Compiler | done | `tds/mixture_compiler.py`, `tds/manifest_store.py` (`lane_token_totals`), `configs/curriculum*.yaml`, `scripts/compile_mixture.py` |
 | Cursor | not started | |
 | OPUS Selector (stub) | not started | |
 | Packer | not started | |
@@ -414,3 +414,149 @@ any shard's `document_spans` in the resulting `data/manifests/index.jsonl`
   `build_shards()` on the admitted set and assert neither blocked
   `document_id` appears in any shard's `document_spans` -- not just that
   the firewall's return value looks right in isolation.
+
+## 3. Curriculum & Mixture Compiler
+
+### What "compiling" actually means here
+
+The design doc's stage schema (`stage`, `token_start`/`token_end`,
+`sequence_length`, `mixture`, `protected_floors`, `warmup_tokens`) is
+human-authored intent. The compiler's job is to check that intent against
+reality -- how many tokens each capability lane's shards actually contain
+(`ManifestStore.lane_token_totals()`, a small new aggregate method) -- and
+produce a `CompiledSchedule` that can answer "what mixture applies at step
+N" without re-deriving anything at query time. Three things make this more
+than bookkeeping:
+
+1. **Scarcity is tracked cumulatively across stages, not per-stage in
+   isolation.** A lane's shard supply is one shared resource spent across
+   the whole curriculum. A stage can look perfectly satisfiable checked
+   alone and still be scarce once you add in what earlier stages already
+   drew from the same lane -- see `test_second_stage_accounts_for_first_stages_consumption`
+   for the concrete case (700 + 500 tokens requested cumulatively from a
+   lane with only 1000 available; each stage alone looks fine, together
+   they don't).
+2. **Protected floors are honored via repetition, not just accounting.**
+   Under `reduce_share`, a lane's share above its floor gets cut when
+   supply runs out, but the floor itself is still met even if that requires
+   dipping back into already-used tokens (`repeat_factor > 1` on that
+   lane's `LanePlan`). The floor is a commitment about the training
+   stream's composition, not a promise of never repeating.
+3. **Shortfalls are reported, never silently redistributed.** When a
+   stage's total effective mixture doesn't reach 100% (`unallocated_share`
+   on `CompiledStage`), the compiler does not proportionally reallocate the
+   gap to other lanes. The design doc frames the scarcity response
+   (repeat / synthesize / reduce / defer) as an *operator* decision; the
+   compiler applies whichever policy is configured and reports the
+   remainder honestly rather than papering over it with an opaque
+   redistribution that could itself violate some other lane's floor.
+
+### A real bug the real numbers caught
+
+Step ranges were originally computed per-stage as
+`token_position // (sequence_length * global_batch_size)` -- fine as long
+as every stage shares the same `sequence_length`, but `configs/curriculum.yaml`'s
+`anneal` stage deliberately uses a longer one (256 vs. 128, matching the
+design's "long-context packing is handled separately"). Compiling it
+produced `anneal: steps [732, 927)` immediately following
+`capability-expansion: steps [781, 1464)` -- overlapping, and running
+backwards. The fix: `step_start` for a stage is a running counter carried
+forward from the previous stage's `step_end` (`compile_curriculum`'s
+`step_cursor`), never re-derived from absolute token position. Token
+ranges tile contiguously by construction (`_validate_stage_ordering`);
+step ranges have to be *derived* to tile contiguously too, since the
+token-to-step ratio can change between stages. Caught immediately by
+actually running the compiler against real shard counts rather than only
+against small hand-picked test numbers — `test_steps_stay_monotonic_when_sequence_length_changes_between_stages`
+now guards it directly.
+
+### A second bug: a tautological scarcity check
+
+The first cut of the protected-floor-unmeetable check compared
+`effective_tokens < floor_tokens`, but `effective_tokens` is defined as
+`max(remaining_capacity, floor_tokens)` -- which by construction can never
+be less than `floor_tokens`. The check could never fire. The real
+"impossible" condition isn't about `effective_tokens` at all: a floor can
+always be met via repetition as long as *any* tokens exist for that lane,
+however large the resulting `repeat_factor`; it's genuinely impossible
+only when `available == 0` -- there is nothing at all to repeat. Fixed to
+check that directly; `test_floor_unmeetable_even_by_itself_raises` and
+`test_floor_is_honored_even_beyond_remaining_capacity` cover both sides of
+the line.
+
+### Shared `data/manifests/`, same gotcha as run_pipeline.py
+
+`configs/curriculum.yaml` and `configs/curriculum_toy.yaml` both default
+`manifests_dir` to `data/manifests` -- the same shared directory
+`run_pipeline.py` builds into. `compile_mixture.py` reads whatever corpus's
+shards are *currently* built there; it does not build anything itself. So
+demoing the toy curriculum requires running
+`run_pipeline.py --config configs/pipeline_toy.yaml` first, or
+`compile_mixture.py` will silently check the toy stages' tiny token
+budgets against the real corpus's (much larger) supply and report no
+scarcity at all -- not wrong, just not the demonstration intended. Same
+consideration as `data/eval_registry/` in §2, noted here so the eventual
+`run_demo.py` sequences these correctly per profile.
+
+### Real corpus run
+
+`configs/curriculum.yaml` deliberately plans for more tokens than some
+lanes can supply -- instruction, code, math_science, and indic all become
+scarce at some point across 3 stages:
+
+```
+$ python scripts/compile_mixture.py
+Available supply: {'code': 318903, 'general_web': 489429, 'indic': 219112, 'instruction': 21898, 'math_science': 128818, 'qa': 908471}
+
+Stage 'foundation': steps [0, 781), span 800000 tokens, sequence_length=128
+    instruction    target=3.00% effective=2.74% [scarce_reduced]
+    (all other lanes ok)
+    [WARN] unallocated_share=0.26% of this stage is unmet
+
+Stage 'capability-expansion': steps [781, 1464), span 700000 tokens, sequence_length=128
+    code           target=25.00% effective=22.70% [scarce_reduced]
+    instruction    target=5.00% effective=2.00% [scarce_reduced], repeat_factor=1.64x
+    math_science   target=20.00% effective=6.97% [scarce_reduced]
+    (general_web, indic, qa ok)
+    [WARN] unallocated_share=18.33% of this stage is unmet
+
+Stage 'anneal': steps [1464, 1659), span 400000 tokens, sequence_length=256
+    indic          target=35.00% effective=20.00% [scarce_reduced], repeat_factor=1.26x
+    math_science   target=30.00% effective=0.00% [scarce_reduced]
+    (general_web, qa ok)
+    [WARN] unallocated_share=45.00% of this stage is unmet
+```
+
+`math_science` reaching effective share **0%** in `anneal` (it has no
+floor there, and its supply was already fully claimed by
+`capability-expansion`) next to `indic` still getting its full floor of
+20% (protected) in the same stage is the clearest single side-by-side
+illustration of what a protected floor actually buys a lane.
+
+### Tests (`tests/test_mixture_compiler.py`, plus `ManifestStore`/`CurriculumConfig` additions)
+
+- Stage validation: rejects no stages, weights not summing to 1.0, a floor
+  exceeding its lane's weight, a floor for a lane absent from `mixture`,
+  floors summing over 100%, non-contiguous stages, overlapping stages,
+  out-of-order stages, zero/negative span.
+- Ample supply: every lane comes back `"ok"` with `effective_weight ==
+  target_weight`; step range is a plain floor-division sanity check.
+- All three scarcity policies (`repeat`, `reduce_share`, `defer`) each
+  get their own behavior verified, including both `reduce_share` floor
+  edge cases described above.
+- Cumulative scarcity across stages (the case in point 1 above), including
+  under `repeat` specifically (a stage that looks fine alone still comes
+  back `scarce_repeat` once prior stages' demand is added in).
+- The step-numbering regression case described above, as a standing test.
+- `mixture_at_step`/`stage_at_step`: out-of-range steps raise; the first
+  stage never ramps even with `warmup_tokens` set; mixture at a stage's
+  first step equals the *previous* stage's mixture; mixture once past the
+  warmup window equals the *current* stage's; the midpoint of a warmup
+  window is an exact linear blend.
+- `ManifestStore.lane_token_totals()`: sums correctly across shards sharing
+  a lane, empty for a fresh store.
+- `CurriculumConfig` (in `test_config.py`): YAML `stages` parses into real
+  `MixtureStage` instances (not raw dicts), unknown top-level *and*
+  per-stage keys are both rejected, the mutable-default `stages` list
+  doesn't leak between instances, `.resolved()` makes `manifests_dir`/
+  `output_path` absolute while leaving `stages` itself untouched.

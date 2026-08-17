@@ -1,0 +1,57 @@
+# Curriculum for the real corpus. Token budgets below are deliberately
+# larger than some lanes can supply -- instruction, code, math_science and
+# indic all become scarce at some point across these 3 stages, on purpose,
+# to exercise cumulative scarcity tracking, protected floors, and the
+# "unallocated_share" reporting (see IMPLEMENTATION_NOTES.md §3).
+#
+# Run with: python scripts/compile_mixture.py --config configs/curriculum.yaml
+
+manifests_dir: data/manifests
+output_path: data/mixture_schedule.json
+global_batch_size: 8
+scarcity_policy: reduce_share # repeat | reduce_share | defer
+
+stages:
+  - stage: foundation
+    token_start: 0
+    token_end: 800000
+    sequence_length: 128
+    mixture:
+      general_web: 0.30
+      qa: 0.30
+      code: 0.20
+      math_science: 0.10
+      indic: 0.07
+      instruction: 0.03
+    protected_floors:
+      instruction: 0.02
+    warmup_tokens: 0
+
+  - stage: capability-expansion
+    token_start: 800000
+    token_end: 1500000
+    sequence_length: 128
+    mixture:
+      code: 0.25
+      math_science: 0.20
+      indic: 0.20
+      qa: 0.15
+      general_web: 0.15
+      instruction: 0.05
+    protected_floors:
+      indic: 0.15
+      instruction: 0.02
+    warmup_tokens: 100000
+
+  - stage: anneal
+    token_start: 1500000
+    token_end: 1900000
+    sequence_length: 256 # long-context annealing stage, per the design doc
+    mixture:
+      indic: 0.35
+      math_science: 0.30
+      qa: 0.20
+      general_web: 0.15
+    protected_floors:
+      indic: 0.20
+    warmup_tokens: 50000

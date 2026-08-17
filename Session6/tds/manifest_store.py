@@ -9,8 +9,9 @@ scanning the whole index.
 from __future__ import annotations
 
 import json
+from collections import defaultdict
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 
 class ManifestStoreError(Exception):
@@ -38,6 +39,15 @@ class ManifestStore:
 
     def all(self) -> List[dict]:
         return list(self._by_id.values())
+
+    def lane_token_totals(self) -> Dict[str, int]:
+        """Sum of token_count across all registered shards, grouped by
+        capability_lane -- the "how much distinct supply actually exists"
+        input the mixture compiler checks its planned shares against."""
+        totals: Dict[str, int] = defaultdict(int)
+        for manifest in self._by_id.values():
+            totals[manifest["capability_lane"]] += manifest["token_count"]
+        return dict(totals)
 
     def append(self, manifest: dict) -> None:
         """Register a shard manifest.
