@@ -114,6 +114,7 @@ class CurriculumConfig:
     manifests_dir: str = "data/manifests"
     output_path: str = "data/mixture_schedule.json"
     global_batch_size: int = 8
+    microbatch_size: int = 0  # 0 -> defaults to global_batch_size (accum_steps=1); must divide it evenly
     scarcity_policy: str = "reduce_share"  # see tds.mixture_compiler.compile_curriculum
     stages: List[MixtureStage] = field(default_factory=list)
 
@@ -162,6 +163,7 @@ class CurriculumConfig:
             manifests_dir=resolve(self.manifests_dir),
             output_path=resolve(self.output_path),
             global_batch_size=self.global_batch_size,
+            microbatch_size=self.microbatch_size if self.microbatch_size > 0 else self.global_batch_size,
             scarcity_policy=self.scarcity_policy,
             stages=self.stages,
         )

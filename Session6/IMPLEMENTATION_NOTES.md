@@ -1075,11 +1075,37 @@ sequence_length)`.
   scratch for a historical step) directly comparable, microbatch-for-
   microbatch and row-for-row, against what a live run's consumption
   ledger recorded at the time.
-- **`microbatch_size` is a plain constructor argument, not a YAML config
-  field yet.** There's no training script consuming it yet (that's the
-  next component down the line) — plumbing it into a config file now
-  would be a config surface with nothing real behind it. It becomes a
-  config field once an actual training loop exists to read one.
+- **`microbatch_size` is a plain constructor argument here** — `BatchAssembler`
+  itself stays config-agnostic. It became a real `CurriculumConfig` YAML
+  field (`microbatch_size`, alongside `global_batch_size`) once
+  `scripts/run_demo.py` existed as a training loop to read one; see the
+  note below.
+
+#### `microbatch_size` as a config field (extension, closed)
+
+`CurriculumConfig.microbatch_size` defaults to `0`, meaning "unset" —
+`CurriculumConfig.resolved()` maps that to `global_batch_size` (the old
+implicit behavior: one microbatch per step, `accum_steps=1`), so any
+config that predates this field, or simply omits it, behaves exactly as
+before. Setting it explicitly to a proper divisor of `global_batch_size`
+turns on real gradient accumulation: `scripts/run_demo.py` passes
+`curriculum_config.microbatch_size` (not `global_batch_size`) to
+`BatchAssembler`/`recompute_step`/`verify_resume`/`replay_range` — the
+only place `global_batch_size` itself is still needed is compiling the
+schedule (`compile_curriculum`), since `tokens_per_step` is defined in
+terms of the *global* batch, not the microbatch.
+
+Both shipped profiles now demonstrate `accum_steps=2`:
+`configs/curriculum.yaml` sets `global_batch_size=8, microbatch_size=4`;
+`configs/curriculum_toy.yaml` sets `global_batch_size=2,
+microbatch_size=1`. This is invisible to packing/mixture/consumption —
+the Packer still produces `global_batch_size` samples per step regardless
+of how they're later sliced into microbatches — confirmed by re-running
+`scripts/run_demo.py` on the real corpus and diffing `tokenizer_hash`
+and `schedule_hash` against the pre-change resting state: unchanged.
+What *does* change is the evidence bundle's crash-recovery line, which
+now genuinely shows more than one microbatch id per step (e.g.
+`batch_ids=['mb-26-0', 'mb-26-1']`).
 - **dtypes chosen for direct model consumption**: `token_ids`/`segment_id`/
   `position_id` as `int64` (the dtype PyTorch embedding/index lookups
   expect), `loss_mask` as `float32` (multiplies elementwise against

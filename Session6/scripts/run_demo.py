@@ -200,10 +200,7 @@ def main():
     model = ToyTransformer(model_config, seed=0)
     optimizer = torch.optim.Adam(model.parameters(), lr=3e-3)
     packer = Packer(seed, schedule, filtered_pools, store, pipeline_config.shards_dir)
-    # microbatch_size == global_batch_size -> one microbatch per step (accum_steps=1),
-    # the simplest case; a real run would set this independently once a training
-    # script exists to plumb it through config (see IMPLEMENTATION_NOTES.md §6).
-    assembler = BatchAssembler(packer, curriculum_config.global_batch_size)
+    assembler = BatchAssembler(packer, curriculum_config.microbatch_size)
 
     consumption_ledger = ConsumptionLedger(artifacts_dir / "ledgers" / "consumption")
     learning_ledger = LearningLedger(artifacts_dir / "ledgers" / "learning")
@@ -250,12 +247,12 @@ def main():
     resume_step = next_step_after_checkpoint(checkpoint_metadata)
     expected_microbatches = recompute_step(
         seed, schedule, filtered_pools, store, pipeline_config.shards_dir,
-        curriculum_config.global_batch_size, resume_step,
+        curriculum_config.microbatch_size, resume_step,
     )
     expected_ids = [f"mb-{mb.global_step}-{mb.microbatch_index}" for mb in expected_microbatches]
     resume_result = verify_resume(
         run_id, branch_id, resume_step, seed, schedule, filtered_pools, store, pipeline_config.shards_dir,
-        curriculum_config.global_batch_size, tok_manifest["tokenizer_hash"], consumption_ledger,
+        curriculum_config.microbatch_size, tok_manifest["tokenizer_hash"], consumption_ledger,
     )
     if resume_result.matched:
         log.log(f"[PASS] resume_next_batch_matched step={resume_step} batch_ids={expected_ids}")
@@ -265,7 +262,7 @@ def main():
     # --- Replay a historical range ---
     replay_result = replay_range(
         run_id, branch_id, 0, crash_step, seed, schedule, filtered_pools, store, pipeline_config.shards_dir,
-        curriculum_config.global_batch_size, tok_manifest["tokenizer_hash"], consumption_ledger,
+        curriculum_config.microbatch_size, tok_manifest["tokenizer_hash"], consumption_ledger,
     )
     log.log(f"[event] historical stream replayed (steps [0, {crash_step}))")
     if replay_result.matched:
@@ -284,7 +281,7 @@ def main():
 
     fork_seed = seed + "-fork"
     fork_packer = Packer(fork_seed, schedule, filtered_pools, store, pipeline_config.shards_dir)
-    fork_assembler = BatchAssembler(fork_packer, curriculum_config.global_batch_size)
+    fork_assembler = BatchAssembler(fork_packer, curriculum_config.microbatch_size)
     for step in range(crash_step + 1):
         fork_assembler.assemble_step(step)  # replay to the fork point -- same reasoning as resume
     for step in range(crash_step + 1, min(crash_step + 3, total_steps)):

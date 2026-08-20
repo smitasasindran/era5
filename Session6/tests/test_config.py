@@ -141,6 +141,13 @@ class TestCurriculumConfig(unittest.TestCase):
             self.assertEqual(config.global_batch_size, 4)
             self.assertEqual(config.scarcity_policy, "repeat")
 
+    def test_microbatch_size_defaults_to_zero_meaning_unset(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "config.yaml"
+            path.write_text(CURRICULUM_YAML)
+            config = CurriculumConfig.from_yaml(path)
+            self.assertEqual(config.microbatch_size, 0)
+
     def test_unknown_top_level_key_is_rejected(self):
         with tempfile.TemporaryDirectory() as d:
             path = Path(d) / "config.yaml"
@@ -173,6 +180,22 @@ class TestCurriculumConfig(unittest.TestCase):
             self.assertEqual(resolved.manifests_dir, str(Path("/some/root/data/manifests")))
             self.assertEqual(resolved.output_path, str(Path("/some/root/data/mixture_schedule.json")))
             self.assertEqual(resolved.stages, config.stages)
+
+    def test_resolved_defaults_unset_microbatch_size_to_global_batch_size(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "config.yaml"
+            path.write_text(CURRICULUM_YAML)  # global_batch_size: 4, no microbatch_size
+            config = CurriculumConfig.from_yaml(path)
+            resolved = config.resolved(root=Path("/some/root"))
+            self.assertEqual(resolved.microbatch_size, 4)
+
+    def test_resolved_keeps_explicit_microbatch_size(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "config.yaml"
+            path.write_text(CURRICULUM_YAML + "microbatch_size: 2\n")
+            config = CurriculumConfig.from_yaml(path)
+            resolved = config.resolved(root=Path("/some/root"))
+            self.assertEqual(resolved.microbatch_size, 2)
 
 
 if __name__ == "__main__":

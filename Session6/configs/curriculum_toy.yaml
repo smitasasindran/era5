@@ -11,6 +11,7 @@
 manifests_dir: data/manifests
 output_path: data/mixture_schedule_toy.json
 global_batch_size: 2
+microbatch_size: 1 # gradient_accumulation_steps = global_batch_size / microbatch_size = 2
 scarcity_policy: reduce_share # repeat | reduce_share | defer
 
 stages:
