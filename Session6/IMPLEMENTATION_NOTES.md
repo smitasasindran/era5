@@ -18,7 +18,8 @@ the "what we planned" half.
 | Packer | done | `tds/packer.py`, `tds/shard_builder.py` (`response_start_token`) |
 | Batch Assembler | done | `tds/batch_assembler.py` |
 | Consumption Ledger | done | `tds/consumption_ledger.py` |
-| Learning Ledger | not started | |
+| Toy Model & Training Step | done | `tds/model.py`, `tds/training_step.py` |
+| Learning Ledger | done | `tds/learning_ledger.py` |
 | Checkpoint / Crash / Resume | not started | |
 | Replay / Fork | not started | |
 | Audit / Evidence Bundle | not started | |
@@ -1223,3 +1224,186 @@ last recorded: (2, 1)
   `(run_id, branch_id)` combinations, including a fork sharing a `run_id`
   with `main`; `last_recorded_microbatch` returns the correct max tuple,
   `None` for a fresh branch, and ignores other branches' entries.
+
+## 8. Toy Model & Training Step
+
+Per DATALOADER_DESIGN.md §8's scope assumption: "Model is a small toy
+transformer, only large enough to produce real loss/perplexity numbers
+for the learning ledger — not a scale target." Built now because the
+Learning Ledger's numbers (`avg_token_loss`, `loss_delta_before_after`)
+have to come from *somewhere real* — recording a fabricated or
+placeholder loss value would violate the same "prove it, don't assert it"
+principle this entire project has followed for everything else.
+
+### `tds/model.py`: deliberately manual, not library-attention
+
+`ToyTransformer` is a small decoder-only transformer (`d_model`,
+`n_layers`, `n_heads`, `d_ff` all configurable via `ToyTransformerConfig`)
+with hand-written multi-head self-attention rather than
+`nn.MultiheadAttention` or any attention library. The reason isn't
+NIH — it's that this whole session has been building toward two specific
+correctness properties (segment-aware attention, position-id resets), and
+burying them inside a library call would make the model the one place in
+the codebase where those properties *aren't* directly inspectable:
+
+- **Position embeddings are indexed by `position_id`, not absolute
+  sequence position.** Since the Packer already resets `position_id` to 0
+  at each segment boundary, a document that starts partway through a
+  packed window gets its own local position sequence from the embedding
+  table, not some arbitrary large offset inherited from whatever
+  preceded it in that window.
+- **Attention bias comes from `segment_id`** via
+  `attention_bias_for_microbatch`, which calls
+  `tds.packer.attention_bias_from_segments` — the exact same function the
+  Packer's own tests use to *verify* the causal+same-segment property is
+  correct. The toy model is the first real *consumer* of that function,
+  not just a checker of it: the boolean mask becomes an additive float
+  bias (`0` / `-1e9`) added to raw attention scores before softmax.
+
+`ToyTransformer.__init__` takes an explicit `seed` and calls
+`torch.manual_seed(seed)` before constructing any parameters — a known,
+documented simplification (it mutates torch's *global* RNG state rather
+than using a generator scoped to this one model), acceptable because
+exactly one toy model exists per process in this project's scope.
+
+### Loss computation: masked next-token cross-entropy
+
+`compute_batch_loss(model, microbatch)` shifts logits/targets by one
+position (`shift_logits = logits[:, :-1]`, `shift_targets =
+token_ids[:, 1:]`), computes per-position cross-entropy, and multiplies by
+`loss_mask[:, :-1]` — dropping the window's final position outright,
+which needs no special-casing since its `loss_mask` is always 0 already
+(no next-token target for a window's last position, per §5.6). Splitting
+this into `forward_and_masked_loss` (graph-preserving, used for both
+`compute_batch_loss`'s read-only wrapper *and* `tds/training_step.py`'s
+backward pass) avoids computing the same forward pass two different ways
+that could silently drift apart.
+
+### `tds/training_step.py`: one optimizer update, evaluated before and after
+
+The Learning Ledger's `loss_delta_before_after` (course notes: "loss delta
+before and after exposure") is a property of one full optimizer update —
+not one microbatch — since gradient accumulation across a step's
+microbatches happens *before* the update, and "after" has to mean the
+*same* data re-evaluated post-update. `run_training_step`:
+
+1. Evaluates every microbatch in `eval()` / `no_grad()` mode — "before."
+2. Switches to `train()`, backpropagates each microbatch's loss (scaled by
+   `1 / len(microbatches)`, the standard gradient-accumulation
+   normalization so accumulated gradients match what one big batch would
+   have produced), then one `optimizer.step()`.
+3. Re-evaluates the *exact same* microbatches with the updated weights —
+   "after."
+
+Nothing about ledgers, checkpoints, or crash/resume lives in this
+module — it owns exactly one training step's mechanics, keeping it
+reusable by whatever eventually drives a full run loop.
+
+### Verified
+
+- Determinism: two independently-constructed `(model, optimizer,
+  microbatches)` triples, seeded identically, produce bit-for-bit
+  identical `avg_loss_before`/`avg_loss_after` and identical post-step
+  parameters (`torch.allclose` at `atol=1e-6`) — CPU-only PyTorch ops are
+  deterministic by default, so this held without needing any special
+  determinism flags.
+- A large learning rate applied to one step reliably reduces that same
+  step's own data's loss — the "before vs after exposure" signal made
+  unambiguous by exaggerating the step size, rather than relying on a
+  small, noisy natural improvement.
+- Real corpus, 3 live training steps (`d_model=32`, 2 layers, `lr=1e-3`):
+  loss decreased after every single exposure (`9.1448→9.1080`,
+  `9.1410→9.1153`, `9.1012→9.0769`).
+
+### Tests (`tests/test_model.py`, `tests/test_training_step.py`)
+
+- Model determinism: identical seeds produce identical initial weights;
+  different seeds produce different weights.
+- `attention_bias_for_microbatch` matches `attention_bias_from_segments`
+  exactly for a hand-constructed multi-sample `segment_id` array.
+- `compute_batch_loss`: correct output shape (`microbatch_size,
+  sequence_length - 1`); `avg_loss` matches an independently-computed
+  masked weighted average; always a finite plain `float`; deterministic
+  across two freshly-constructed same-seed models.
+- `run_training_step`: rejects empty input and mixed-`global_step` input;
+  an optimizer step measurably changes model parameters; result fields are
+  well-formed; a large-learning-rate step reduces that step's own loss;
+  two fully independent, identically-seeded runs produce identical losses
+  and identical post-step parameters.
+
+## 9. Learning Ledger
+
+### The design doc's example schema has the same gap the consumption ledger's did
+
+DATALOADER_DESIGN.md §5.9's example entry has no `run_id`/`branch_id` at
+all — which would let two different runs' (or two forked branches')
+entries collide on the same `(global_step, shard_id)` key. Extended the
+same way as the consumption ledger: keyed by
+`(run_id, branch_id, global_step, shard_id)`.
+
+### What "before/after" and "repeated pass" actually mean here
+
+- **`avg_token_loss`** is the *before* value from `accumulate_per_shard_loss`
+  — the loss as measured when this step's data was fed in, attributed to
+  the shard(s) it actually came from via each sample's
+  `segment_boundaries` (a single sample can span multiple shards; each
+  shard is only credited the token positions it actually contributed).
+- **`loss_delta_before_after`** = after − before, both computed the same
+  way, for the exact same data. Negative means this step's exposure
+  measurably helped; positive means it measurably hurt (a real gradient
+  spike, not a placeholder concept).
+- **`repeated_pass_number`** is computed *from the consumption ledger*,
+  not tracked independently: count how many of a branch's consumption
+  entries at or before this `global_step` touched this `shard_id`. This
+  means it can never drift from what was actually recorded as served —
+  there's no second, parallel notion of "how many times has this shard
+  been seen" to keep in sync. **Ordering matters**: a step's consumption
+  ledger entries must be written before its learning ledger entries are
+  built, since the count includes the current step.
+- **`model_phase`** (`early`/`mid`/`late`/`anneal`) buckets by fraction of
+  `schedule.total_steps` completed, *except* when the current stage's own
+  name contains "anneal" (our curriculum configs literally name a stage
+  that), which reports `"anneal"` regardless of position — a real,
+  distinct phase, not just "whichever third of the run this falls into."
+- **`usefulness_classification`** (`useful`/`neutral`/`harmful`) is a
+  simple threshold on `loss_delta_before_after` (`±1e-3` by default) — an
+  inspectable heuristic, not a claim of sophistication, and per §5.9
+  explicitly not acted on automatically in this phase: "recorded for the
+  next version to consume."
+- **`opus_score`** is `None` for every entry — OPUS is still the identity
+  pass-through stub, so there's no real score to attach yet.
+
+### Verified against the real corpus
+
+```
+step=0 avg_loss_before=9.1448 avg_loss_after=9.1080 shards_touched=4
+step=1 avg_loss_before=9.1410 avg_loss_after=9.1153 shards_touched=4
+step=2 avg_loss_before=9.1012 avg_loss_after=9.0769 shards_touched=4
+
+{
+  "global_step": 0, "shard_id": "shard-000001",
+  "avg_token_loss": 9.148, "loss_delta_before_after": -0.0396,
+  "opus_score": null, "repeated_pass_number": 1,
+  "model_phase": "early", "usefulness_classification": "useful"
+}
+```
+
+### Tests (`tests/test_learning_ledger.py`)
+
+- `accumulate_per_shard_loss`: single-shard averaging; a sample spanning
+  two shards attributes each shard exactly the positions it contributed
+  (not the whole sample); masked positions excluded from both the sum and
+  the count.
+- `model_phase_at_step`: early/mid/late boundaries by progress fraction;
+  an anneal-named stage reports `"anneal"` regardless of position within
+  it.
+- `classify_usefulness`: useful/harmful/neutral threshold boundaries.
+- `build_learning_ledger_entries` end-to-end (real `Packer` +
+  `BatchAssembler` + `ConsumptionLedger` + `run_training_step`): correct
+  shard attribution and delta value (checked against the step's overall
+  before/after delta in a single-shard fixture); `repeated_pass_number`
+  correctly increments `1 → 2` across two real training steps touching
+  the same shard.
+- `LearningLedger`: append+get roundtrip; identical re-append idempotent;
+  mismatched re-append rejected; reload from disk recovers prior entries;
+  `for_branch` isolates entries correctly.
