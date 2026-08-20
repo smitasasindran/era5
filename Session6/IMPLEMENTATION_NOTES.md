@@ -17,7 +17,8 @@ the "what we planned" half.
 | OPUS Selector (stub) | not started | |
 | Packer | done | `tds/packer.py`, `tds/shard_builder.py` (`response_start_token`) |
 | Batch Assembler | done | `tds/batch_assembler.py` |
-| Consumption / Learning Ledgers | not started | |
+| Consumption Ledger | done | `tds/consumption_ledger.py` |
+| Learning Ledger | not started | |
 | Checkpoint / Crash / Resume | not started | |
 | Replay / Fork | not started | |
 | Audit / Evidence Bundle | not started | |
@@ -1127,3 +1128,98 @@ produced 2 microbatches for step 0
   and exactly reconstructs what a direct `pack_step` call would have
   returned, for every step checked. Microbatch shapes match the compiled
   schedule's stage `sequence_length`.
+
+## 7. Consumption Ledger
+
+### The design doc's example schema doesn't quite hold together as written
+
+DATALOADER_DESIGN.md §5.8 gives one illustrative JSON record with
+*singular* `mixture_lane` and `loss_mask_hash` fields, alongside a
+*plural* `packed_sample_ids` list. That only holds together if a
+microbatch never mixes lanes and never spans more than one shard per
+sample. Ours routinely does both — the real-corpus `BatchAssembler` check
+in §6 already showed one microbatch with lanes
+`['code', 'code', 'qa', 'code']`, and a single packed sample can span
+multiple shards whenever its window carries over a document that started
+in a different shard than the one it finishes in.
+
+**Fix, matching the same reasoning as every other design-doc correction
+this session:** promote the per-sample fields (`packed_sample_ids`,
+`mixture_lane`, `shard_ids`, `token_span_ids`, `opus_decision_id`) to
+parallel lists, one entry per row of the microbatch, in the same order as
+`Microbatch.samples`. `loss_mask_hash` stays a single hash — but of the
+*whole stacked* `(microbatch_size, sequence_length)` array via
+`.tobytes()`, not of any one sample's mask. That's the object actually
+served to the model in one shot, and the thing a replayed step has to
+reproduce byte-for-byte. Fields that are genuinely microbatch-wide
+constants (`curriculum_stage`, `attention_policy`, `position_policy`,
+`tokenizer_version`, `dataloader_version`, `rank`) stayed singular, since
+they don't vary per sample within one step.
+
+### `build_ledger_entry` is a pure function; `ConsumptionLedger` just persists it
+
+Splitting these apart (rather than one class doing both) means the entry
+a hypothetical replay path recomputes can be diffed directly against what
+`ConsumptionLedger.append()` already wrote, with no I/O on the
+recomputation side. `curriculum_stage` is derived from
+`schedule.stage_at_step(microbatch.global_step)` rather than passed in
+separately — one less thing a caller could get out of sync with the
+schedule itself.
+
+`ConsumptionLedger` mirrors `ManifestStore`'s append-only,
+idempotent-on-identical-reappend design exactly, keyed by
+`(run_id, branch_id, microbatch_id)`: re-appending the *same* entry (a
+crash-recovery retry replaying a step that was already fully recorded) is
+a harmless no-op, but appending *different* content under an already-used
+key raises `ConsumptionLedgerError`. That rejection is precisely the
+mechanism that would catch a "repeated batch diverged from the original"
+bug — one of the assignment's explicit crash-recovery requirements — the
+moment it happened, rather than letting it silently corrupt the ledger.
+
+`last_recorded_microbatch(run_id, branch_id)` returns the highest
+`(global_step, microbatch_index)` tuple on record, or `None` for a fresh
+branch. Deliberately just a fact query, not a "what should run next"
+decision — answering that also needs `gradient_accumulation_steps` (to
+know whether a step's microbatches are all present, or a crash landed
+mid-step with only some of them recorded), which isn't ledger state. That
+reasoning belongs to the not-yet-built crash/resume component.
+
+### Verified against the real corpus
+
+```
+total entries: 6
+last recorded: (2, 1)
+
+{
+  "microbatch_id": "mb-0-0",
+  "curriculum_stage": "foundation",
+  "packed_sample_ids": ["ps-0-0", "ps-0-1", "ps-0-2", "ps-0-3"],
+  "mixture_lane": ["code", "code", "qa", "code"],
+  "shard_ids": [["shard-000001"], ["shard-000001"], ["shard-000033"], ["shard-000001"]],
+  "token_span_ids": ["shard-000001:42204-42332", ...],
+  "loss_mask_hash": "sha256:c39caba...",
+  "opus_decision_id": [null, null, null, null]
+}
+```
+
+### Tests (`tests/test_consumption_ledger.py`)
+
+- `build_ledger_entry`: correct `microbatch_id`/`packed_sample_id`
+  formatting; `curriculum_stage` correctly derived from the schedule; all
+  microbatch-wide constant fields present and correct; per-sample list
+  fields have one entry per row, in row order; `shard_ids` deduplicated
+  per sample (a sample packing two documents from the same shard lists it
+  once, not twice); `token_span_ids` format matches
+  `{shard_id}:{start}-{end}` built from each segment's absolute
+  shard-token range; `loss_mask_hash` matches an independently-computed
+  hash of the whole stacked array; two independently-constructed
+  `Packer`/`BatchAssembler` pairs produce byte-for-byte identical ledger
+  entries for the same step — the property resume/replay ultimately rests
+  on.
+- `ConsumptionLedger`: append+get roundtrip; identical re-append is
+  idempotent (one line on disk); a mismatched re-append under the same key
+  raises `ConsumptionLedgerError`; reloading from disk recovers prior
+  entries; `for_branch` correctly isolates entries across different
+  `(run_id, branch_id)` combinations, including a fork sharing a `run_id`
+  with `main`; `last_recorded_microbatch` returns the correct max tuple,
+  `None` for a fresh branch, and ignores other branches' entries.
