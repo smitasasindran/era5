@@ -20,7 +20,7 @@ the "what we planned" half.
 | Consumption Ledger | done | `tds/consumption_ledger.py` |
 | Toy Model & Training Step | done | `tds/model.py`, `tds/training_step.py` |
 | Learning Ledger | done | `tds/learning_ledger.py` |
-| Checkpoint / Crash / Resume | not started | |
+| Checkpoint / Crash / Resume | done | `tds/checkpoint.py`, `tds/resume.py` |
 | Replay / Fork | not started | |
 | Audit / Evidence Bundle | not started | |
 
@@ -1407,3 +1407,118 @@ step=2 avg_loss_before=9.1012 avg_loss_after=9.0769 shards_touched=4
 - `LearningLedger`: append+get roundtrip; identical re-append idempotent;
   mismatched re-append rejected; reload from disk recovers prior entries;
   `for_branch` isolates entries correctly.
+
+## 10. Checkpoint / Crash / Resume
+
+This is the component the design doc calls out as fixing v4's core
+problem, and it's where building the thing surfaced a real, non-obvious
+correction to the design doc's own claim about how cheap "recompute" is.
+
+### `tds/checkpoint.py`: exactly three values, nothing about the dataloader
+
+`CheckpointManager.save()` writes model weights, optimizer state, and
+torch's global RNG state, atomically (`torch.save` to a `.tmp` path in
+the same directory, then `os.replace` -- a crash mid-write can never
+leave a corrupt file at the real path), keyed by `(run_id, branch_id,
+global_step)`. `weights_only=False` on load is deliberate: our checkpoint
+payload carries non-tensor metadata (run_id/branch_id/global_step,
+optimizer state) alongside tensors, which is safe here specifically
+because these are files this project's own code wrote, never an
+untrusted external checkpoint (torch 2.6+ defaults `weights_only=True`,
+which would reject this payload outright).
+
+`next_step_after_checkpoint(metadata)` is a one-line function purely so
+the "resume point = checkpointed step + 1" invariant has a name instead
+of being an inline `+ 1` that a future edit could quietly get wrong --
+that exact off-by-one is the entire difference between "correct resume,"
+"skipped batch," and "repeated batch."
+
+`parent_branch_id`/`fork_step` fields exist on `CheckpointMetadata` now
+(round-trip correctly when provided) even though Fork itself (§5.13)
+isn't built yet -- the same forward-compatible-field pattern already used
+for `rank`/`opus_decision_id` elsewhere.
+
+### `tds/resume.py`: a real correction to the design doc's own claim
+
+DATALOADER_DESIGN.md §6 describes resume as: "Recompute, don't restore:
+call `cursor(seed, mixture_config, global_step + 1)`. This is arithmetic
+(a formula lookup), not re-tokenization or re-reading parquet" — implying
+recomputing an arbitrary step is O(1). **Building this exposed that's only
+true for lane *assignment*.** The first version of `recompute_step` built
+a *fresh* `Packer` and called `pack_step(resume_step)` directly on it —
+and the very first real test of the full crash/resume cycle against real
+multi-lane, multi-document data caught it immediately: the recomputed
+batch didn't match the control run's ledger entry at all past step 0.
+
+**Why:** `pick_lane` (which lane does this slot draw from) genuinely has
+no history dependency — it's a pure hash of `(seed, global_step, slot)`,
+correctly O(1) per query (see §4/§5's Cursor notes). But the Packer's
+*document consumption* position is cumulative: which document comes next
+in a lane's stream depends on exactly how much of that stream every
+*earlier* step's windows already consumed (carry-over spans, real
+document lengths — none of which reduce to a step-indexed formula the
+way lane assignment does). A fresh Packer asked to jump straight to step
+N has no way to know where each lane's stream actually is at that point.
+
+**Fix:** `recompute_step` now replays every step from 0 up to and
+including `global_step` on the fresh `Packer`/`BatchAssembler`, discarding
+every intermediate result and keeping only the last. This is the real,
+unavoidable cost of a checkpoint that stores nothing but
+`(run_id, branch_id, global_step)` (deliberately, per §5.10 — no saved
+file-position cursor): a small, fixed-size checkpoint traded for
+`O(global_step)` resume-time recomputation, not the `O(1)` the design
+doc's own wording implied. At this project's step counts (low thousands),
+that replay is still a sub-second operation and strictly cheaper than
+re-tokenizing or re-reading the corpus — the actual point the design doc
+was making, just not literally "a formula lookup." `tds/cursor.py`'s own
+docstrings already say almost exactly this about `lane_document_stream`
+("no shortcut to 'the k-th document' other than counting") — this section
+generalizes that same fact from one lane's stream to the whole Packer.
+
+### `verify_resume`: the actual proof, not a trust exercise
+
+Recomputes `resume_step`'s microbatches from scratch and compares
+`shard_ids`/`token_span_ids`/`loss_mask_hash` (the exact fields the
+consumption ledger already stores for verification, not full token
+arrays) against what a control run's consumption ledger already has on
+record for that step. A missing control entry is reported as a mismatch,
+not silently skipped — there's nothing to prove resume against if the
+step was never actually served by an uninterrupted run.
+
+### Verified against the real corpus
+
+```
+[event] shards created / manifests validated (already on disk)
+[PASS] checkpoint_saved step=4
+[event] crash simulated after step 4
+[event] run resumed from checkpoint step=4
+[PASS] resume_next_batch_matched step=5
+```
+
+...matching the assignment's own execution-log event names and `[PASS]`
+tags exactly.
+
+### Tests (`tests/test_checkpoint.py`, `tests/test_crash_resume.py`)
+
+- `CheckpointManager`: save+restore round-trips both model weights *and*
+  optimizer state (checked after a real optimizer step so Adam's moment
+  estimates are non-trivial, not just freshly-initialized defaults);
+  loading a missing checkpoint raises `FileNotFoundError`; a successful
+  save leaves no `.tmp` file behind; `latest_step` returns the correct
+  max and `None` for an empty branch, isolated correctly per branch; fork
+  metadata round-trips when provided.
+- `next_step_after_checkpoint`: exactly one past the checkpointed step.
+- **The centerpiece** (`test_resume_after_simulated_crash_matches_control_run_and_restores_weights`):
+  a full control run (uninterrupted, real multi-lane/multi-shard fixture,
+  real training steps) writes its consumption ledger and saves a
+  checkpoint mid-run; a *completely separate* set of objects (different
+  model seed, never touching the control run's `Packer` or model)
+  restores from that checkpoint and calls `verify_resume` — asserting
+  both that the restored weights exactly match a snapshot taken at
+  checkpoint time, and that the recomputed next-step batch exactly
+  matches the control ledger's entry for that step. This is the
+  assignment's "prove the next batch is exactly the expected batch"
+  requirement, actually proven rather than asserted.
+- `verify_resume` has teeth: a genuinely different seed is detected as a
+  mismatch (not rubber-stamped), and a missing control-ledger entry is
+  reported explicitly rather than silently treated as a pass.
