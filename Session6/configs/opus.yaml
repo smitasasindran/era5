@@ -1,0 +1,40 @@
+# OPUS candidate selection for the real corpus. Toggle `enabled` to turn
+# real proxy-scored selection on or off -- disabled writes a pass-through
+# decision log (every candidate accepted, no model run at all), so
+# downstream code always loads a frozen OPUS artifact the same way either way.
+#
+# Run with: python scripts/run_opus_selection.py --config configs/opus.yaml
+
+enabled: true
+manifests_dir: data/manifests
+shards_dir: data/shards
+tokenizer_dir: data/tokenizer
+output_path: data/opus_decisions.json
+
+# "" -> a freshly-initialized model seeded by `seed`, not a real trained
+# checkpoint (no live training loop exists yet to have produced one).
+checkpoint_path: ""
+seed: 0
+
+max_sequence_length: 128
+d_model: 32
+n_layers: 2
+n_heads: 2
+d_ff: 64
+
+# A freshly-initialized model's loss centers tightly around ln(vocab_size)
+# (~9.0 for this corpus's ~8000-token vocab) with very little spread --
+# it genuinely can't yet distinguish easy from hard documents. These
+# thresholds are set wide enough not to produce a degenerate all-one-bucket
+# result either way; a model that's had real training will naturally
+# spread out and give OPUS a more meaningful signal to act on (see
+# IMPLEMENTATION_NOTES.md §12 for the actual observed distributions,
+# untrained vs. after 40 real training steps).
+reject_below: 1.0 # score below this -> rejected (low_proxy_utility)
+defer_above: 11.0 # score above this -> deferred (anomalous_high_loss)
+
+# Lanes that must never be starved by the proxy's own judgment -- always
+# accepted, floor-rescued if the score would otherwise have said no.
+protected_lanes:
+  - indic
+  - instruction

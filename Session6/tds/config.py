@@ -14,6 +14,10 @@ Three config shapes:
 - `CurriculumConfig` drives scripts/compile_mixture.py (curriculum stages ->
   a compiled schedule, checked against actual shard supply) -- also loaded
   directly by run_pipeline.py when its config's `curriculum` field is set.
+- `OpusConfig` drives scripts/run_opus_selection.py (score every candidate
+  document under a model snapshot and freeze accept/reject/defer
+  decisions) -- `enabled: false` writes a pass-through decision log
+  instead of running any model.
 """
 
 from __future__ import annotations
@@ -30,6 +34,7 @@ ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CONFIG_PATH = ROOT / "configs" / "pipeline.yaml"
 DEFAULT_EVAL_REGISTRY_CONFIG_PATH = ROOT / "configs" / "eval_registry.yaml"
 DEFAULT_CURRICULUM_CONFIG_PATH = ROOT / "configs" / "curriculum.yaml"
+DEFAULT_OPUS_CONFIG_PATH = ROOT / "configs" / "opus.yaml"
 
 
 def _from_yaml(cls, path: str | Path):
@@ -160,3 +165,35 @@ class CurriculumConfig:
             scarcity_policy=self.scarcity_policy,
             stages=self.stages,
         )
+
+
+@dataclass
+class OpusConfig:
+    enabled: bool = False  # false: pass-through, every candidate accepted, no model run at all
+    manifests_dir: str = "data/manifests"
+    shards_dir: str = "data/shards"
+    tokenizer_dir: str = "data/tokenizer"
+    output_path: str = "data/opus_decisions.json"
+    checkpoint_path: str = ""  # "" -> a freshly-initialized model seeded by `seed`, not a real checkpoint
+    seed: int = 0
+    max_sequence_length: int = 128
+    d_model: int = 32
+    n_layers: int = 2
+    n_heads: int = 2
+    d_ff: int = 64
+    reject_below: float = 1.0  # score below this -> "rejected" (low_proxy_utility)
+    defer_above: float = 8.0  # score above this -> "deferred" (anomalous_high_loss)
+    protected_lanes: List[str] = field(default_factory=list)
+
+    @classmethod
+    def from_yaml(cls, path: str | Path) -> "OpusConfig":
+        return _from_yaml(cls, path)
+
+    def resolved(self, root: Path = ROOT) -> "OpusConfig":
+        instance = _resolved_dirs(
+            self, ("manifests_dir", "shards_dir", "tokenizer_dir", "output_path"), root
+        )
+        if instance.checkpoint_path:
+            p = Path(instance.checkpoint_path)
+            instance.checkpoint_path = str(p if p.is_absolute() else root / p)
+        return instance

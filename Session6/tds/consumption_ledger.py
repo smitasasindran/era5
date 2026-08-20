@@ -17,6 +17,17 @@ of the microbatch, in the same row order as `Microbatch.samples`.
 (every row), not of the concept of "one sample's mask" -- that's what's
 actually served to the model in one shot, and what a replayed step must
 reproduce byte-for-byte to prove a match.
+
+`opus_decision_id` is itself a list per sample (mirroring `shard_ids`'
+own per-sample dedup, just keyed by document instead of shard): every
+*unique* document contributing to that sample, in first-appearance order.
+When `opus_enabled=False` (OPUS's identity pass-through stub, or simply
+not run), every entry is `None` -- there's no real decision to point at.
+When true, each entry is `tds.opus`'s own deterministic candidate_id
+format (`opus-{shard_id}-{document_id}`) -- derivable directly, without
+needing a live decisions lookup, precisely because only *accepted*
+candidates ever reach the Packer in the first place: by the time a
+document shows up in a packed sample at all, OPUS already said yes.
 """
 
 from __future__ import annotations
@@ -48,6 +59,7 @@ def build_ledger_entry(
     microbatch: Microbatch,
     schedule: CompiledSchedule,
     tokenizer_hash: str,
+    opus_enabled: bool = False,
 ) -> dict:
     """Pure function: a Microbatch + run-level context -> one ledger
     record. No I/O -- ConsumptionLedger.append() is the only thing that
@@ -60,7 +72,7 @@ def build_ledger_entry(
     mixture_lane: List[str] = []
     shard_ids: List[List[str]] = []
     token_span_ids: List[List[str]] = []
-    opus_decision_id: List[Optional[str]] = []
+    opus_decision_id: List[List[Optional[str]]] = []
 
     for sample in microbatch.samples:
         packed_sample_ids.append(f"ps-{sample.global_step}-{sample.slot}")
@@ -68,16 +80,18 @@ def build_ledger_entry(
 
         sample_shard_ids: List[str] = []
         sample_spans: List[str] = []
-        for _local_seg, shard_id, _document_id, _w_start, _w_end, s_start, s_end in sample.segment_boundaries:
+        sample_opus_ids: List[Optional[str]] = []
+        seen_documents = set()
+        for _local_seg, shard_id, document_id, _w_start, _w_end, s_start, s_end in sample.segment_boundaries:
             if shard_id not in sample_shard_ids:
                 sample_shard_ids.append(shard_id)
             sample_spans.append(f"{shard_id}:{s_start}-{s_end}")
+            if (shard_id, document_id) not in seen_documents:
+                seen_documents.add((shard_id, document_id))
+                sample_opus_ids.append(f"opus-{shard_id}-{document_id}" if opus_enabled else None)
         shard_ids.append(sample_shard_ids)
         token_span_ids.append(sample_spans)
-
-        # OPUS is currently an identity pass-through stub -- no real
-        # decisions exist yet to attach an id to.
-        opus_decision_id.append(None)
+        opus_decision_id.append(sample_opus_ids)
 
     return {
         "run_id": run_id,

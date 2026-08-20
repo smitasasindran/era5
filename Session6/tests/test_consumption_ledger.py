@@ -106,7 +106,22 @@ class TestBuildLedgerEntry(unittest.TestCase):
         for i, sample in enumerate(mb.samples):
             self.assertEqual(entry["packed_sample_ids"][i], f"ps-{sample.global_step}-{sample.slot}")
             self.assertEqual(entry["mixture_lane"][i], sample.lane)
-            self.assertIsNone(entry["opus_decision_id"][i])
+            # opus_enabled=False (the default): every entry in this
+            # sample's list is None -- one per unique contributing document.
+            self.assertTrue(all(x is None for x in entry["opus_decision_id"][i]))
+
+    def test_opus_decision_id_uses_real_ids_when_enabled(self):
+        mb = self.assembler.assemble_step(0)[0]
+        entry = build_ledger_entry(
+            "run-a", "main", mb, self.schedule, tokenizer_hash="sha256:tok", opus_enabled=True
+        )
+        for i, sample in enumerate(mb.samples):
+            unique_docs = []
+            for _seg, shard_id, document_id, *_ in sample.segment_boundaries:
+                if (shard_id, document_id) not in unique_docs:
+                    unique_docs.append((shard_id, document_id))
+            expected = [f"opus-{shard_id}-{document_id}" for shard_id, document_id in unique_docs]
+            self.assertEqual(entry["opus_decision_id"][i], expected)
 
     def test_shard_ids_deduplicated_per_sample(self):
         # The code lane's window packs both c0 and c1, both from shard-000000

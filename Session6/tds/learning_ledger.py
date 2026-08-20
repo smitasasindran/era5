@@ -144,7 +144,12 @@ def build_learning_ledger_entries(
                 "shard_id": shard_id,
                 "avg_token_loss": loss_before[shard_id],
                 "loss_delta_before_after": delta,
-                "opus_score": None,  # OPUS is currently an identity pass-through stub
+                # OPUS (tds/opus.py) now does real scoring, but that score
+                # is per-document, computed once before packing, and not
+                # threaded through Microbatch/TrainingStepResult here --
+                # left None rather than fabricating a shard-level rollup
+                # this function was never given the inputs to compute.
+                "opus_score": None,
                 "repeated_pass_number": _repeated_pass_number(
                     consumption_ledger, run_id, branch_id, result.global_step, shard_id
                 ),

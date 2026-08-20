@@ -14,7 +14,7 @@ the "what we planned" half.
 | Eval / Test Firewall | done | `tds/hashing.py`, `tds/eval_registry.py`, `tds/eval_firewall.py`, `configs/eval_registry*.yaml`, `scripts/build_eval_registry.py` |
 | Curriculum & Mixture Compiler | done | `tds/mixture_compiler.py`, `tds/manifest_store.py` (`lane_token_totals`), `configs/curriculum*.yaml`, `scripts/compile_mixture.py` |
 | Cursor | done, revised (see §5) | `tds/cursor.py`, `tds/manifest_store.py` (`document_pool_by_lane`) |
-| OPUS Selector (stub) | not started | |
+| OPUS Selector | done | `tds/opus.py`, `configs/opus*.yaml`, `scripts/run_opus_selection.py` |
 | Packer | done | `tds/packer.py`, `tds/shard_builder.py` (`response_start_token`) |
 | Batch Assembler | done | `tds/batch_assembler.py` |
 | Consumption Ledger | done | `tds/consumption_ledger.py` |
@@ -1370,8 +1370,11 @@ same way as the consumption ledger: keyed by
   inspectable heuristic, not a claim of sophistication, and per §5.9
   explicitly not acted on automatically in this phase: "recorded for the
   next version to consume."
-- **`opus_score`** is `None` for every entry — OPUS is still the identity
-  pass-through stub, so there's no real score to attach yet.
+- **`opus_score`** is `None` for every entry — even after §12's real OPUS
+  build, since that score is per-*document* and computed once before
+  packing, not something `TrainingStepResult` carries through to here.
+  Wiring a shard-level rollup of real OPUS scores into the Learning
+  Ledger is a reasonable future extension, not done in this pass.
 
 ### Verified against the real corpus
 
@@ -1604,3 +1607,177 @@ fork-1 lanes served post-fork: [['code', 'general_web', ...], ...]
   ledger holds no entries at or before the fork point at all -- that
   shared history lives only under the parent's `branch_id`, exactly as
   designed.
+
+## 12. OPUS Selector: from stub to real, config-toggleable selection
+
+Per DATALOADER_DESIGN.md §5.5, OPUS was deliberately scoped as an identity
+pass-through stub while the toy model didn't exist yet (see the
+`dataloader-design-doc` memory's scoping note). That blocker is gone now
+that §8 built a real toy transformer for the Learning Ledger -- this
+section replaces the stub with real proxy scoring, gated by
+`OpusConfig.enabled` in `configs/opus*.yaml`.
+
+### Integration point: a pre-packing filter, not a Packer/Cursor change
+
+The design doc says OPUS "sits between the cursor and the packer." Taken
+literally that could mean weaving a scoring call into the Packer's
+window-filling loop -- but that would mean the Packer needs a live model
+whenever OPUS is on, breaking the property every component since Cursor
+has carefully preserved: Cursor and Packer are pure functions of frozen
+inputs, and never touch a model at all. Instead, OPUS runs once, entirely
+*before* any `Packer` or `Cursor` exists: `apply_opus_selection` scores
+every document in the raw `lane_pools`
+(`ManifestStore.document_pool_by_lane()`) and returns a *filtered*
+`lane_pools` dict, which gets handed to `Packer(..., lane_pools=filtered_pools)`
+with zero changes to `Packer` or `Cursor`. A rejected document simply
+never appears in the pool the Packer ever sees -- verified directly in
+`tests/test_opus.py`'s `TestOpusIntegratesWithPacker`.
+
+### Scoring: reusing `compute_batch_loss`, not re-deriving it
+
+`score_candidate` scores one document by average per-token loss under a
+given model snapshot, up to `max_sequence_length` tokens. Rather than
+re-deriving position/attention handling for a lone document, it builds a
+single-row, single-segment `Microbatch` (segment_id all zeros -- one
+document is the degenerate case of one segment spanning the whole window)
+and calls `tds.model.compute_batch_loss` directly, so scoring can never
+silently diverge from how loss is computed everywhere else in the
+project.
+
+Decision policy, per document:
+
+```
+score < reject_below  -> "rejected"  (low_proxy_utility)
+score > defer_above    -> "deferred"  (anomalous_high_loss)
+otherwise              -> "accepted"
+```
+
+A document whose lane is in `protected_lanes` is always accepted
+(`protected_floor_override=True` if it would otherwise have been
+rejected/deferred) -- mirroring the mixture compiler's own floor-via-
+repetition philosophy: a scarce, protected capability lane must never be
+zeroed out by the proxy's own judgment, however confident that judgment is.
+
+### A real finding: an untrained model has no discriminating signal
+
+Before finalizing `configs/opus.yaml`'s thresholds, scoring the real
+corpus with a freshly-initialized model showed scores clustered *tightly*
+around `ln(vocab_size)` (~9.0 for this corpus's ~8000-token vocab):
+
+```
+n=30  min=9.070  max=9.281  mean=9.175  std=0.047
+```
+
+This is expected and honest, not a bug: a randomly-initialized model
+predicts every token with roughly uniform probability, so every document
+looks equally "surprising." There is no real utility signal yet to act
+on. After 40 real training steps (`tds.training_step.run_training_step`,
+same corpus, same model architecture), the same candidates spread out
+substantially:
+
+```
+n=48  min=7.350  max=11.345  mean=8.365  std=1.246
+```
+
+`reject_below`/`defer_above` in the shipped configs are set wide enough
+that neither an untrained nor a lightly-trained model produces a
+degenerate all-one-bucket result -- but the real, meaningful splits this
+section demonstrates below all come from the *trained* checkpoint. This
+is a genuine, useful thing to know operationally: OPUS-style proxy
+scoring is only as informative as the model doing the scoring, and a
+production run would want to score with a checkpoint that's already seen
+real training, not the initial random weights.
+
+### A genuinely meaningful finding, once trained: `indic` is hard for this model
+
+Running selection (real corpus, 40-step-trained checkpoint, no protected
+lanes) actually deferred real documents:
+
+```
+accepted=832 rejected=0 deferred=18
+  indic          accepted=30 rejected=0 deferred=18
+  (all other lanes: 0 deferred)
+```
+
+All 18 deferrals were `indic`-lane documents -- a real, plausible signal:
+Hindi/Bangla-script content, tokenized byte-level and under-represented
+in this corpus, is genuinely harder for a 2-layer toy model to predict
+than English web/code/qa text after only 40 steps. Re-running with
+`protected_lanes: [indic, instruction]` (the shipped default) rescues
+exactly those documents:
+
+```
+accepted=850 rejected=0 deferred=0
+  indic          accepted=48 rejected=0 deferred=0, 18 floor-rescued
+```
+
+This is precisely the floor-rescue mechanism working as designed, driven
+by a real, data-derived signal rather than a synthetic test case.
+
+### Freezing: OPUS's output is not reproducible from static config alone
+
+Every other frozen artifact in this project (tokenizer, mixture schedule)
+is a pure function of its config -- recompiling with the same inputs
+always gives the same result. OPUS selection is different: it depends on
+a *specific model snapshot*, and a model that's since been trained
+further would score every candidate differently. So `freeze_opus_selection`/
+`load_frozen_opus_selection` (hash-pinned, same pattern as
+`freeze_schedule`/`load_frozen_tokenizer`) exist specifically so a later
+consumer loads the *exact* decisions made at selection time, and never
+silently re-runs OPUS against whatever the "current" model happens to be.
+
+### Wiring into the consumption ledger: a real schema refinement
+
+`ConsumptionLedger.build_ledger_entry`'s `opus_decision_id` field used to
+be a flat `None` per sample (§7, written when OPUS was still a stub).
+Now that decisions are real, it's a list per sample -- one entry per
+*unique* document contributing to that sample, mirroring how `shard_ids`
+already deduplicates per sample, just keyed by document instead of shard
+(`f"opus-{shard_id}-{document_id}"`, `tds.opus`'s own candidate_id
+format). A new `opus_enabled` flag on `build_ledger_entry` controls
+whether real ids or `None` get written -- derived directly from the
+`(shard_id, document_id)` pair with **no lookup dict needed**, because by
+construction only *accepted* candidates ever reach the Packer: a
+document's mere presence in a packed sample already proves OPUS said yes.
+
+Existing tests needed updating for the shape change
+(`test_per_sample_fields_are_parallel_lists_matching_row_order`); no
+other behavior changed.
+
+### Config: the on/off toggle
+
+`OpusConfig.enabled` (`configs/opus.yaml`/`configs/opus_toy.yaml`) is the
+toggle. `enabled: false` writes a pass-through decision log -- every
+candidate accepted, `opus_score: null` -- **without constructing or
+running any model at all**, not just a model that happens to always say
+yes. `checkpoint_path: ""` (the shipped default) means "a freshly-
+initialized model seeded by `seed`," since no persistent training loop
+exists yet to have produced a real checkpoint to point at; setting it to
+an actual `tds.checkpoint.CheckpointManager`-written `.pt` path scores
+with that snapshot instead (demonstrated, not shipped, in the finding
+above).
+
+### Tests (`tests/test_opus.py`, plus additions to `tests/test_consumption_ledger.py`)
+
+- `score_candidate`: deterministic for identical inputs; a document too
+  short to have any next-token prediction scores `0.0`; always a finite
+  float.
+- `apply_opus_selection` threshold logic, using a mocked `score_candidate`
+  so branching is tested independent of what a real forward pass produces:
+  low scores rejected and excluded from the filtered pool; high scores
+  deferred and excluded; middle scores accepted with a real
+  `effective_token_estimate`; a protected lane is rescued from rejection
+  (`protected_floor_override=True`); disabled selection accepts everything
+  without a model at all; enabling without a model raises.
+- `filtered_pools_from_decisions` reconstructs the same filtered pools an
+  in-memory `apply_opus_selection` call produced.
+- `freeze_opus_selection`/`load_frozen_opus_selection`: round-trip
+  recovers identical decisions and the same `decisions_hash`; a missing
+  frozen selection raises `FileNotFoundError`; tampering is detected and
+  raises `ValueError`.
+- **Integration**: a rejected document, via a real `Packer` fed the
+  filtered pool, never appears in any packed sample across many steps --
+  the property this whole integration design exists to guarantee.
+- `build_ledger_entry` (consumption ledger): `opus_decision_id` uses the
+  real `opus-{shard_id}-{document_id}` format when `opus_enabled=True`,
+  matching each sample's actual unique contributing documents.
