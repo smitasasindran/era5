@@ -7,10 +7,12 @@ BatchAssembler, exactly as a genuinely new process would, then proving
 that recomputed batch matches what an uninterrupted "control" run already
 recorded in the consumption ledger for that same step. That comparison --
 not "the process didn't crash again" -- is what actually certifies
-correct resume, and it's also why replay and audit fall out of the same
-mechanism almost for free: replay is this same recomputation run over a
-historical range with an equality assertion; audit is the same
-recomputation with a report instead of an assertion.
+correct resume.
+
+`verify_resume` is a thin, single-step wrapper around
+`tds.replay.replay_range` -- resume is exactly a one-step replay with an
+equality assertion, per §6's own framing, so this module doesn't
+duplicate that recompute-and-compare logic.
 """
 
 from __future__ import annotations
@@ -20,16 +22,12 @@ from pathlib import Path
 from typing import Dict, List
 
 from .batch_assembler import BatchAssembler, Microbatch
-from .consumption_ledger import ConsumptionLedger, build_ledger_entry
+from .consumption_ledger import ConsumptionLedger
 from .cursor import LanePool
 from .manifest_store import ManifestStore
 from .mixture_compiler import CompiledSchedule
 from .packer import Packer
-
-# Fields compared against the consumption ledger's own record -- the same
-# fields the ledger stores specifically for verification (§5.8), not the
-# full token arrays.
-_VERIFIED_FIELDS = ("shard_ids", "token_span_ids", "loss_mask_hash")
+from .replay import replay_range
 
 
 def recompute_step(
@@ -92,22 +90,21 @@ def verify_resume(
     entry §6 describes. A missing control entry is reported as a mismatch
     rather than silently skipped: there's nothing to prove resume against
     if the step was never actually served by an uninterrupted run."""
-    microbatches = recompute_step(
-        seed, schedule, lane_pools, manifest_store, shards_dir, microbatch_size, resume_step
+    result = replay_range(
+        run_id,
+        branch_id,
+        resume_step,
+        resume_step + 1,
+        seed,
+        schedule,
+        lane_pools,
+        manifest_store,
+        shards_dir,
+        microbatch_size,
+        tokenizer_hash,
+        consumption_ledger,
     )
-
-    mismatches: List[str] = []
-    for mb in microbatches:
-        recomputed = build_ledger_entry(run_id, branch_id, mb, schedule, tokenizer_hash)
-        recorded = consumption_ledger.get(run_id, branch_id, recomputed["microbatch_id"])
-        if recorded is None:
-            mismatches.append(f"{recomputed['microbatch_id']}: no control entry recorded to compare against")
-            continue
-        for key in _VERIFIED_FIELDS:
-            if recomputed[key] != recorded[key]:
-                mismatches.append(
-                    f"{recomputed['microbatch_id']}: {key} mismatch -- "
-                    f"recomputed={recomputed[key]!r} recorded={recorded[key]!r}"
-                )
-
-    return ResumeVerificationResult(global_step=resume_step, matched=not mismatches, mismatches=mismatches)
+    step_result = result.step_results[0]
+    return ResumeVerificationResult(
+        global_step=step_result.global_step, matched=step_result.matched, mismatches=step_result.mismatches
+    )

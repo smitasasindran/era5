@@ -21,7 +21,7 @@ the "what we planned" half.
 | Toy Model & Training Step | done | `tds/model.py`, `tds/training_step.py` |
 | Learning Ledger | done | `tds/learning_ledger.py` |
 | Checkpoint / Crash / Resume | done | `tds/checkpoint.py`, `tds/resume.py` |
-| Replay / Fork | not started | |
+| Replay / Fork | done | `tds/replay.py`, `tds/fork.py` |
 | Audit / Evidence Bundle | not started | |
 
 ## 1. Shard Builder & Manifest Store
@@ -1522,3 +1522,85 @@ tags exactly.
 - `verify_resume` has teeth: a genuinely different seed is detected as a
   mismatch (not rubber-stamped), and a missing control-ledger entry is
   reported explicitly rather than silently treated as a pass.
+
+## 11. Replay / Fork
+
+### Replay: extracted, not duplicated
+
+§6's own framing -- "replay and audit are nearly free extensions of
+[resume's] mechanism: replay is [recompute] run for an arbitrary
+historical range with an equality assertion" -- meant `verify_resume`
+already contained everything replay needed, just hardcoded to a single
+step. Rather than write a second copy of "recompute and compare against
+the ledger," `tds/replay.py`'s `replay_range` became the one real
+implementation, and `tds/resume.py`'s `verify_resume` was refactored into
+a one-line call to it (`replay_range(..., resume_step, resume_step + 1,
+...)`) -- confirmed to be a safe, non-breaking refactor by re-running the
+full crash/resume test suite unchanged afterward (one assertion needed
+updating for a cosmetic wording difference between the two modules'
+mismatch messages, nothing behavioral).
+
+**Avoiding the obvious O(n²) trap**: given §10's finding that Packer
+document-consumption position is cumulative (no jumping to an arbitrary
+step), the naive way to "replay a range" would be calling `verify_resume`
+independently once per step in the range -- each call separately replaying
+from step 0. For a range of length `k` ending at step `n`, that's
+`O(n) + O(n+1) + ... + O(n+k)`, quadratic in the range. `replay_range`
+instead walks *one* continuous `Packer`/`BatchAssembler` from step 0
+through the end of the range exactly once, comparing against the ledger
+only for steps inside `[start_step, end_step)` and discarding the
+"warm-up" steps before it needed only to advance the Packer's internal
+position correctly -- `O(end_step)` total, matching a single `recompute_step`
+call's own cost, not multiplying it by the range length.
+
+### Fork: almost no new mechanism needed
+
+`CheckpointManager` already carried `parent_branch_id`/`fork_step` fields
+(added during the Checkpoint/Crash/Resume build specifically so this
+wouldn't need retrofitting), and `ConsumptionLedger` already keys entries
+by `(run_id, branch_id, microbatch_id)` with a `for_branch` filter. The
+one genuinely new piece, `tds/fork.py`'s `fork_branch`, is small on
+purpose: restore the parent's checkpoint into the caller's model/optimizer,
+then immediately re-save it under the new `branch_id` at the same
+`global_step`, tagged with the parent lineage. From there, forking into a
+diverging stream is just an ordinary resume under the new
+`(run_id, new_branch_id)` pair -- a different seed, mixture config, or
+curriculum stage, exactly as §5.13 describes.
+
+**Deliberately not built here**: reconstructing "one branch's full
+history across a fork" (steps before the fork point living under the
+*parent's* `branch_id`, steps after living under the new one) is an
+Audit-level concern -- walking `parent_branch_id`/`fork_step` lineage
+across branches -- not something Fork itself needs to solve. The forked
+branch's ledger only ever holds its own post-fork entries.
+
+### Verified against the real corpus
+
+```
+[PASS] checkpoint_saved step=2
+[PASS] historical_stream_replayed matched=True steps=[0, 1, 2]
+[PASS] branch_forked parent=main fork_step=2 new_branch=fork-1
+fork-1 lanes served post-fork: [['code', 'general_web', ...], ...]
+```
+
+### Tests (`tests/test_replay.py`, `tests/test_fork.py`)
+
+- `replay_range`: a fully-recorded range matches, including starting from
+  step 0; a mismatched seed is detected across the *whole* range, not
+  just one step; a range extending past what's actually been recorded
+  correctly reports only the unrecorded steps as mismatched while the
+  recorded ones still match; invalid ranges (`start >= end`, negative
+  `start`) raise `ValueError`.
+- `fork_branch`: creates a checkpoint carrying correct
+  `parent_branch_id`/`fork_step` lineage; genuinely restores the parent's
+  weights into the new branch (not just metadata); rejects forking to the
+  parent's own `branch_id`.
+- **The centerpiece** (`test_branches_share_history_up_to_fork_and_diverge_after`):
+  a parent branch runs to a fork point and keeps training on its own seed;
+  a fork restores that exact checkpoint into a fresh model (verified via a
+  parameter snapshot taken at fork time) and continues on a *different*
+  seed. Post-fork ledger entries diverge between the two branches (proving
+  the fork genuinely changed the data stream), while the forked branch's
+  ledger holds no entries at or before the fork point at all -- that
+  shared history lives only under the parent's `branch_id`, exactly as
+  designed.

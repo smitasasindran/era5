@@ -160,7 +160,7 @@ class TestFullCrashResumeCycle(unittest.TestCase):
             self.microbatch_size, self.tokenizer_hash, control_ledger,
         )
         self.assertFalse(result.matched)
-        self.assertIn("no control entry recorded", result.mismatches[0])
+        self.assertIn("no recorded entry to compare against", result.mismatches[0])
 
 
 if __name__ == "__main__":
