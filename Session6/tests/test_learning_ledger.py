@@ -15,6 +15,7 @@ from tds.learning_ledger import (  # noqa: E402
     LearningLedger,
     LearningLedgerError,
     accumulate_per_shard_loss,
+    accumulate_per_shard_opus_score,
     build_learning_ledger_entries,
     classify_usefulness,
     model_phase_at_step,
@@ -22,6 +23,7 @@ from tds.learning_ledger import (  # noqa: E402
 from tds.manifest_store import ManifestStore  # noqa: E402
 from tds.mixture_compiler import MixtureStage, compile_curriculum  # noqa: E402
 from tds.model import ToyTransformer, ToyTransformerConfig  # noqa: E402
+from tds.opus import OpusDecision  # noqa: E402
 from tds.packer import PackedSample, Packer  # noqa: E402
 from tds.training_step import run_training_step  # noqa: E402
 
@@ -97,6 +99,67 @@ class TestAccumulatePerShardLoss(unittest.TestCase):
         self.assertAlmostEqual(averages["shard-a"], 20.0)  # (10+30)/2, position 1 excluded
 
 
+class TestAccumulatePerShardOpusScore(unittest.TestCase):
+    def test_single_document_shard_gets_its_own_score(self):
+        sample = make_sample(0, 0, "code", [(0, "shard-a", "d0", 0, 4, 0, 4)], sequence_length=4)
+        mb = Microbatch(
+            global_step=0, microbatch_index=0, rank=0,
+            token_ids=np.zeros((1, 4), dtype=np.int64),
+            segment_id=np.zeros((1, 4), dtype=np.int64),
+            position_id=np.arange(4).reshape(1, 4),
+            loss_mask=np.array([[1, 1, 1, 0]], dtype=np.float32),
+            samples=(sample,),
+        )
+        scores = accumulate_per_shard_opus_score([mb], {("shard-a", "d0"): 3.5})
+        self.assertAlmostEqual(scores["shard-a"], 3.5)
+
+    def test_weighted_by_token_count_when_a_shard_has_multiple_documents(self):
+        # doc d0 contributes 3 tokens (positions 0-2), doc d1 contributes 1 token
+        # (position 3) -- both from shard-a, with different scores.
+        sample = make_sample(
+            0, 0, "code",
+            [(0, "shard-a", "d0", 0, 3, 0, 3), (1, "shard-a", "d1", 3, 4, 0, 1)],
+            sequence_length=4,
+        )
+        mb = Microbatch(
+            global_step=0, microbatch_index=0, rank=0,
+            token_ids=np.zeros((1, 4), dtype=np.int64),
+            segment_id=np.array([[0, 0, 0, 1]]),
+            position_id=np.array([[0, 1, 2, 0]]),
+            loss_mask=np.ones((1, 4), dtype=np.float32),
+            samples=(sample,),
+        )
+        scores = accumulate_per_shard_opus_score([mb], {("shard-a", "d0"): 1.0, ("shard-a", "d1"): 9.0})
+        # (1.0*3 + 9.0*1) / 4 = 3.0
+        self.assertAlmostEqual(scores["shard-a"], 3.0)
+
+    def test_documents_with_no_recorded_score_are_excluded_not_zeroed(self):
+        sample = make_sample(0, 0, "code", [(0, "shard-a", "d0", 0, 4, 0, 4)], sequence_length=4)
+        mb = Microbatch(
+            global_step=0, microbatch_index=0, rank=0,
+            token_ids=np.zeros((1, 4), dtype=np.int64),
+            segment_id=np.zeros((1, 4), dtype=np.int64),
+            position_id=np.arange(4).reshape(1, 4),
+            loss_mask=np.array([[1, 1, 1, 0]], dtype=np.float32),
+            samples=(sample,),
+        )
+        scores = accumulate_per_shard_opus_score([mb], {})  # no score on record for d0
+        self.assertEqual(scores, {})
+
+    def test_none_score_for_a_document_is_excluded(self):
+        sample = make_sample(0, 0, "code", [(0, "shard-a", "d0", 0, 4, 0, 4)], sequence_length=4)
+        mb = Microbatch(
+            global_step=0, microbatch_index=0, rank=0,
+            token_ids=np.zeros((1, 4), dtype=np.int64),
+            segment_id=np.zeros((1, 4), dtype=np.int64),
+            position_id=np.arange(4).reshape(1, 4),
+            loss_mask=np.array([[1, 1, 1, 0]], dtype=np.float32),
+            samples=(sample,),
+        )
+        scores = accumulate_per_shard_opus_score([mb], {("shard-a", "d0"): None})  # OPUS disabled for this doc
+        self.assertEqual(scores, {})
+
+
 class TestModelPhaseAtStep(unittest.TestCase):
     def setUp(self):
         stages = [
@@ -155,6 +218,33 @@ class TestBuildLearningLedgerEntriesEndToEnd(unittest.TestCase):
                 build_ledger_entry("run-a", "main", mb, self.schedule, tokenizer_hash="sha256:tok")
             )
         return result
+
+    def test_opus_score_defaults_to_none_when_not_provided(self):
+        consumption_ledger = ConsumptionLedger(Path(self.tmpdir.name) / "consumption")
+        model = ToyTransformer(self.config, seed=0)
+        optimizer = torch.optim.Adam(model.parameters(), lr=0.3)
+        result = self.run_step(model, optimizer, 0, consumption_ledger)
+        entries = build_learning_ledger_entries("run-a", "main", result, self.schedule, consumption_ledger)
+        self.assertIsNone(entries[0]["opus_score"])
+
+    def test_opus_score_rolls_up_from_real_decisions_when_provided(self):
+        consumption_ledger = ConsumptionLedger(Path(self.tmpdir.name) / "consumption")
+        model = ToyTransformer(self.config, seed=0)
+        optimizer = torch.optim.Adam(model.parameters(), lr=0.3)
+        result = self.run_step(model, optimizer, 0, consumption_ledger)
+
+        decisions = [
+            OpusDecision(
+                candidate_id="opus-shard-000000-d0", shard_id="shard-000000", document_id="d0",
+                capability_lane="code", opus_score=4.2, status="accepted", rejection_reason=None,
+                protected_floor_override=False, effective_token_estimate=40,
+            )
+        ]
+        entries = build_learning_ledger_entries(
+            "run-a", "main", result, self.schedule, consumption_ledger, opus_decisions=decisions
+        )
+        self.assertEqual(len(entries), 1)
+        self.assertAlmostEqual(entries[0]["opus_score"], 4.2)
 
     def test_entries_reference_the_touched_shard_and_have_correct_delta(self):
         consumption_ledger = ConsumptionLedger(Path(self.tmpdir.name) / "consumption")

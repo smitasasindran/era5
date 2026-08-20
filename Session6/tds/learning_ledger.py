@@ -26,6 +26,7 @@ import numpy as np
 from .batch_assembler import Microbatch
 from .consumption_ledger import ConsumptionLedger
 from .mixture_compiler import CompiledSchedule
+from .opus import OpusDecision
 from .training_step import TrainingStepResult
 
 USEFULNESS_THRESHOLD = 1e-3  # |loss_delta| below this counts as "neutral"
@@ -66,6 +67,32 @@ def accumulate_per_shard_loss(
                 entry[1] += count
 
     return {shard_id: loss_sum / count for shard_id, (loss_sum, count) in totals.items() if count > 0}
+
+
+def accumulate_per_shard_opus_score(
+    microbatches: List[Microbatch], opus_scores: Dict[Tuple[str, str], Optional[float]]
+) -> Dict[str, float]:
+    """Token-weighted average OPUS score per shard, over exactly the
+    documents that actually contributed tokens to these microbatches --
+    weighted the same way `accumulate_per_shard_loss` is (by token count),
+    so the two numbers in one learning-ledger entry describe the same
+    underlying set of served tokens, not two different notions of "this
+    shard's contribution." Documents with no score on record (OPUS
+    disabled, or a document `opus_scores` simply doesn't cover) are
+    excluded from the average rather than treated as a zero score."""
+    totals: Dict[str, List[float]] = {}  # shard_id -> [score_sum_weighted, token_count]
+    for mb in microbatches:
+        for sample in mb.samples:
+            for _local_seg, shard_id, document_id, w_start, w_end, _s_start, _s_end in sample.segment_boundaries:
+                score = opus_scores.get((shard_id, document_id))
+                if score is None:
+                    continue
+                length = w_end - w_start
+                entry = totals.setdefault(shard_id, [0.0, 0])
+                entry[0] += score * length
+                entry[1] += length
+
+    return {shard_id: total / count for shard_id, (total, count) in totals.items() if count > 0}
 
 
 def model_phase_at_step(schedule: CompiledSchedule, global_step: int) -> str:
@@ -121,15 +148,28 @@ def build_learning_ledger_entries(
     result: TrainingStepResult,
     schedule: CompiledSchedule,
     consumption_ledger: ConsumptionLedger,
+    opus_decisions: Optional[List[OpusDecision]] = None,
 ) -> List[dict]:
     """One entry per shard touched by this training step. Requires the
     consumption ledger to already hold this step's entries (repeated_pass_number
     counts include the current step) -- callers should write the
     consumption ledger entries for a step before building its learning
-    ledger entries."""
+    ledger entries.
+
+    `opus_decisions` is optional and defaults to producing `opus_score:
+    None` exactly as before -- when given (the full decision list from
+    `tds.opus.apply_opus_selection`), each shard's `opus_score` becomes a
+    token-weighted rollup over exactly the documents that contributed to
+    *this* shard's `avg_token_loss`/`loss_delta_before_after` numbers in
+    this same entry, so all three describe the same underlying tokens."""
     loss_before = accumulate_per_shard_loss(result.microbatches, result.per_token_loss_before)
     loss_after = accumulate_per_shard_loss(result.microbatches, result.per_token_loss_after)
     phase = model_phase_at_step(schedule, result.global_step)
+
+    opus_score_by_shard: Dict[str, float] = {}
+    if opus_decisions:
+        score_lookup = {(d.shard_id, d.document_id): d.opus_score for d in opus_decisions}
+        opus_score_by_shard = accumulate_per_shard_opus_score(result.microbatches, score_lookup)
 
     entries = []
     for shard_id in sorted(loss_before):
@@ -144,12 +184,7 @@ def build_learning_ledger_entries(
                 "shard_id": shard_id,
                 "avg_token_loss": loss_before[shard_id],
                 "loss_delta_before_after": delta,
-                # OPUS (tds/opus.py) now does real scoring, but that score
-                # is per-document, computed once before packing, and not
-                # threaded through Microbatch/TrainingStepResult here --
-                # left None rather than fabricating a shard-level rollup
-                # this function was never given the inputs to compute.
-                "opus_score": None,
+                "opus_score": opus_score_by_shard.get(shard_id),
                 "repeated_pass_number": _repeated_pass_number(
                     consumption_ledger, run_id, branch_id, result.global_step, shard_id
                 ),

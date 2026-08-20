@@ -229,7 +229,9 @@ def main():
                     opus_enabled=opus_config.enabled,
                 )
             )
-        for entry in build_learning_ledger_entries(run_id, branch_id, result, schedule, consumption_ledger):
+        for entry in build_learning_ledger_entries(
+            run_id, branch_id, result, schedule, consumption_ledger, opus_decisions=opus_decisions
+        ):
             learning_ledger.append(entry)
 
         if step == crash_step:

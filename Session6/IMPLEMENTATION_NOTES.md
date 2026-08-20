@@ -1371,11 +1371,11 @@ same way as the consumption ledger: keyed by
   inspectable heuristic, not a claim of sophistication, and per §5.9
   explicitly not acted on automatically in this phase: "recorded for the
   next version to consume."
-- **`opus_score`** is `None` for every entry — even after §12's real OPUS
-  build, since that score is per-*document* and computed once before
-  packing, not something `TrainingStepResult` carries through to here.
-  Wiring a shard-level rollup of real OPUS scores into the Learning
-  Ledger is a reasonable future extension, not done in this pass.
+- **`opus_score`** was `None` for every entry when this section was first
+  written (OPUS's score is per-*document*, computed once before packing,
+  and `TrainingStepResult` didn't carry it through to here) -- closed in
+  §14 with a real token-weighted shard-level rollup, once §12's OPUS build
+  gave this something real to roll up.
 
 ### Verified against the real corpus
 
@@ -1402,6 +1402,16 @@ step=2 avg_loss_before=9.1012 avg_loss_after=9.0769 shards_touched=4
   an anneal-named stage reports `"anneal"` regardless of position within
   it.
 - `classify_usefulness`: useful/harmful/neutral threshold boundaries.
+- `accumulate_per_shard_opus_score` (§14): a single-document shard gets
+  that document's own score; a shard with multiple documents gets a
+  token-weighted average (not a plain average across documents); a
+  document with no recorded score, or an explicit `None` score, is
+  excluded from the average rather than treated as zero.
+- `build_learning_ledger_entries`: `opus_score` stays `None` when
+  `opus_decisions` isn't passed (unchanged default behavior); rolls up to
+  the real score when a decision list is provided. Verified against the
+  real corpus: all 217 learning-ledger entries over a 50-step demo run
+  carried a real `opus_score`.
 - `build_learning_ledger_entries` end-to-end (real `Packer` +
   `BatchAssembler` + `ConsumptionLedger` + `run_training_step`): correct
   shard attribution and delta value (checked against the step's overall
