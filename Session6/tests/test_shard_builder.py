@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from tds.corpus import Document  # noqa: E402
-from tds.shard_builder import ShardBuilderConfig, build_shards  # noqa: E402
+from tds.shard_builder import ShardBuilderConfig, build_shards, _tokenize_document  # noqa: E402
 from tds.hashing import sha256_bytes  # noqa: E402
 from tds.tokenizer_utils import train_tokenizer  # noqa: E402
 
@@ -146,6 +146,78 @@ class TestShardBuilder(unittest.TestCase):
         ids_a = [(m["shard_id"], m["content_hash"]) for m in manifests_a]
         ids_b = [(m["shard_id"], m["content_hash"]) for m in manifests_b]
         self.assertEqual(ids_a, ids_b)
+
+
+INSTRUCTION_TEXT = "Instruction: summarize.\nOutput: a short summary."
+
+
+class TestStructurePreservingTokenization(unittest.TestCase):
+    """response_start_token bookkeeping for STRUCTURE_PRESERVING_LANES --
+    the boundary the Packer's structure_preserving policy loss-masks
+    against. See IMPLEMENTATION_NOTES.md §5 for why prompt/response are
+    tokenized separately rather than sliced out of a whole-text encoding."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmpdir = tempfile.TemporaryDirectory()
+        tok_dir = Path(cls.tmpdir.name) / "tokenizer"
+        cls.tokenizer, cls.tok_manifest = train_tokenizer(
+            [INSTRUCTION_TEXT, WEB_SENTENCE * 5, "Instruction with no marker at all."],
+            tok_dir,
+            vocab_size=1000,
+            min_frequency=1,
+        )
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tmpdir.cleanup()
+
+    def _build(self, documents, shard_token_budget=300):
+        run_dir = tempfile.mkdtemp(dir=self.tmpdir.name)
+        config = ShardBuilderConfig(
+            shard_token_budget=shard_token_budget,
+            shards_dir=str(Path(run_dir) / "shards"),
+            manifests_dir=str(Path(run_dir) / "manifests"),
+        )
+        manifests = build_shards(documents, self.tokenizer, self.tok_manifest["tokenizer_hash"], config)
+        return manifests, config
+
+    def test_non_structure_preserving_lane_gets_none(self):
+        doc = Document("doc-000000", "src-0", "toy_web", "en", "general_web", WEB_SENTENCE)
+        _, resp_start = _tokenize_document(doc, self.tokenizer, self.tokenizer.token_to_id("<eos>"))
+        self.assertIsNone(resp_start)
+
+    def test_marker_present_splits_at_the_marker(self):
+        eos_id = self.tokenizer.token_to_id("<eos>")
+        doc = Document("doc-000000", "src-0", "toy_instruct", "en", "instruction", INSTRUCTION_TEXT)
+        marker_pos = INSTRUCTION_TEXT.lower().find("output:")
+        prompt_ids = self.tokenizer.encode(INSTRUCTION_TEXT[:marker_pos]).ids
+        response_ids = self.tokenizer.encode(INSTRUCTION_TEXT[marker_pos:]).ids
+
+        ids, resp_start = _tokenize_document(doc, self.tokenizer, eos_id)
+        self.assertEqual(resp_start, len(prompt_ids))
+        self.assertEqual(ids, prompt_ids + response_ids + [eos_id])
+
+    def test_marker_absent_treats_whole_document_as_response(self):
+        text = "Instruction with no marker at all."
+        eos_id = self.tokenizer.token_to_id("<eos>")
+        doc = Document("doc-000000", "src-0", "toy_instruct", "en", "instruction", text)
+        ids, resp_start = _tokenize_document(doc, self.tokenizer, eos_id)
+        self.assertEqual(resp_start, 0)
+        self.assertEqual(ids, self.tokenizer.encode(text).ids + [eos_id])
+
+    def test_manifest_records_absolute_response_start_token(self):
+        doc = Document("doc-000000", "src-0", "toy_instruct", "en", "instruction", INSTRUCTION_TEXT)
+        manifests, _ = self._build([doc])
+        span = manifests[0]["document_spans"][0]
+        marker_pos = INSTRUCTION_TEXT.lower().find("output:")
+        prompt_len = len(self.tokenizer.encode(INSTRUCTION_TEXT[:marker_pos]).ids)
+        self.assertEqual(span["response_start_token"], span["start_token"] + prompt_len)
+
+    def test_response_start_token_is_none_for_non_structure_preserving_documents(self):
+        doc = Document("doc-000000", "src-0", "toy_web", "en", "general_web", WEB_SENTENCE)
+        manifests, _ = self._build([doc])
+        self.assertIsNone(manifests[0]["document_spans"][0]["response_start_token"])
 
 
 if __name__ == "__main__":

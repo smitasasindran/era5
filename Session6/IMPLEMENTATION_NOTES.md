@@ -13,9 +13,9 @@ the "what we planned" half.
 | Shard Builder & Manifest Store | done | `tds/corpus.py`, `tds/tokenizer_utils.py`, `tds/manifest_store.py`, `tds/shard_builder.py`, `tds/config.py`, `configs/*.yaml`, `scripts/run_pipeline.py` |
 | Eval / Test Firewall | done | `tds/hashing.py`, `tds/eval_registry.py`, `tds/eval_firewall.py`, `configs/eval_registry*.yaml`, `scripts/build_eval_registry.py` |
 | Curriculum & Mixture Compiler | done | `tds/mixture_compiler.py`, `tds/manifest_store.py` (`lane_token_totals`), `configs/curriculum*.yaml`, `scripts/compile_mixture.py` |
-| Cursor | done | `tds/cursor.py`, `tds/manifest_store.py` (`document_pool_by_lane`) |
+| Cursor | done, revised (see §5) | `tds/cursor.py`, `tds/manifest_store.py` (`document_pool_by_lane`) |
 | OPUS Selector (stub) | not started | |
-| Packer | not started | |
+| Packer | done | `tds/packer.py`, `tds/shard_builder.py` (`response_start_token`) |
 | Batch Assembler | not started | |
 | Consumption / Learning Ledgers | not started | |
 | Checkpoint / Crash / Resume | not started | |
@@ -780,3 +780,274 @@ Assembler/Checkpoint/Resume machinery that will do it for real exists.
 - `ManifestStore.document_pool_by_lane()`: groups and flattens spans
   correctly by lane; sorted by `(shard_id, start_token)` regardless of
   append order; empty for a fresh store.
+
+## 5. Packer (and a correction to §4's Cursor)
+
+### Building the Packer exposed a real mismatch in the Cursor's API
+
+§4's `iter_candidates`/`CandidateItem`/`picks_so_far_in_lane` assumed
+exactly one document per (global_step, slot) -- i.e. one document = one
+packed sequence. That assumption doesn't survive contact with the Packer:
+DATALOADER_DESIGN.md §5.6 says the packer "fills fixed-length sequences
+*from* candidates" -- plural candidates per sequence. A short document
+doesn't fill a whole window by itself (several get concatenated); a long
+document can overflow one window and spill into the next. Neither case fits
+"one candidate maps to one output sequence."
+
+**Fix:** split what was one concept into two genuinely separate ones,
+both still in `tds/cursor.py`:
+
+- `pick_lane` / `lane_for_slot` / `iter_lane_assignments` -- *which lane*
+  does output sequence `(global_step, slot)` draw from. This part was
+  always correct: it never depended on document lengths, only on
+  `(seed, global_step, slot)` and the compiled mixture. Simplified as a
+  result -- no cumulative pick-count bookkeeping needed at all, since the
+  decision has no history dependency. `iter_candidates`'s O(n)
+  `picks_so_far_in_lane` replay is gone; `lane_for_slot` is now a direct
+  O(1) point query.
+- `lane_document_stream` -- an *infinite* per-lane document generator
+  (permuted, reshuffled each full cycle), advanced by the Packer at
+  *its own pace* (one step per document actually consumed while filling a
+  window), not once per slot.
+
+`CandidateItem` is gone -- nothing needed a standalone "one document
+assigned to one sequence" record once the Packer owns document consumption
+directly. `tests/test_cursor.py` was rewritten against the new,
+smaller surface; the replay-determinism and scarcity-awareness properties
+it proved before still hold (see its test list below), now proved against
+the simpler API.
+
+### response_start_token: why prompt/response must be tokenized separately
+
+Structure-preserving packing (see below) needs to know exactly which
+tokens are "prompt" and which are "response" for a role-tagged document.
+The tempting shortcut -- tokenize the whole document as one string, find
+the prompt/response split in the *text*, and assume that maps to some
+clean index in the *token* array -- is wrong in general: a BPE merge can
+span the prompt/response text boundary, so the token adjacent to the split
+might not correspond to a clean cut in text space at all. This is a known
+issue in real SFT tokenization pipelines (it's why e.g. TRL's
+`SFTTrainer` warns about exactly this when computing response-only loss
+masks).
+
+Fixed at the source: `tds/shard_builder.py`'s new `_tokenize_document()`
+tokenizes the prompt and response text *separately* for lanes in
+`STRUCTURE_PRESERVING_LANES = {"instruction"}`, then concatenates the two
+id lists (+ eos) -- guaranteeing an exact, unambiguous token boundary,
+at the (negligible, at this scale) cost of losing whatever single BPE merge
+might otherwise have spanned that boundary. The resulting boundary is
+recorded as `response_start_token` (absolute position within the shard) on
+the document's span in the manifest, alongside `start_token`/`end_token`;
+it's `None` for every other lane, which keeps their tokenization (and
+shard content) completely unchanged.
+
+For lanes in `STRUCTURE_PRESERVING_LANES`, the split point is found by a
+case-insensitive search for the literal marker `"output:"` in the
+document's raw text; a document without that marker degrades gracefully
+to "fully response" (`response_start_token` == its own `start_token`,
+i.e. no extra masking -- identical to `concatenate_and_chop` for that one
+document) rather than raising. This matters in practice: the toy corpus's
+one `instruction` document uses a clean `Instruction:/Input:/Output:`
+template and gets a real split (`response_start_token=98` out of 140
+tokens, verified below), but the **real corpus's `instruction` lane is
+much messier** -- of its 17 documents, only **1** contains a detectable
+`"output:"` marker at all (checked directly against
+`data/corpus/small_shard.parquet`). The other 16 fall back to "fully
+response," which is an honest reflection of the data, not a bug: this
+project's real corpus doesn't actually have clean SFT-style records for
+most of its `instruction` lane, so structure-preserving packing is properly
+demonstrated on the toy corpus, and degrades safely rather than
+mis-splitting on the real one. Rebuilding shards after this change did not
+change either corpus's per-lane token totals (`schedule_hash` for both
+profiles came out byte-identical to before) -- the one real-corpus document
+with a marker happened to tokenize to the same total length either way.
+
+### The Packer itself
+
+`tds/packer.py`'s `Packer` builds one packed window at a time
+(`pack_step(global_step) -> List[PackedSample]`, one `PackedSample` per
+batch slot) by pulling from a lane's `lane_document_stream`, concatenating
+document tokens until the window is full, and **carrying over** whatever
+of a document didn't fit into the *next* window for that same lane (no
+document is ever dropped, duplicated, or re-read from its own start
+prematurely). Per packed sequence:
+
+- `segment_id`: local index (0, 1, 2, ...), reset every window -- never
+  compared across windows, only needs to be locally unique.
+- `position_id`: resets to 0 at each segment boundary.
+- `loss_mask`: 1 by default; 0 at the window's true final position (no
+  next-token target); additionally 0 over a segment's prompt portion under
+  `"structure_preserving"`. Padding never arises in this design --
+  `lane_document_stream` cycles forever, so a window is always fully
+  fillable; there's no "ran out of data" case to pad for.
+- `segment_boundaries`: per segment, both the window-local range *and* the
+  absolute shard-token range it was read from -- the latter is what lets
+  the loss-mask computation compare against `response_start_token`.
+
+Two policies, selected per lane via the same `STRUCTURE_PRESERVING_LANES`
+set the shard builder uses (so the two can never disagree about which
+lanes get which treatment):
+
+- `concatenate_and_chop` (default, everything except `instruction`): every
+  position loss-visible except the window's final one -- matches the
+  design doc's own worked example exactly (reproduced verbatim as
+  `tests/test_packer.py::TestConcatenateAndChopWorkedExample`, including
+  the doc-B-overflows-into-the-next-window case).
+- `structure_preserving` (`instruction`): additionally masks the prompt
+  portion of any segment with a real `response_start_token`.
+
+`attention_bias_from_segments(segment_id) -> np.ndarray` materializes the
+boolean causal+same-segment matrix -- purely a verification/test utility.
+Per the design doc, real attention computation should bias directly from
+the O(L) `segment_id` array, never build this O(L^2) matrix; nothing in
+`PackedSample` stores it.
+
+### Verified against the real toy shards
+
+```
+$ python -c "... Packer(...).pack_step(0) on the plain 'code' lane ..."
+token_ids   : (223, 13, 272, 1, 285, 72, 273, 299)
+segment_id  : (0, 0, 0, 0, 1, 1, 1, 1)
+loss_mask   : (1, 1, 1, 1, 1, 1, 1, 0)
+boundaries  : ((0, shard-000000, doc-000002, 0,4, 19,23), (1, shard-000000, doc-000003, 4,8, 23,27))
+attention bias (8x8): causal-and-same-segment exactly as the two 4-token blocks predict
+
+$ python -c "... Packer(...).pack_step(0) on the real 'instruction' document (140 tokens, response_start_token=98) ..."
+policy: structure_preserving
+prompt-masked positions: 98/98
+response loss-visible positions: 41/41 (position 139 is the window's final position -> masked)
+loss_mask[95:105]: (0, 0, 0, 1, 1, 1, 1, 1, 1, 1)   <- exact 98-token boundary
+```
+
+(The toy corpus's own compiled curriculum doesn't happen to include the
+`instruction` lane in its mixture, so the second check above used a small
+one-off single-lane schedule against the same real, already-built toy
+shards/manifests -- not a separate corpus.)
+
+### `best_fit` sequence packing (a second, orthogonal axis)
+
+Mirrors the shard builder's own `greedy`/`best_fit` choice, but at a
+different layer: the shard builder's `packing_policy` decides how
+*documents get grouped into shards*; this new `sequence_packing_policy`
+decides *which document gets pulled next to fill a window's remaining
+room*, once a lane has already been chosen. It's a Packer-wide setting
+(`Packer(..., sequence_packing_policy="best_fit")`, default `"greedy"`),
+completely independent of the existing loss-masking policy
+(`concatenate_and_chop`/`structure_preserving`, unchanged, still driven by
+lane) -- a lane can be packed `best_fit` *and* `structure_preserving` at
+once.
+
+**Why "best fit" can't just reuse the shard builder's `_pack_best_fit`.**
+That function does classic best-fit-decreasing bin-packing, where a bin is
+allowed to end up under-full when nothing remaining fits it -- fine for a
+shard (any size is valid), fatal for a fixed-`sequence_length` window
+(there's no padding mechanism in this design; every window must come out
+exactly full). So sequence-level best-fit needed its own algorithm, one
+that guarantees an exact fill by construction:
+
+1. If a document is already partially consumed (mid-carry from the
+   previous window), finish it first -- carry-over behaves identically
+   under both policies; `best_fit` only changes how a *new* pick is made,
+   never how an overflowing document gets sliced.
+2. Otherwise, look across the *current epoch's* not-yet-consumed documents
+   (materialized via a new `tds/cursor.py` primitive, `lane_epoch_stream`
+   -- the per-epoch counterpart to `lane_document_stream`, yielding one
+   whole shuffled epoch at a time instead of flattening every epoch into a
+   single per-document stream) and pick whichever document fits the
+   remaining room most tightly (largest that's `<= room`).
+3. If none fits at all, fall back to the *smallest* remaining document --
+   it will still overflow and carry over, but minimizes how much of it
+   spills into the next window, converging back to exact fits sooner than
+   picking a big one would.
+
+Both cases still route through the exact same `_fill_window` carry-over
+loop as `greedy` -- the two policies only differ in the one-line
+"how do I get the next document" step, injected as a small callable
+(`_next_document_picker`), so the carry/slicing logic that was already
+tested for `greedy` can't silently diverge between the two.
+
+**A real correctness lesson from writing this section's tests:** the first
+draft of a "does best_fit reduce fragmentation" test assumed it would find
+a multi-document *combination* that exactly fills a window (e.g. picking a
+6-length and a 4-length document together to exactly fill a 10-token
+room). That's not what this algorithm does, and isn't what "best fit"
+means in the classic bin-packing sense either -- it's a single best choice
+*at each decision point*, not a combinatorial subset-sum search (which
+would be a much more expensive, different algorithm). The corrected test
+uses a case where the single best choice is unambiguous (an exact-length
+match), and a separate test checks the *set* of tokens consumed per epoch
+(not their order, which best_fit deliberately doesn't preserve) to confirm
+no document is ever lost or duplicated.
+
+**Checked against the real corpus and toy corpus, honestly:** on both of
+this project's current configs, most documents are considerably *longer*
+than a window (`sequence_length` of 8-256 vs. documents often in the
+hundreds or thousands of tokens), so the "nothing fits, pick smallest
+overflowing" fallback dominates in practice, and the two policies produce
+nearly identical fragmentation (measured as average `segment_boundaries`
+length per packed sequence over a full schedule):
+
+```
+Real corpus (sequence_length=128/256):  greedy 1.05/sequence vs. best_fit 1.15/sequence (first 50 steps)
+Toy corpus  (sequence_length=8/16):     greedy 1.13/sequence vs. best_fit 1.11/sequence (all 27 steps)
+```
+
+This is an honest, useful finding rather than a disappointing one:
+`best_fit`'s benefit is real and is proven correct in the unit tests
+(constructed with document lengths deliberately comparable to the window
+size, where it visibly avoids splits `greedy` would force), but neither
+corpus currently on disk happens to have many documents *smaller* than its
+configured `sequence_length` -- the case where this policy actually
+changes the outcome. Worth keeping in mind when picking a real training
+corpus later: `best_fit`'s value shows up on short-document lanes (chat
+turns, code snippets, Q&A pairs) packed at a modest `sequence_length`, not
+on lanes made of long-form documents already bigger than the window.
+
+### Tests (`tests/test_packer.py`, plus rewritten `tests/test_cursor.py` and additions to `tests/test_shard_builder.py`)
+
+- Worked-example fidelity: a synthetic doc-A/doc-B shard, packed with a
+  seed chosen so epoch 0's shuffle happens to land in the same order as
+  the design doc's own example, reproduces its `token_ids`/`segment_id`/
+  `position_id`/`loss_mask` exactly -- including that the EOS-to-next-doc
+  transition stays loss-visible.
+- Carry-over correctness: the *next* window picks up exactly where the
+  previous one left off (verified against the design's own numbers), and
+  a document 2.5x longer than one window reconstructs byte-for-byte across
+  3 consecutive windows before the (size-1) pool correctly cycles back to
+  re-read the same document.
+- Structure-preserving masking: prompt tokens masked, response tokens
+  visible, final position still masked regardless of policy; a
+  structure-preserving-lane document with no marker (`response_start_token
+  is None`) stays fully loss-visible except the final position -- the
+  graceful-degradation path.
+- `attention_bias_from_segments`: causal+same-segment truth table checked
+  by hand against a known `segment_id` array.
+- Determinism: two independent fresh `Packer` instances given the same
+  `(seed, schedule, lane_pools)` produce an identical `PackedSample`
+  stream across 10 steps.
+- `best_fit` sequence packing: rejects an unknown `sequence_packing_policy`;
+  picks the exact-length match over documents that would need splitting,
+  regardless of their order in the pool; falls back to the smallest
+  remaining document when nothing fits the current room; no document is
+  lost or duplicated across many windows/epochs (checked as a token-content
+  set, since `best_fit` deliberately doesn't preserve stream order); the
+  policy name is recorded on `PackedSample` independently of the
+  loss-masking policy; defaults to `"greedy"` when unspecified; two fresh
+  `best_fit` `Packer` instances given the same seed produce an identical
+  stream.
+- `lane_epoch_stream` (`tests/test_cursor.py`): its first item is a full
+  permutation of the pool; matches `lane_sequence` epoch-for-epoch;
+  successive epochs reshuffle; deterministic across independent fresh
+  generators.
+- `shard_builder._tokenize_document`: non-structure-preserving lanes get
+  `response_start_token=None` and unchanged tokenization; a document with
+  the marker splits at exactly the boundary separately-tokenizing
+  prompt/response would produce; a document without the marker degrades to
+  "fully response" (`response_start_token=0`); the manifest records the
+  *absolute* (shard-relative) response start correctly.
+- `tests/test_cursor.py` (rewritten): `pick_lane`/`lane_for_slot`/
+  `iter_lane_assignments` cover the same determinism, zero-weight
+  exclusion, renormalization, divergent-seed, and scarcity-awareness
+  properties as before; `lane_document_stream` covers full-pool coverage,
+  reshuffle-on-cycle, cross-generator determinism, and empty-pool
+  rejection.

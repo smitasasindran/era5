@@ -18,13 +18,25 @@ Two policies decide *how* a lane's documents are grouped into shards:
   one only when nothing fits) -- the classic best-fit-decreasing bin-packing
   heuristic. Reduces wasted shard capacity at the cost of no longer
   preserving corpus arrival order within a lane.
+
+This module also decides, per document, *how* it gets tokenized -- which
+matters for `STRUCTURE_PRESERVING_LANES` (role-tagged prompt/response
+records, e.g. "instruction"). For those, prompt and response text are
+tokenized *separately* and their id lists concatenated, rather than
+tokenizing the whole document as one string -- a BPE merge could otherwise
+span the prompt/response text boundary, shifting where that boundary lands
+in token space away from the exact split the Packer's structure-preserving
+loss masking needs (see IMPLEMENTATION_NOTES.md §5). The resulting
+per-document `response_start_token` (absolute position within the shard
+where the response begins, or None for lanes with no such split) is
+recorded in `document_spans` alongside `start_token`/`end_token`.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, List, Tuple
+from typing import Callable, List, Optional, Tuple
 
 import numpy as np
 
@@ -34,6 +46,35 @@ from .manifest_store import ManifestStore
 
 TokenizedDoc = Tuple[Document, List[int]]
 Bin = List[TokenizedDoc]
+
+# Lanes whose documents are prompt/response records rather than plain
+# prose/code -- packed with loss masked out over the prompt portion (see
+# tds/packer.py's "structure_preserving" policy). A document in one of
+# these lanes without a detectable marker degrades gracefully to "fully
+# response" (response_start_token == its own start_token), rather than
+# raising -- real-world instruction-style data doesn't always follow a
+# clean template (see IMPLEMENTATION_NOTES.md §5 for how much of the real
+# corpus's own "instruction" lane actually has the marker).
+STRUCTURE_PRESERVING_LANES = {"instruction"}
+RESPONSE_MARKER = "output:"  # matched case-insensitively
+
+
+def _tokenize_document(doc: Document, tokenizer, eos_id: int) -> Tuple[List[int], Optional[int]]:
+    """Returns (token_ids, response_start_offset). response_start_offset is
+    the 0-based index *within this document's own tokens* where the
+    response begins, or None for lanes that aren't structure-preserving."""
+    if doc.capability_lane not in STRUCTURE_PRESERVING_LANES:
+        return tokenizer.encode(doc.text).ids + [eos_id], None
+
+    marker_pos = doc.text.lower().find(RESPONSE_MARKER)
+    if marker_pos == -1:
+        prompt_text, response_text = "", doc.text
+    else:
+        prompt_text, response_text = doc.text[:marker_pos], doc.text[marker_pos:]
+
+    prompt_ids = tokenizer.encode(prompt_text).ids if prompt_text else []
+    response_ids = tokenizer.encode(response_text).ids
+    return prompt_ids + response_ids + [eos_id], len(prompt_ids)
 
 
 @dataclass
@@ -138,7 +179,9 @@ def build_shards(
     shard_index = 0
 
     for lane in sorted(lanes):
-        tokenized_docs = [(doc, tokenizer.encode(doc.text).ids + [eos_id]) for doc in lanes[lane]]
+        tokenized = [(doc, *_tokenize_document(doc, tokenizer, eos_id)) for doc in lanes[lane]]
+        tokenized_docs = [(doc, ids) for doc, ids, _ in tokenized]
+        response_starts = {doc.document_id: resp_start for doc, _, resp_start in tokenized}
         bins = pack(tokenized_docs, config.shard_token_budget)
 
         for shard_bin in bins:
@@ -147,6 +190,7 @@ def build_shards(
             for doc, ids in shard_bin:
                 start = len(tokens)
                 tokens.extend(ids)
+                local_response_start = response_starts[doc.document_id]
                 spans.append(
                     {
                         "document_id": doc.document_id,
@@ -155,6 +199,12 @@ def build_shards(
                         "language": doc.language,
                         "start_token": start,
                         "end_token": len(tokens),
+                        # Absolute position (within this shard) where the
+                        # response portion begins, for structure-preserving
+                        # lanes; None for lanes tokenized as a single blob.
+                        "response_start_token": (
+                            start + local_response_start if local_response_start is not None else None
+                        ),
                     }
                 )
             manifests.append(

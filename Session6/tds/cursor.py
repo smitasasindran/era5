@@ -1,46 +1,48 @@
-"""Cursor: (seed, schedule, lane_pools, global_step, slot) -> CandidateItem.
+"""Cursor: deterministic (seed, schedule, step, slot) -> lane, and a
+deterministic per-lane document stream -- no persisted dataloader state.
 
-Per DATALOADER_DESIGN.md §5.4, the cursor is a pure function with no
-persisted dataloader state -- the training stream is fully determined by
+Per DATALOADER_DESIGN.md §5.4, the training stream is fully determined by
 (seed, mixture schedule, step), so a crash never loses "where we were" and
 replay never needs to re-run everything from step 0 to reproduce one
-interval. This module refines the design doc's shorthand pseudocode in two
-concrete ways, both explained inline below: what a "candidate" actually
-points at (a document, not a shard or a pre-cut window), and how a lane's
-weighted turn is decided (a counter-based hash pick, not a live shuffle).
+interval. This module has two genuinely separate jobs, previously
+conflated into one `cursor()`/`iter_candidates()` pair (see below for why
+that didn't survive contact with the Packer):
 
-A "slot" is a document's position within one training step's batch:
-slot_index = global_step * global_batch_size + slot, slot in
-[0, global_batch_size). CompiledSchedule's own step numbering already
-represents one training step as tokens_per_step = sequence_length *
-global_batch_size tokens (see mixture_compiler.py), i.e. one step = one
-full batch of global_batch_size sequences -- so the cursor needs a slot
-index *within* a step, which the design doc's single-argument
-`cursor(run_config, global_step)` pseudocode doesn't show but which its own
-step-sizing already implies is necessary.
+1. **Which lane does output sequence (global_step, slot) draw from?**
+   `pick_lane` / `lane_for_slot` / `iter_lane_assignments`. This is a pure,
+   O(1)-per-query decision -- it depends only on (seed, global_step, slot)
+   and the compiled mixture at that step, never on document-consumption
+   history.
+2. **Given a lane, what's the next document to pull from it?**
+   `lane_document_stream` (strict order) / `lane_epoch_stream` (a whole
+   epoch's documents at once, for lookahead). Infinite, seeded, per-lane
+   streams -- reshuffled each time they cycle -- that the Packer advances
+   at its *own* pace, not once per slot.
 
-What a CandidateItem points at: DATALOADER_DESIGN.md §5.6 (Packer) "fills
-fixed-length sequences from accepted candidates" -- candidates are the raw
-material the packer concatenates and chops, not already-fixed-length
-windows. That means a candidate is a *document* reference, not a shard or a
-sequence_length-sized window: `lane_sequence(seed, lane)[k]` unpacks to
-`(shard_id, offset)`, which is exactly a document's (shard_id, start_token)
-location in that shard's manifest.document_spans. This also decouples the
-cursor entirely from sequence_length (which varies by stage) -- windowing
-is the packer's job, done later from whatever documents the cursor handed
-it.
+Why these had to be split: a packed training sequence is filled by
+concatenating as many documents as needed from one lane (DATALOADER_DESIGN.md
+§5.6, "the packer fills fixed-length sequences *from* candidates" --
+candidates are raw material, not already-cut windows). A short document
+doesn't use up a whole sequence by itself, and a long document can span
+several. So "how many documents does output sequence N consume" is not 1 --
+it depends on document lengths, which only the Packer, actually walking
+the token stream, can determine. Baking a fixed "one document per slot"
+assumption into the cursor (an earlier version of this module did exactly
+that) cannot represent that many-to-one / one-to-many relationship. Lane
+*assignment* per slot has no such problem -- it never depended on document
+lengths in the first place -- so it stays here, cheap and stateless; document
+*consumption* moved to whatever actually paces it (the Packer).
 
-How a lane's turn is picked: instead of literal live weighted random
-sampling (stateful, not point-queryable) or an exact proportional
-round-robin (no simple closed form once lane weights change every step
-during a warmup ramp), `pick_lane` uses a counter-based hash: a uniform
-value in [0, 1) computed purely from (seed, global_step, slot) via SHA-256,
-compared against the target mixture's cumulative weight thresholds. This
-is a genuinely stateless, O(1)-per-query pick (any (step, slot) can be
-evaluated in isolation, in any order), at the cost of realized lane shares
-only *converging* to the target mixture rather than exactly matching it
-over a small number of draws -- an honest, reproducible, auditable
-trade-off explained further in IMPLEMENTATION_NOTES.md.
+How a lane's turn is picked: instead of live weighted random sampling
+(stateful, not point-queryable) or an exact proportional round-robin (no
+simple closed form once lane weights change every step during a warmup
+ramp), `pick_lane` uses a counter-based hash: a uniform value in [0, 1)
+computed purely from (seed, global_step, slot) via SHA-256, compared
+against the target mixture's cumulative weight thresholds. This is a
+genuinely stateless, O(1)-per-query pick (any (step, slot) can be evaluated
+in isolation, in any order), at the cost of realized lane shares only
+*converging* to the target mixture rather than exactly matching it over a
+small number of draws -- an honest, reproducible, auditable trade-off.
 
 If a stage's effective mixture doesn't sum to 1.0 (unallocated_share > 0,
 i.e. the mixture compiler couldn't fully satisfy this stage's plan even
@@ -50,44 +52,17 @@ document, so the shortfall can't literally mean "leave this slot empty".
 The unallocated_share stays a legitimate pre-flight warning for the
 operator to notice; the cursor does not silently mask it, it just still
 has to produce a full batch.
-
-`picks_so_far_in_lane` (how many draws a lane has had before slot n, used
-to index into its shuffled document pool) has no similarly cheap closed
-form -- unlike proportional round-robin, counting how many of a hash-based
-sequence's outcomes matched a given lane genuinely requires enumerating
-them. `iter_candidates` does this the efficient way: a single forward pass
-maintaining a running per-lane counter (O(1) amortized per slot) rather
-than replaying picks_so_far_in_lane from scratch at every slot (which would
-be O(n) per slot, O(n^2) overall). Resuming after a crash or replaying a
-historical interval both mean the same thing here: start `iter_candidates`
-fresh from slot 0 and advance it -- an O(n) one-time replay, not a restored
-serialized iterator. At this project's step counts (low thousands) that
-replay is a sub-second operation.
 """
 
 from __future__ import annotations
 
 import hashlib
-import itertools
 import random
-from dataclasses import dataclass
 from typing import Dict, Iterator, List, Tuple
 
 from .mixture_compiler import CompiledSchedule
 
 LanePool = List[Tuple[str, str, int]]  # (shard_id, document_id, token_offset)
-
-
-@dataclass(frozen=True)
-class CandidateItem:
-    global_step: int
-    slot: int
-    lane: str
-    shard_id: str
-    document_id: str
-    token_offset: int
-    pick_index: int  # k -- how many prior slots also picked this lane
-    epoch: int  # which pass through this lane's document pool this draw belongs to
 
 
 def _uniform_unit_interval(seed: str, *parts) -> float:
@@ -127,6 +102,41 @@ def pick_lane(seed: str, weights: Dict[str, float], global_step: int, slot: int)
     return sorted(positive)[-1]  # floating-point edge case: threshold landed exactly on the total
 
 
+def lane_for_slot(seed: str, schedule: CompiledSchedule, global_step: int, slot: int) -> str:
+    """Point-query convenience: which lane does (global_step, slot) draw
+    from? O(1) -- pick_lane has no history dependency, so this never needs
+    to replay anything before it."""
+    batch_size = schedule.global_batch_size
+    if not (0 <= slot < batch_size):
+        raise ValueError(f"slot {slot} out of range for global_batch_size={batch_size}")
+    weights = schedule.mixture_at_step(global_step)
+    return pick_lane(seed, weights, global_step, slot)
+
+
+def iter_lane_assignments(
+    seed: str, schedule: CompiledSchedule
+) -> Iterator[Tuple[int, int, str]]:
+    """Yields (global_step, slot, lane) for slot_index = 0, 1, 2, ... up to
+    schedule.total_steps * global_batch_size. A thin, stateless convenience
+    for walking every slot in order (e.g. driving the Packer one step at a
+    time) -- equivalent to calling lane_for_slot for every (step, slot) in
+    order, just without recomputing mixture_at_step redundantly for every
+    slot in the same step."""
+    batch_size = schedule.global_batch_size
+    max_step = schedule.total_steps
+    step = None
+    weights: Dict[str, float] = {}
+    n = 0
+    while True:
+        this_step, slot = divmod(n, batch_size)
+        if this_step >= max_step:
+            return
+        if this_step != step:
+            step, weights = this_step, schedule.mixture_at_step(this_step)
+        yield this_step, slot, pick_lane(seed, weights, this_step, slot)
+        n += 1
+
+
 def lane_sequence(seed: str, lane: str, epoch: int, pool: LanePool) -> LanePool:
     """A seeded deterministic permutation of `pool` (all of a lane's
     documents) for the given epoch -- reshuffled with a fresh derived seed
@@ -141,69 +151,42 @@ def lane_sequence(seed: str, lane: str, epoch: int, pool: LanePool) -> LanePool:
     return shuffled
 
 
-def iter_candidates(
-    seed: str, schedule: CompiledSchedule, lane_pools: Dict[str, LanePool]
-) -> Iterator[CandidateItem]:
-    """Yields CandidateItems for slot_index = 0, 1, 2, ... in order, up to
-    schedule.total_steps, maintaining a running per-lane pick count
-    incrementally. This is the efficient path for consuming many steps in
-    order (a live training loop, or replaying/resuming by advancing a fresh
-    generator up to the point of interest) -- see module docstring."""
-    batch_size = schedule.global_batch_size
-    max_step = schedule.total_steps
+def lane_document_stream(seed: str, lane: str, pool: LanePool) -> Iterator[Tuple[str, str, int]]:
+    """An infinite generator of (shard_id, document_id, token_offset) for
+    `lane`, cycling through a freshly-reshuffled permutation of `pool` each
+    time it's exhausted. The Packer advances this at its own pace -- one
+    step per document consumed, not one per (global_step, slot) -- since
+    how many documents a packed window needs depends on their lengths.
 
-    counts: Dict[str, int] = {}
-    step = None
-    weights: Dict[str, float] = {}
-    n = 0
+    "Recompute from scratch" for this stream means: start a fresh generator
+    from the same (seed, lane, pool) and advance it the same number of
+    times. There's no shortcut to "the k-th document" other than counting,
+    exactly like lane_for_slot's counterpart for candidates in the earlier
+    design -- except here that counting is the Packer's job (it already
+    walks documents one at a time to fill windows), not this module's.
+
+    This is the right access pattern for "greedy" sequence packing (take
+    documents strictly in stream order). A "best_fit" packer instead needs
+    a whole epoch's documents visible at once, to pick whichever fits a
+    window's remaining room best rather than whatever's next in line --
+    see lane_epoch_stream below."""
+    epoch = 0
     while True:
-        this_step, slot = divmod(n, batch_size)
-        if this_step >= max_step:
-            return
-        if this_step != step:
-            step, weights = this_step, schedule.mixture_at_step(this_step)
-
-        lane = pick_lane(seed, weights, this_step, slot)
-        pool = lane_pools.get(lane, [])
-        if not pool:
-            raise ValueError(
-                f"lane {lane!r} was picked at step {this_step} slot {slot} but has no "
-                "documents in lane_pools -- schedule and shard manifests are out of sync"
-            )
-
-        k = counts.get(lane, 0)
-        epoch, position = divmod(k, len(pool))
-        shard_id, document_id, token_offset = lane_sequence(seed, lane, epoch, pool)[position]
-        counts[lane] = k + 1
-
-        yield CandidateItem(
-            global_step=this_step,
-            slot=slot,
-            lane=lane,
-            shard_id=shard_id,
-            document_id=document_id,
-            token_offset=token_offset,
-            pick_index=k,
-            epoch=epoch,
-        )
-        n += 1
+        for item in lane_sequence(seed, lane, epoch, pool):
+            yield item
+        epoch += 1
 
 
-def cursor(
-    seed: str,
-    schedule: CompiledSchedule,
-    lane_pools: Dict[str, LanePool],
-    global_step: int,
-    slot: int,
-) -> CandidateItem:
-    """Point-query convenience wrapper -- what the design doc's pseudocode
-    names `cursor(run_config, global_step)`. Implemented as a single slice
-    into iter_candidates, so it can never disagree with bulk iteration; for
-    consuming many steps in order, call iter_candidates directly instead of
-    calling this in a loop (which would replay from 0 every time)."""
-    batch_size = schedule.global_batch_size
-    if not (0 <= slot < batch_size):
-        raise ValueError(f"slot {slot} out of range for global_batch_size={batch_size}")
-
-    slot_index = global_step * batch_size + slot
-    return next(itertools.islice(iter_candidates(seed, schedule, lane_pools), slot_index, None))
+def lane_epoch_stream(seed: str, lane: str, pool: LanePool) -> Iterator[LanePool]:
+    """An infinite generator yielding one whole epoch's shuffled document
+    list at a time -- epoch 0's permutation, then epoch 1's, then epoch
+    2's, forever. The per-epoch counterpart to lane_document_stream (which
+    flattens the same epochs into a single infinite per-document stream):
+    used by packing policies that need lookahead across a whole epoch's
+    documents (e.g. best-fit sequence packing choosing the tightest-fitting
+    remaining document for a window's remaining room), rather than
+    consuming one document at a time in a fixed order."""
+    epoch = 0
+    while True:
+        yield lane_sequence(seed, lane, epoch, pool)
+        epoch += 1
