@@ -16,7 +16,7 @@ the "what we planned" half.
 | Cursor | done, revised (see §5) | `tds/cursor.py`, `tds/manifest_store.py` (`document_pool_by_lane`) |
 | OPUS Selector (stub) | not started | |
 | Packer | done | `tds/packer.py`, `tds/shard_builder.py` (`response_start_token`) |
-| Batch Assembler | not started | |
+| Batch Assembler | done | `tds/batch_assembler.py` |
 | Consumption / Learning Ledgers | not started | |
 | Checkpoint / Crash / Resume | not started | |
 | Replay / Fork | not started | |
@@ -1051,3 +1051,79 @@ on lanes made of long-form documents already bigger than the window.
   properties as before; `lane_document_stream` covers full-pool coverage,
   reshuffle-on-cycle, cross-generator determinism, and empty-pool
   rejection.
+
+## 6. Batch Assembler
+
+Small and mechanical, exactly as §5.7 frames it for a single-GPU scope:
+`Packer.pack_step(global_step)` already returns one full global batch's
+worth of `PackedSample`s, in slot order; `tds/batch_assembler.py` just
+slices that list into consecutive, equal-sized microbatches
+(`global_batch_size = microbatch_size * gradient_accumulation_steps`, no
+rank/worker partitioning to do) and stacks each microbatch's parallel
+arrays into the shape a model actually consumes: `(microbatch_size,
+sequence_length)`.
+
+### Design choices
+
+- **Order preservation is the load-bearing property, not an incidental
+  one.** Row `i` of microbatch `k` is always `packed_samples[k *
+  microbatch_size + i]` — never reordered, never reshuffled. This is what
+  makes a later replay (recompute `pack_step` + `assemble_step` from
+  scratch for a historical step) directly comparable, microbatch-for-
+  microbatch and row-for-row, against what a live run's consumption
+  ledger recorded at the time.
+- **`microbatch_size` is a plain constructor argument, not a YAML config
+  field yet.** There's no training script consuming it yet (that's the
+  next component down the line) — plumbing it into a config file now
+  would be a config surface with nothing real behind it. It becomes a
+  config field once an actual training loop exists to read one.
+- **dtypes chosen for direct model consumption**: `token_ids`/`segment_id`/
+  `position_id` as `int64` (the dtype PyTorch embedding/index lookups
+  expect), `loss_mask` as `float32` (multiplies elementwise against
+  per-token loss — the standard `(per_token_loss * loss_mask).sum() /
+  loss_mask.sum()` idiom).
+- **`rank` is always `0`**, kept on `Microbatch` only because the
+  consumption ledger schema (course notes §8) lists it as a required
+  per-microbatch field — a forward-compatible placeholder for a scope this
+  design deliberately doesn't have (single-GPU, no cross-rank concerns).
+- **Attention still isn't materialized here**, for the same reason as in
+  `tds/packer.py`: `segment_id` is stacked and handed to the model as an
+  `O(microbatch_size * sequence_length)` array; nothing builds an explicit
+  per-sample L×L mask at this layer either.
+- **`Microbatch` needed a custom `__eq__`** (`@dataclass(frozen=True,
+  eq=False)` plus a hand-written one) since it holds `numpy` arrays —
+  the dataclass-generated `__eq__` would compare them with `==` and get
+  an array back instead of a bool, which is exactly the kind of subtle
+  breakage the test suite is there to catch before it reaches real code.
+- **`samples: Tuple[PackedSample, ...]` rides along on every `Microbatch`**
+  alongside the stacked arrays — full provenance (lane, document IDs,
+  segment boundaries) for whatever eventually logs the consumption ledger,
+  without needing to recompute anything.
+
+### Verified against the real corpus
+
+```
+global_batch_size=8, microbatch_size=4
+produced 2 microbatches for step 0
+  microbatch_index=0 token_ids.shape=(4, 128) dtype=int64 lanes=['code', 'code', 'qa', 'code']
+  microbatch_index=1 token_ids.shape=(4, 128) dtype=int64 lanes=['math_science', 'math_science', 'general_web', 'general_web']
+```
+
+### Tests (`tests/test_batch_assembler.py`)
+
+- Slicing/stacking: consecutive, order-preserving chunks of the correct
+  shape; `microbatch_index`/`global_step`/`rank` recorded correctly;
+  `microbatch_size == global_batch_size` degenerates to one microbatch;
+  provenance `samples` preserved in the same order as the stacked rows;
+  `loss_mask`/`position_id` values stacked correctly (not just shapes).
+- Validation: rejects non-positive `microbatch_size`, uneven division,
+  and mixed-`global_step` input; empty input returns an empty list.
+- `Microbatch.__eq__`: two independently-assembled microbatches from
+  identical inputs compare equal (exercises the custom array-aware
+  equality).
+- End-to-end with a real `Packer`: two independently-constructed
+  `Packer`/`BatchAssembler` pairs, advanced in lockstep from scratch,
+  produce identical results — `assemble_step`'s decomposition is lossless
+  and exactly reconstructs what a direct `pack_step` call would have
+  returned, for every step checked. Microbatch shapes match the compiled
+  schedule's stage `sequence_length`.
