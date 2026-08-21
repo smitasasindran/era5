@@ -9,7 +9,13 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from tds.corpus import Document  # noqa: E402
-from tds.shard_builder import ShardBuilderConfig, build_shards, _tokenize_document  # noqa: E402
+from tds.shard_builder import (  # noqa: E402
+    RESPONSE_MARKERS,
+    ShardBuilderConfig,
+    _find_response_marker,
+    _tokenize_document,
+    build_shards,
+)
 from tds.hashing import sha256_bytes  # noqa: E402
 from tds.tokenizer_utils import train_tokenizer  # noqa: E402
 
@@ -218,6 +224,69 @@ class TestStructurePreservingTokenization(unittest.TestCase):
         doc = Document("doc-000000", "src-0", "toy_web", "en", "general_web", WEB_SENTENCE)
         manifests, _ = self._build([doc])
         self.assertIsNone(manifests[0]["document_spans"][0]["response_start_token"])
+
+
+class TestFindResponseMarker(unittest.TestCase):
+    """`_find_response_marker` recognizes several common template
+    conventions, not just the single "output:" string -- the narrowness
+    called out as a known limitation. Still a plain, explainable
+    substring search, not a general boundary detector: this widens the
+    net, it doesn't add parsing or a model."""
+
+    def test_recognizes_each_known_marker_case_insensitively(self):
+        for marker in RESPONSE_MARKERS:
+            text = f"Some prompt text. {marker.upper()} the reply."
+            pos = _find_response_marker(text)
+            self.assertEqual(pos, text.lower().find(marker))
+
+    def test_returns_negative_one_when_no_marker_present(self):
+        self.assertEqual(_find_response_marker("Just plain text with no boundary at all."), -1)
+
+    def test_earliest_marker_wins_when_multiple_are_present(self):
+        # "Answer:" occurs before "Output:" here -- the earlier one is the
+        # real boundary, regardless of RESPONSE_MARKERS' own list order.
+        text = "Question: what is 2+2? Answer: 4. Output: formatted as an integer."
+        pos = _find_response_marker(text)
+        self.assertEqual(pos, text.lower().find("answer:"))
+
+    def test_response_prefix_style_marker_is_detected(self):
+        # "### Response:" (a common Alpaca-style template) contains
+        # "response:" as a substring, so it's caught without needing a
+        # marker for every possible prefix decoration.
+        text = "### Instruction:\nDo the thing.\n\n### Response:\nDone."
+        pos = _find_response_marker(text)
+        self.assertEqual(pos, text.lower().find("response:"))
+
+
+class TestStructurePreservingTokenizationWithAdditionalMarkers(unittest.TestCase):
+    """Same mechanics as TestStructurePreservingTokenization, but for the
+    markers added alongside "output:" -- proving the wider marker list is
+    actually wired into `_tokenize_document`, not just recognized by
+    `_find_response_marker` in isolation."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmpdir = tempfile.TemporaryDirectory()
+        tok_dir = Path(cls.tmpdir.name) / "tokenizer"
+        cls.text = "Question: what is the capital of France? Answer: Paris."
+        cls.tokenizer, cls.tok_manifest = train_tokenizer(
+            [cls.text, WEB_SENTENCE * 5], tok_dir, vocab_size=1000, min_frequency=1,
+        )
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tmpdir.cleanup()
+
+    def test_answer_marker_splits_prompt_from_response(self):
+        eos_id = self.tokenizer.token_to_id("<eos>")
+        doc = Document("doc-000000", "src-0", "toy_instruct", "en", "instruction", self.text)
+        marker_pos = self.text.lower().find("answer:")
+        prompt_ids = self.tokenizer.encode(self.text[:marker_pos]).ids
+        response_ids = self.tokenizer.encode(self.text[marker_pos:]).ids
+
+        ids, resp_start = _tokenize_document(doc, self.tokenizer, eos_id)
+        self.assertEqual(resp_start, len(prompt_ids))
+        self.assertEqual(ids, prompt_ids + response_ids + [eos_id])
 
 
 if __name__ == "__main__":

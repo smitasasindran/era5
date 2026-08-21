@@ -864,6 +864,66 @@ change either corpus's per-lane token totals (`schedule_hash` for both
 profiles came out byte-identical to before) -- the one real-corpus document
 with a marker happened to tokenize to the same total length either way.
 
+#### Widening the marker search (extension, closed)
+
+A single hardcoded literal (`"output:"`) is a narrow heuristic even by
+this section's own admission -- it only catches one of the many template
+conventions real instruction/SFT datasets use (Alpaca-style
+`### Response:`, QA-style `Answer:`, chat-style `Assistant:`, and more).
+`RESPONSE_MARKERS = ("response:", "output:", "answer:", "assistant:")`
+replaces the single string with a short, curated list, still matched as
+plain case-insensitive substrings (no regex, no template/structure
+parsing, no model -- deliberately not "a general prompt/response boundary
+detector," just a wider net of the same kind of net). `_find_response_marker`
+returns the *earliest* occurrence across all of them, since whichever
+marker actually appears first in the text is the one that's really
+separating this document's prompt from its response -- not necessarily
+whichever marker happens to come first in `RESPONSE_MARKERS`' own
+declaration order.
+
+This measurably closes the coverage gap on the real corpus: re-checking
+its `instruction` lane's 17 documents against the wider list finds **5**
+with a real, non-degenerate split, not 1 -- `"answer:"` alone catches 4
+more, and inspecting each one by hand (`f26df536...`'s `"...\nOutput:\nNEW: ..."`,
+`99c1f740...`'s `"...\nAnswer: because he leads a traveling circus"`, and
+three others) confirms they're genuine response boundaries in FLAN-style
+QA/summarization templates, not coincidental substring hits inside a
+prompt. `RESPONSE_MARKERS` is still finite and hand-curated, not
+exhaustive -- a document using some other convention entirely (a chat
+special token like `<|assistant|>`, a differently-worded template) still
+degrades gracefully to "fully response," same as before. Widening the
+list further, or moving to an actual structural parse of the source
+data's own prompt/response fields (available upstream, before this
+project's own corpus vendoring step, but not in the flattened `text`
+column this system reads), would close more of the gap; out of scope
+here, same reasoning as not doing the OPUS scarce-lane rescue upstream.
+
+**Rebuilding invalidates the hash claim above, on purpose**: unlike the
+Audit extensions (exact useful tokens, fork lineage), this one changes
+what actually gets tokenized for the newly-detected documents --
+prompt/response are tokenized *separately* (see above), which is not
+generally identical to tokenizing the combined text as one string. So,
+unlike those extensions, rebuilding shards after this change does *not*
+leave `tokenizer_hash` untouched for the affected shard's content (it
+does leave the tokenizer itself untouched -- only shard-building behavior
+changed) -- the real corpus's `shard-000022` (the `instruction` shard
+these documents live in) gets a different `content_hash`, and the
+compiled schedule was regenerated accordingly. This is the expected,
+correct consequence of a real behavior change, not a reproducibility
+regression: rerunning `scripts/run_demo.py --corpus real` twice after
+this change still reproduces the *same new* hashes both times.
+
+Tests (`tests/test_shard_builder.py`, `TestFindResponseMarker` and
+`TestStructurePreservingTokenizationWithAdditionalMarkers`): each marker
+in `RESPONSE_MARKERS` is recognized case-insensitively; no marker present
+still returns "not found"; when multiple markers appear in one document,
+the earliest one in the *text* wins regardless of the list's own
+declaration order; an Alpaca-style `"### Response:"` is caught via its
+`"response:"` substring; and `_tokenize_document` itself (not just
+`_find_response_marker` in isolation) correctly splits on a newly-added
+marker (`"answer:"`), producing the same separately-tokenized-prompt/
+response mechanics §5 already established for `"output:"`.
+
 ### The Packer itself
 
 `tds/packer.py`'s `Packer` builds one packed window at a time
@@ -1903,15 +1963,23 @@ provably less than the `concatenate_and_chop` estimate (7 per sample).
 
 Separately, inspecting the real corpus's own "instruction" lane
 manifests turned up a fact worth recording here rather than losing it:
-16 of its 17 documents have no detectable `"output:"` marker at all and
-degrade to `response_start_token == start_token` (zero prompt tokens,
-per `tds/shard_builder.py`'s documented graceful-degradation path) --
-only one document (`doc-000359` in `shard-000022`, ~838 prompt tokens)
-carries a real, non-degenerate split. That document happens to fall
-outside both the 50-step and a 300-step demo window (it's `instruction`,
-a scarce, low-share lane); a full 1,659-step run would eventually reach
-it and show `exact_useful_tokens < estimated_useful_tokens` for real, not
-just in the synthetic test.
+at the time this was written, only one of its 17 documents
+(`doc-000359` in `shard-000022`, ~838 prompt tokens) had a detectable
+marker and a real, non-degenerate split -- the other 16 fell back to
+`response_start_token == start_token` (zero prompt tokens). That
+document happened to fall outside both the 50-step and a 300-step demo
+window (it's `instruction`, a scarce, low-share lane); a full
+1,659-step run would eventually reach it and show
+`exact_useful_tokens < estimated_useful_tokens` for real, not just in the
+synthetic test. **Update, once the marker search was widened (see the
+"Widening the marker search" extension under §5 above)**: 4 more of
+those 16 turned out to have a real, non-degenerate split too (via
+`"answer:"`), for 5/17 total -- `doc-000352`/`-353`/`-361`/`-362`
+alongside the original `doc-000359`. The observation about the demo's
+50-step cap not happening to reach any of them still holds after that
+change (`estimated=50800, exact=50800` in the rebuilt real-corpus run
+too) -- these are still a scarce lane's documents, now just a slightly
+larger and more accurately-detected set of them.
 - **Throughput cannot come from ledgers at all.** Wall-clock time is
   inherently a live-run fact; `StepTiming`/`throughput_report` take
   timings recorded during the actual run (`scripts/run_demo.py` wraps

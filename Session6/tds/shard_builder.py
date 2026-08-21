@@ -54,9 +54,26 @@ Bin = List[TokenizedDoc]
 # response" (response_start_token == its own start_token), rather than
 # raising -- real-world instruction-style data doesn't always follow a
 # clean template (see IMPLEMENTATION_NOTES.md §5 for how much of the real
-# corpus's own "instruction" lane actually has the marker).
+# corpus's own "instruction" lane actually has any of these markers).
 STRUCTURE_PRESERVING_LANES = {"instruction"}
-RESPONSE_MARKER = "output:"  # matched case-insensitively
+
+# A handful of the most common prompt/response template conventions,
+# matched as plain case-insensitive substrings -- not a general
+# prompt/response boundary detector (no regex, no structural/template
+# parsing, no model), just a slightly wider net than a single literal
+# string. Order doesn't imply priority: when a document contains more
+# than one, whichever occurs *earliest* in the text wins (see
+# `_find_response_marker`), since that's the one actually separating
+# prompt from response in that document.
+RESPONSE_MARKERS = ("response:", "output:", "answer:", "assistant:")
+
+
+def _find_response_marker(text: str) -> int:
+    """The earliest index at which any of `RESPONSE_MARKERS` occurs in
+    `text` (case-insensitive), or -1 if none do."""
+    lowered = text.lower()
+    positions = [pos for pos in (lowered.find(marker) for marker in RESPONSE_MARKERS) if pos != -1]
+    return min(positions) if positions else -1
 
 
 def _tokenize_document(doc: Document, tokenizer, eos_id: int) -> Tuple[List[int], Optional[int]]:
@@ -66,7 +83,7 @@ def _tokenize_document(doc: Document, tokenizer, eos_id: int) -> Tuple[List[int]
     if doc.capability_lane not in STRUCTURE_PRESERVING_LANES:
         return tokenizer.encode(doc.text).ids + [eos_id], None
 
-    marker_pos = doc.text.lower().find(RESPONSE_MARKER)
+    marker_pos = _find_response_marker(doc.text)
     if marker_pos == -1:
         prompt_text, response_text = "", doc.text
     else:
