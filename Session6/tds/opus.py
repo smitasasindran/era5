@@ -40,6 +40,16 @@ score every candidate differently. So the decision log itself must be
 frozen and loaded back explicitly (`freeze_opus_selection` /
 `load_frozen_opus_selection`), never silently re-run against whatever the
 "current" model happens to be at some later point.
+
+Each decision can optionally be tagged with `curriculum_stages` (a list
+of stage names from a compiled `CompiledSchedule`, via `stages_for_lane`)
+-- which stage(s) of the curriculum a rejected/deferred/accepted
+document's *lane* actually feeds. This is deliberately a lane-level fact,
+not a document-level one: OPUS runs once, globally, before any
+Packer/Cursor exists, so there is no "the step/stage this document was
+rejected at" in a temporal sense -- it was filtered out before any
+stage-aware consumption began. See `stages_for_lane`'s own docstring for
+the precise claim this does and doesn't make.
 """
 
 from __future__ import annotations
@@ -55,6 +65,7 @@ from .batch_assembler import Microbatch
 from .cursor import LanePool
 from .hashing import sha256_file
 from .manifest_store import ManifestStore
+from .mixture_compiler import CompiledSchedule
 from .model import ToyTransformer, compute_batch_loss
 
 STATUSES = ("accepted", "rejected", "deferred")
@@ -71,6 +82,10 @@ class OpusDecision:
     rejection_reason: Optional[str]
     protected_floor_override: bool
     effective_token_estimate: int
+    # None when apply_opus_selection was called without a schedule -- not
+    # "this lane belongs to no stage" (that's an empty list). See
+    # `stages_for_lane`.
+    curriculum_stages: Optional[List[str]] = None
 
 
 def score_candidate(model: ToyTransformer, tokens: np.ndarray, max_sequence_length: int) -> float:
@@ -97,6 +112,27 @@ def score_candidate(model: ToyTransformer, tokens: np.ndarray, max_sequence_leng
     return avg_loss
 
 
+def stages_for_lane(schedule: CompiledSchedule, lane: str) -> List[str]:
+    """Every curriculum stage (by name) in which `lane` participates with
+    a nonzero effective share, per the compiled schedule -- i.e. every
+    stage this lane's documents could actually be drawn into. Uses
+    `effective_mixture()`, not the stage's raw declared `mixture`, so a
+    lane reduced to a zero effective share by scarcity handling (a
+    "deferred" lane, per `tds.mixture_compiler`) is correctly excluded --
+    it's declared in the curriculum but nothing would actually be drawn
+    from it in that stage.
+
+    This is a coarser fact than "which stage was *this document* used
+    in": OPUS runs once, before any Packer/Cursor exists, over the whole
+    lane -- it has no notion of a specific document's position within
+    the lane's stream, which is stateful and cumulative (see
+    `tds/resume.py`'s own note on why that can't be jumped to directly).
+    So this answers "which stage(s) could a document in this lane have
+    contributed to," not "which one it actually would have used."
+    """
+    return [cs.stage.stage for cs in schedule.stages if cs.effective_mixture().get(lane, 0.0) > 0.0]
+
+
 def apply_opus_selection(
     lane_pools: Dict[str, LanePool],
     model: Optional[ToyTransformer],
@@ -105,13 +141,21 @@ def apply_opus_selection(
     max_sequence_length: int,
     reject_below: float,
     defer_above: float,
+    schedule: Optional[CompiledSchedule] = None,
     protected_lanes: FrozenSet[str] = frozenset(),
     enabled: bool = True,
 ) -> Tuple[Dict[str, LanePool], List[OpusDecision]]:
     """Scores every document in every lane's pool once, returning
     (filtered_pools, decisions). `model` may be None when `enabled=False`
     -- disabled selection performs no forward passes at all and accepts
-    every candidate, so no model is needed to run the pass-through path."""
+    every candidate, so no model is needed to run the pass-through path.
+
+    `schedule`, when given, tags every decision with `curriculum_stages`
+    (see `stages_for_lane`) -- optional and backward-compatible: omitting
+    it leaves every decision's `curriculum_stages` as `None`, exactly the
+    prior behavior, for callers that don't have a compiled schedule handy
+    (e.g. `scripts/run_opus_selection.py` run standalone, before mixture
+    compilation)."""
     if enabled and model is None:
         raise ValueError("apply_opus_selection requires a model when enabled=True")
 
@@ -136,6 +180,7 @@ def apply_opus_selection(
     decisions: List[OpusDecision] = []
 
     for lane in sorted(lane_pools):
+        curriculum_stages = stages_for_lane(schedule, lane) if schedule is not None else None
         kept: LanePool = []
         for shard_id, document_id, offset in lane_pools[lane]:
             span = span_for(shard_id, document_id)
@@ -171,6 +216,7 @@ def apply_opus_selection(
                     rejection_reason=reason,
                     protected_floor_override=override,
                     effective_token_estimate=doc_length if status == "accepted" else 0,
+                    curriculum_stages=curriculum_stages,
                 )
             )
         filtered_pools[lane] = kept

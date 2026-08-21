@@ -13,6 +13,13 @@ the same way, whether or not selection is actually turned on.
 Reads the shard manifests already built by scripts/run_pipeline.py (for
 whichever corpus this config targets); this script does not build shards
 itself.
+
+If the config's `schedule_path` is set, each decision also gets tagged
+with `curriculum_stages` -- which curriculum stage(s) that document's
+lane feeds, per the compiled schedule at that path (see
+tds/opus.py's `stages_for_lane`). Optional: leave `schedule_path` blank
+to run OPUS selection before mixture compilation exists at all, exactly
+as before.
 """
 
 import argparse
@@ -24,6 +31,7 @@ sys.path.insert(0, str(ROOT))
 
 from tds.config import DEFAULT_OPUS_CONFIG_PATH, OpusConfig  # noqa: E402
 from tds.manifest_store import ManifestStore  # noqa: E402
+from tds.mixture_compiler import load_frozen_schedule  # noqa: E402
 from tds.model import ToyTransformer, ToyTransformerConfig  # noqa: E402
 from tds.opus import apply_opus_selection, freeze_opus_selection  # noqa: E402
 from tds.tokenizer_utils import load_frozen_tokenizer  # noqa: E402
@@ -49,6 +57,11 @@ def main():
         )
     total_candidates = sum(len(pool) for pool in lane_pools.values())
     print(f"Candidates: {total_candidates} documents across {len(lane_pools)} lanes")
+
+    schedule = None
+    if config.schedule_path:
+        schedule, _ = load_frozen_schedule(config.schedule_path)
+        print(f"  tagging decisions with curriculum_stages from: {config.schedule_path}")
 
     model = None
     if config.enabled:
@@ -79,6 +92,7 @@ def main():
         config.max_sequence_length,
         config.reject_below,
         config.defer_above,
+        schedule=schedule,
         protected_lanes=frozenset(config.protected_lanes),
         enabled=config.enabled,
     )
@@ -100,6 +114,21 @@ def main():
             f"  {lane:<14} accepted={counts['accepted']} rejected={counts['rejected']} "
             f"deferred={counts['deferred']}{rescue_note}"
         )
+
+    if schedule is not None:
+        by_stage_not_accepted = {}
+        for d in decisions:
+            if d.status == "accepted":
+                continue
+            for stage in d.curriculum_stages or []:
+                by_stage_not_accepted[stage] = by_stage_not_accepted.get(stage, 0) + 1
+        print()
+        print("rejected/deferred documents, by curriculum stage they would have fed:")
+        if by_stage_not_accepted:
+            for stage in sorted(by_stage_not_accepted):
+                print(f"  {stage:<20} {by_stage_not_accepted[stage]}")
+        else:
+            print("  (none -- every rejected/deferred document's lane feeds no stage, or nothing was rejected/deferred)")
 
     manifest = freeze_opus_selection(decisions, config.output_path)
     print(f"\nWrote OPUS decisions -> {config.output_path}")

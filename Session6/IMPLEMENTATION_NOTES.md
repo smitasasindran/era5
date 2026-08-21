@@ -1841,6 +1841,62 @@ Existing tests needed updating for the shape change
 (`test_per_sample_fields_are_parallel_lists_matching_row_order`); no
 other behavior changed.
 
+### `curriculum_stages`: which stage a rejection would have fed (extension, closed)
+
+A natural question once OPUS is real: "at what stage did OPUS reject this
+document?" The honest answer requires being precise about what OPUS
+actually is here -- per this section's own opening line, "filtering
+happens *once*, before any Packer or Cursor exists." There is no
+per-stage OPUS pass, no re-scoring as training progresses through stages,
+and a rejected document never enters the stream at all -- so there is no
+literal "step/stage it was rejected at" the way a Packer event has one.
+What *is* answerable, purely from the compiled schedule OPUS already runs
+after (see `scripts/run_demo.py`'s ordering: mixture compilation, then
+OPUS selection): which curriculum stage(s) would ever have drawn on that
+document's *lane* at all.
+
+`tds/opus.py`'s new `stages_for_lane(schedule, lane)` answers exactly
+that, from `CompiledStage.effective_mixture()` (the post-scarcity share,
+not the raw declared one -- a lane reduced to a 0% effective share by
+scarcity handling shouldn't claim to feed that stage). `OpusDecision`
+gained a `curriculum_stages: Optional[List[str]]` field: `None` when
+`apply_opus_selection` is called without a `schedule` (exactly the prior
+behavior -- fully backward compatible, and still how
+`scripts/run_opus_selection.py` behaves with `schedule_path: ""`, e.g.
+when run before mixture compilation exists), or the list of stage names
+when one is given.
+
+Wired through: `OpusConfig.schedule_path` (new, mirrors
+`checkpoint_path`'s optional-string pattern) lets the standalone
+`scripts/run_opus_selection.py` load a frozen schedule via
+`load_frozen_schedule` and tag decisions with it; `scripts/run_demo.py`
+just passes the `schedule` object it already compiled a few lines
+earlier, no config field needed there. Both scripts print a
+"rejected/deferred documents by curriculum stage" breakdown, since a raw
+per-decision JSON field buried in `data/opus_decisions.json` doesn't by
+itself answer the question that prompted this -- being able to *see* it
+at a glance does.
+
+**Verified against the real corpus**: `code`'s decisions carry
+`["foundation", "capability-expansion"]` (never `"anneal"`, which the
+compiled schedule genuinely never draws `code` from);
+`general_web`/`indic`/`qa` carry all three stage names;
+`instruction`/`math_science` carry the same two as `code`. This matches
+`configs/curriculum.yaml`'s own declared per-stage mixtures exactly, cross-
+checked directly against `data/opus_decisions.json` after a full
+`scripts/run_demo.py --corpus real` run.
+
+Tests for this extension (`TestCurriculumStagesTagging` in
+`tests/test_opus.py`): `stages_for_lane` lists every stage where a lane
+has a nonzero effective share, empty for a lane the curriculum never
+mentions; `apply_opus_selection` decisions carry the right
+`curriculum_stages` per lane when a schedule is given, `None` for every
+decision when it isn't (the pre-extension default, unchanged); a
+rejected document's `curriculum_stages` survives the freeze/load
+roundtrip intact. `tests/test_config.py`'s new `TestOpusConfig` adds the
+baseline coverage `OpusConfig` never had, including `schedule_path`
+round-tripping through `resolved()` the same way `checkpoint_path` does.
+
 ### Config: the on/off toggle
 
 `OpusConfig.enabled` (`configs/opus.yaml`/`configs/opus_toy.yaml`) is the

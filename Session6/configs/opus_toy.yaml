@@ -10,6 +10,7 @@ tokenizer_dir: data/tokenizer
 output_path: data/opus_decisions_toy.json
 
 checkpoint_path: ""
+schedule_path: data/mixture_schedule_toy.json
 seed: 0
 
 max_sequence_length: 16

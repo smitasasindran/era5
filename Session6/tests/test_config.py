@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from tds.config import CurriculumConfig, EvalRegistryConfig, PipelineConfig  # noqa: E402
+from tds.config import CurriculumConfig, EvalRegistryConfig, OpusConfig, PipelineConfig  # noqa: E402
 from tds.mixture_compiler import MixtureStage  # noqa: E402
 
 
@@ -196,6 +196,39 @@ class TestCurriculumConfig(unittest.TestCase):
             config = CurriculumConfig.from_yaml(path)
             resolved = config.resolved(root=Path("/some/root"))
             self.assertEqual(resolved.microbatch_size, 2)
+
+
+class TestOpusConfig(unittest.TestCase):
+    def test_defaults_when_yaml_is_empty(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "empty.yaml"
+            path.write_text("")
+            config = OpusConfig.from_yaml(path)
+            self.assertEqual(config, OpusConfig())
+            self.assertFalse(config.enabled)
+            self.assertEqual(config.schedule_path, "")
+
+    def test_unknown_key_is_rejected(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "config.yaml"
+            path.write_text("typo_field: 1\n")
+            with self.assertRaises(ValueError):
+                OpusConfig.from_yaml(path)
+
+    def test_resolved_leaves_blank_schedule_path_untouched(self):
+        config = OpusConfig()
+        resolved = config.resolved(root=Path("/some/root"))
+        self.assertEqual(resolved.schedule_path, "")
+
+    def test_resolved_makes_relative_schedule_path_absolute(self):
+        config = OpusConfig(schedule_path="data/mixture_schedule.json")
+        resolved = config.resolved(root=Path("/some/root"))
+        self.assertEqual(resolved.schedule_path, str(Path("/some/root/data/mixture_schedule.json")))
+
+    def test_resolved_leaves_absolute_schedule_path_untouched(self):
+        config = OpusConfig(schedule_path="/already/absolute/schedule.json")
+        resolved = config.resolved(root=Path("/some/root"))
+        self.assertEqual(resolved.schedule_path, "/already/absolute/schedule.json")
 
 
 if __name__ == "__main__":

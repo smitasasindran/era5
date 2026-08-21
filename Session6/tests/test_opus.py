@@ -11,6 +11,7 @@ sys.path.insert(0, str(ROOT))
 
 from tds.batch_assembler import BatchAssembler  # noqa: E402
 from tds.manifest_store import ManifestStore  # noqa: E402
+from tds.mixture_compiler import MixtureStage, compile_curriculum  # noqa: E402
 from tds.model import ToyTransformer, ToyTransformerConfig  # noqa: E402
 from tds.opus import (  # noqa: E402
     apply_opus_selection,
@@ -18,6 +19,7 @@ from tds.opus import (  # noqa: E402
     freeze_opus_selection,
     load_frozen_opus_selection,
     score_candidate,
+    stages_for_lane,
 )
 from tds.packer import Packer  # noqa: E402
 
@@ -200,6 +202,69 @@ class TestFreezeAndLoad(OpusFixture):
             load_frozen_opus_selection(path)
 
 
+class TestCurriculumStagesTagging(OpusFixture):
+    """`curriculum_stages`: which stage(s) of a compiled schedule a
+    decision's lane actually feeds -- the "at what stage was this
+    document rejected" bookkeeping, at the lane granularity OPUS can
+    actually speak to (see tds/opus.py's `stages_for_lane` docstring for
+    why it can't be document-level)."""
+
+    def setUp(self):
+        super().setUp()
+        stages = [
+            MixtureStage(
+                stage="foundation", token_start=0, token_end=200, sequence_length=8,
+                mixture={"code": 0.5, "indic": 0.5},
+            ),
+            MixtureStage(
+                stage="expansion", token_start=200, token_end=400, sequence_length=8,
+                mixture={"code": 1.0},
+            ),
+        ]
+        self.schedule = compile_curriculum(
+            stages, {"code": 20, "indic": 10}, global_batch_size=2, scarcity_policy="repeat"
+        )
+
+    def test_stages_for_lane_lists_every_stage_with_a_nonzero_share(self):
+        self.assertEqual(stages_for_lane(self.schedule, "code"), ["foundation", "expansion"])
+        self.assertEqual(stages_for_lane(self.schedule, "indic"), ["foundation"])
+
+    def test_stages_for_lane_is_empty_for_a_lane_outside_the_curriculum(self):
+        self.assertEqual(stages_for_lane(self.schedule, "qa"), [])
+
+    @patch("tds.opus.score_candidate")
+    def test_decisions_carry_curriculum_stages_when_schedule_given(self, mock_score):
+        mock_score.return_value = 4.0
+        _, decisions = apply_opus_selection(
+            self.lane_pools, object(), self.store, self.shards_dir, 16, 1.0, 8.0, schedule=self.schedule,
+        )
+        code_decision = next(d for d in decisions if d.capability_lane == "code")
+        self.assertEqual(code_decision.curriculum_stages, ["foundation", "expansion"])
+        indic_decision = next(d for d in decisions if d.capability_lane == "indic")
+        self.assertEqual(indic_decision.curriculum_stages, ["foundation"])
+
+    @patch("tds.opus.score_candidate")
+    def test_curriculum_stages_is_none_without_a_schedule(self, mock_score):
+        mock_score.return_value = 4.0
+        _, decisions = apply_opus_selection(
+            self.lane_pools, object(), self.store, self.shards_dir, 16, 1.0, 8.0
+        )
+        self.assertTrue(all(d.curriculum_stages is None for d in decisions))
+
+    @patch("tds.opus.score_candidate")
+    def test_a_rejected_documents_stage_survives_the_freeze_load_roundtrip(self, mock_score):
+        mock_score.return_value = 0.5  # rejected, below reject_below=1.0
+        _, decisions = apply_opus_selection(
+            self.lane_pools, object(), self.store, self.shards_dir, 16, 1.0, 8.0, schedule=self.schedule,
+        )
+        path = Path(self.tmpdir.name) / "opus_decisions.json"
+        freeze_opus_selection(decisions, path)
+        loaded, _ = load_frozen_opus_selection(path)
+        rejected = [d for d in loaded if d.status == "rejected" and d.capability_lane == "code"]
+        self.assertTrue(rejected)
+        self.assertEqual(rejected[0].curriculum_stages, ["foundation", "expansion"])
+
+
 class TestOpusIntegratesWithPacker(OpusFixture):
     """A rejected document must never be drawable by the Packer at all --
     the whole point of filtering the pool before Packer/Cursor exist."""
@@ -210,8 +275,6 @@ class TestOpusIntegratesWithPacker(OpusFixture):
         filtered, _ = apply_opus_selection(
             self.lane_pools, object(), self.store, self.shards_dir, 16, 1.0, 8.0
         )
-        from tds.mixture_compiler import MixtureStage, compile_curriculum
-
         stages = [MixtureStage(stage="a", token_start=0, token_end=100, sequence_length=8, mixture={"code": 1.0})]
         schedule = compile_curriculum(stages, {"code": 10}, global_batch_size=1, scarcity_policy="repeat")
         packer = Packer("seed-1", schedule, filtered, self.store, self.shards_dir)

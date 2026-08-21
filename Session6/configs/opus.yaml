@@ -14,6 +14,13 @@ output_path: data/opus_decisions.json
 # "" -> a freshly-initialized model seeded by `seed`, not a real trained
 # checkpoint (no live training loop exists yet to have produced one).
 checkpoint_path: ""
+
+# "" -> decisions aren't tagged with curriculum_stages (see tds/opus.py's
+# stages_for_lane). Set once configs/curriculum.yaml has actually been
+# compiled (python scripts/compile_mixture.py --config configs/curriculum.yaml,
+# or run_pipeline.py's own curriculum step) -- this script only reads the
+# frozen schedule, it doesn't compile one.
+schedule_path: data/mixture_schedule.json
 seed: 0
 
 max_sequence_length: 128

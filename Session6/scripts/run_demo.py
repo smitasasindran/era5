@@ -174,7 +174,7 @@ def main():
 
     filtered_pools, opus_decisions = apply_opus_selection(
         lane_pools, opus_model, store, pipeline_config.shards_dir, opus_config.max_sequence_length,
-        opus_config.reject_below, opus_config.defer_above,
+        opus_config.reject_below, opus_config.defer_above, schedule=schedule,
         protected_lanes=frozenset(opus_config.protected_lanes), enabled=opus_config.enabled,
     )
     opus_manifest = freeze_opus_selection(opus_decisions, opus_config.output_path)
@@ -183,6 +183,14 @@ def main():
         f"[event] OPUS decisions recorded ({accepted_count}/{len(opus_decisions)} accepted, "
         f"enabled={opus_config.enabled})"
     )
+    rejected_by_stage = {}
+    for d in opus_decisions:
+        if d.status == "accepted":
+            continue
+        for stage in d.curriculum_stages or []:
+            rejected_by_stage[stage] = rejected_by_stage.get(stage, 0) + 1
+    if rejected_by_stage:
+        log.log(f"[event] rejected/deferred documents by curriculum stage they would have fed: {rejected_by_stage}")
 
     # --- Training: real steps, consumption + learning ledgers, periodic checkpoint ---
     # Default caps at 50 steps regardless of corpus: the point of this demo is

@@ -177,6 +177,7 @@ class OpusConfig:
     tokenizer_dir: str = "data/tokenizer"
     output_path: str = "data/opus_decisions.json"
     checkpoint_path: str = ""  # "" -> a freshly-initialized model seeded by `seed`, not a real checkpoint
+    schedule_path: str = ""  # "" -> decisions aren't tagged with curriculum_stages (see tds/opus.py)
     seed: int = 0
     max_sequence_length: int = 128
     d_model: int = 32
@@ -198,4 +199,7 @@ class OpusConfig:
         if instance.checkpoint_path:
             p = Path(instance.checkpoint_path)
             instance.checkpoint_path = str(p if p.is_absolute() else root / p)
+        if instance.schedule_path:
+            p = Path(instance.schedule_path)
+            instance.schedule_path = str(p if p.is_absolute() else root / p)
         return instance
