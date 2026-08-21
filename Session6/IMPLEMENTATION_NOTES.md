@@ -1856,9 +1856,62 @@ constraint seriously:
   an *overestimate* for `structure_preserving` lanes (their prompt-masked
   positions aren't ledger-visible). The report says this explicitly
   (`estimate_caveat`) rather than presenting an estimate as exact. Getting
-  the *exact* count would mean recomputing the sample (what `tds.replay`
-  does) -- a legitimate thing to want, just not "purely from records"
-  anymore.
+  the *exact* count means recomputing the sample -- see the extension
+  below, which closes this the same way `tds.replay` closes the analogous
+  gap for hash verification.
+
+#### Exact useful tokens via recomputation (extension, closed)
+
+`tds.audit.exact_useful_tokens_range(start_step, end_step, seed, schedule,
+lane_pools, manifest_store, shards_dir, microbatch_size)` is the "just
+recompute it" escape hatch `estimate_caveat` points to, given its own
+function rather than folded into `audit_range` so the ledger-only
+function stays ledger-only (its docstring's whole point). It walks one
+fresh `Packer`/`BatchAssembler` from step 0 through `end_step` -- same
+reasoning as `tds.replay.replay_range`: the Packer's per-lane document
+position is cumulative, so there's no jumping straight to `start_step` --
+and sums the model-ready `loss_mask` array Packer actually produced, so a
+structure-preserving lane's prompt-masked positions are counted exactly
+rather than assumed away. It never touches the consumption ledger (no
+`run_id`/`branch_id` needed): unlike `replay_range`, which recomputes
+*to compare against records*, this recomputes because the records
+structurally can't hold what's needed (loss_mask arrays), so there's
+nothing to compare against, only a real number to produce.
+
+`scripts/run_demo.py` calls it right after `audit_range`, over the same
+`[0, total_steps)` range, and adds a "Useful token accounting" evidence
+row whose PASS condition is genuinely two-part: `total_served_tokens`
+from the fresh recompute must equal the ledger-derived total from
+`audit_range` (same deterministic stream, computed two different ways --
+this doubles as an unplanned extra check that the ledger and the real
+packed stream never silently drift apart), and `exact_useful_tokens` must
+be `<= estimated_useful_tokens` (masking can only ever *add* zeroed
+positions beyond the one structural one the estimate already accounts
+for, never remove one, so the estimate is a real upper bound by
+construction, not just usually true).
+
+**Verified against both corpora**: on the toy and real corpus (neither
+`--num-steps 50` demo run touches, by chance, a structure-preserving
+document with a real detected prompt boundary -- see below), the exact
+and estimated counts came out identical, which is itself the correct
+degenerate-case answer. To confirm the *general* case actually diverges
+and this isn't just an untested code path, `tests/test_audit.py` adds a
+synthetic structure-preserving fixture (reusing `test_packer.py`'s own
+`TestStructurePreservingMasking` scenario: prompt token count 3, response
+4, on an 8-token window) where `exact_useful_tokens` (4 per sample) is
+provably less than the `concatenate_and_chop` estimate (7 per sample).
+
+Separately, inspecting the real corpus's own "instruction" lane
+manifests turned up a fact worth recording here rather than losing it:
+16 of its 17 documents have no detectable `"output:"` marker at all and
+degrade to `response_start_token == start_token` (zero prompt tokens,
+per `tds/shard_builder.py`'s documented graceful-degradation path) --
+only one document (`doc-000359` in `shard-000022`, ~838 prompt tokens)
+carries a real, non-degenerate split. That document happens to fall
+outside both the 50-step and a 300-step demo window (it's `instruction`,
+a scarce, low-share lane); a full 1,659-step run would eventually reach
+it and show `exact_useful_tokens < estimated_useful_tokens` for real, not
+just in the synthetic test.
 - **Throughput cannot come from ledgers at all.** Wall-clock time is
   inherently a live-run fact; `StepTiming`/`throughput_report` take
   timings recorded during the actual run (`scripts/run_demo.py` wraps

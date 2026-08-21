@@ -29,7 +29,13 @@ sys.path.insert(0, str(ROOT))
 
 import torch  # noqa: E402
 
-from tds.audit import StepTiming, audit_range, mixture_compliance_report, throughput_report  # noqa: E402
+from tds.audit import (  # noqa: E402
+    StepTiming,
+    audit_range,
+    exact_useful_tokens_range,
+    mixture_compliance_report,
+    throughput_report,
+)
 from tds.batch_assembler import BatchAssembler  # noqa: E402
 from tds.checkpoint import CheckpointManager, next_step_after_checkpoint  # noqa: E402
 from tds.config import CurriculumConfig, EvalRegistryConfig, OpusConfig, PipelineConfig  # noqa: E402
@@ -298,6 +304,10 @@ def main():
     # --- Audit + throughput ---
     audit_report = audit_range(run_id, branch_id, 0, total_steps, consumption_ledger, schedule)
     mixture_report = mixture_compliance_report(run_id, branch_id, 0, total_steps, consumption_ledger, schedule)
+    exact_tokens_report = exact_useful_tokens_range(
+        0, total_steps, seed, schedule, filtered_pools, store, pipeline_config.shards_dir,
+        curriculum_config.microbatch_size,
+    )
     perf_report = throughput_report(timings)
     with open(artifacts_dir / "performance.json", "w") as f:
         json.dump(perf_report, f, indent=2)
@@ -305,6 +315,10 @@ def main():
         f"[event] audit completed (lanes={audit_report['lanes_touched']}, "
         f"shards={len(audit_report['shards_touched'])}, "
         f"packing_utilization={audit_report['packing_utilization']:.3f})"
+    )
+    log.log(
+        f"[event] exact useful tokens recomputed (estimated={audit_report['estimated_useful_tokens']}, "
+        f"exact={exact_tokens_report['exact_useful_tokens']})"
     )
     log.log(
         f"[event] performance measured (tokens/sec={perf_report['tokens_per_second']:.1f}, "
@@ -330,6 +344,15 @@ def main():
             f"packing_utilization={audit_report['packing_utilization']:.4f}, "
             f"avg_segments_per_sample={audit_report['avg_segments_per_sample']:.2f} "
             f"over steps [0,{total_steps}) (from consumption-ledger token spans)",
+        ),
+        EvidenceRow(
+            "Useful token accounting",
+            exact_tokens_report["total_served_tokens"] == audit_report["total_served_tokens"]
+            and exact_tokens_report["exact_useful_tokens"] <= audit_report["estimated_useful_tokens"],
+            f"ledger-derived estimate={audit_report['estimated_useful_tokens']}, "
+            f"recomputed exact={exact_tokens_report['exact_useful_tokens']} "
+            f"(from a full Packer/BatchAssembler replay over steps [0,{total_steps}) -- "
+            f"served-token totals agree: {exact_tokens_report['total_served_tokens']})",
         ),
         EvidenceRow(
             "Mixture compliance", True,

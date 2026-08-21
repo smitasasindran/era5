@@ -26,10 +26,15 @@ module reports the honest, ledger-derivable estimate and says so.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Dict, List
 
+from .batch_assembler import BatchAssembler
 from .consumption_ledger import ConsumptionLedger
+from .cursor import LanePool
+from .manifest_store import ManifestStore
 from .mixture_compiler import CompiledSchedule
+from .packer import Packer
 
 
 def _span_length(span: str) -> int:
@@ -113,6 +118,77 @@ def audit_range(
             "final position excluded); structure-preserving lanes may mask additional prompt "
             "tokens not visible from ledger records alone -- see tds/replay.py to recompute exactly"
         ),
+    }
+
+
+def exact_useful_tokens_range(
+    start_step: int,
+    end_step: int,
+    seed: str,
+    schedule: CompiledSchedule,
+    lane_pools: Dict[str, LanePool],
+    manifest_store: ManifestStore,
+    shards_dir: str | Path,
+    microbatch_size: int,
+) -> dict:
+    """The exact useful (loss-bearing) token count for [start_step, end_step),
+    recomputed from a fresh Packer/BatchAssembler walk instead of estimated
+    from ledger records -- this is the "see tds/replay.py to recompute
+    exactly" escape hatch `audit_range`'s own `estimate_caveat` points to.
+
+    Real `loss_mask` arrays aren't in the consumption ledger (only their
+    hash is, per §5.8), so `audit_range` can only *estimate* useful tokens
+    from `token_span_ids` -- correct for concatenate_and_chop lanes, an
+    undercount-of-masking (i.e. an overcount of "useful") for
+    structure-preserving lanes, whose prompt-portion masking isn't
+    ledger-visible. This function sidesteps the ledger entirely: it
+    rebuilds the same deterministic stream (same seed, schedule, lane
+    pools -- same reasoning as tds.replay.replay_range, including why it
+    must walk from step 0 rather than jump to start_step) and sums the
+    *real* `loss_mask` array Packer actually produced, so structure-
+    preserving masking is counted exactly, not estimated.
+
+    Unlike `audit_range`, this takes no `run_id`/`branch_id` and never
+    touches the consumption ledger -- it's a pure recomputation, not a
+    record read, so there's nothing to look up by run/branch. Its
+    `total_served_tokens` should equal `audit_range`'s over the same
+    range: both describe the same deterministic stream, one read from
+    records, one recomputed from scratch.
+    """
+    if start_step < 0 or end_step <= start_step:
+        raise ValueError(f"invalid step range [{start_step}, {end_step})")
+
+    packer = Packer(seed, schedule, lane_pools, manifest_store, shards_dir)
+    assembler = BatchAssembler(packer, microbatch_size)
+
+    total_served_tokens = 0
+    exact_useful_tokens = 0
+    useful_tokens_by_shard: Dict[str, int] = {}
+    useful_tokens_by_lane: Dict[str, int] = {}
+
+    for step in range(end_step):
+        microbatches = assembler.assemble_step(step)
+        if step < start_step:
+            continue
+
+        for mb in microbatches:
+            total_served_tokens += mb.token_ids.size
+            exact_useful_tokens += int(mb.loss_mask.sum())
+            for row, sample in enumerate(mb.samples):
+                useful_tokens_by_lane[sample.lane] = (
+                    useful_tokens_by_lane.get(sample.lane, 0) + int(mb.loss_mask[row].sum())
+                )
+                for _local_seg, shard_id, _doc_id, w_start, w_end, _s_start, _s_end in sample.segment_boundaries:
+                    count = int(mb.loss_mask[row, w_start:w_end].sum())
+                    useful_tokens_by_shard[shard_id] = useful_tokens_by_shard.get(shard_id, 0) + count
+
+    return {
+        "start_step": start_step,
+        "end_step": end_step,
+        "total_served_tokens": total_served_tokens,
+        "exact_useful_tokens": exact_useful_tokens,
+        "useful_tokens_by_shard": useful_tokens_by_shard,
+        "useful_tokens_by_lane": useful_tokens_by_lane,
     }
 
 
