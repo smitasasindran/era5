@@ -27,9 +27,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from .batch_assembler import BatchAssembler
+from .checkpoint import CheckpointManager
 from .consumption_ledger import ConsumptionLedger
 from .cursor import LanePool
 from .manifest_store import ManifestStore
@@ -44,33 +45,11 @@ def _span_length(span: str) -> int:
     return int(end) - int(start)
 
 
-def audit_range(
-    run_id: str,
-    branch_id: str,
-    start_step: int,
-    end_step: int,
-    consumption_ledger: ConsumptionLedger,
-    schedule: CompiledSchedule,
-) -> dict:
-    """Which shards/lanes/curriculum stages contributed to steps
-    [start_step, end_step), with packing utilization (served tokens /
-    allocated window capacity -- always ~1.0 by this project's packing
-    design, which never pads; reported as a provable fact, not assumed)
-    and an estimate of useful loss-bearing tokens."""
-    if end_step <= start_step:
-        raise ValueError(f"invalid step range [{start_step}, {end_step})")
-
-    entries = [
-        e
-        for e in consumption_ledger.for_branch(run_id, branch_id)
-        if start_step <= e["global_step"] < end_step
-    ]
-    if not entries:
-        raise ValueError(
-            f"no consumption ledger entries recorded for (run_id={run_id!r}, "
-            f"branch_id={branch_id!r}) in [{start_step}, {end_step})"
-        )
-
+def _aggregate_consumption_entries(entries: List[dict], schedule: CompiledSchedule) -> dict:
+    """The actual audit computation -- shards/lanes/stages touched, packing
+    utilization, estimated useful tokens -- factored out of `audit_range`
+    so `audit_branch_lineage` can run the identical aggregation over a
+    stitched multi-branch entry list instead of one branch's own."""
     shards_touched: set = set()
     lanes_touched: set = set()
     stages_touched: set = set()
@@ -99,10 +78,6 @@ def audit_range(
             estimated_useful_tokens += max(served - 1, 0)  # final position always loss-masked
 
     return {
-        "run_id": run_id,
-        "branch_id": branch_id,
-        "start_step": start_step,
-        "end_step": end_step,
         "shards_touched": sorted(shards_touched),
         "lanes_touched": sorted(lanes_touched),
         "curriculum_stages_touched": sorted(stages_touched),
@@ -118,6 +93,168 @@ def audit_range(
             "final position excluded); structure-preserving lanes may mask additional prompt "
             "tokens not visible from ledger records alone -- see tds/replay.py to recompute exactly"
         ),
+    }
+
+
+def audit_range(
+    run_id: str,
+    branch_id: str,
+    start_step: int,
+    end_step: int,
+    consumption_ledger: ConsumptionLedger,
+    schedule: CompiledSchedule,
+) -> dict:
+    """Which shards/lanes/curriculum stages contributed to steps
+    [start_step, end_step), with packing utilization (served tokens /
+    allocated window capacity -- always ~1.0 by this project's packing
+    design, which never pads; reported as a provable fact, not assumed)
+    and an estimate of useful loss-bearing tokens.
+
+    Reports on `branch_id`'s own ledger entries only -- a forked branch's
+    pre-fork history lives under its parent's branch_id instead (see
+    `tds.fork`), so this alone never reconstructs a forked branch's full
+    history. See `audit_branch_lineage` for that."""
+    if end_step <= start_step:
+        raise ValueError(f"invalid step range [{start_step}, {end_step})")
+
+    entries = [
+        e
+        for e in consumption_ledger.for_branch(run_id, branch_id)
+        if start_step <= e["global_step"] < end_step
+    ]
+    if not entries:
+        raise ValueError(
+            f"no consumption ledger entries recorded for (run_id={run_id!r}, "
+            f"branch_id={branch_id!r}) in [{start_step}, {end_step})"
+        )
+
+    return {
+        "run_id": run_id,
+        "branch_id": branch_id,
+        "start_step": start_step,
+        "end_step": end_step,
+        **_aggregate_consumption_entries(entries, schedule),
+    }
+
+
+@dataclass(frozen=True)
+class LineageStep:
+    """One link in a branch's fork ancestry. The root branch of a run
+    (never forked from anything) has `parent_branch_id=None`,
+    `fork_step=None`."""
+
+    branch_id: str
+    parent_branch_id: Optional[str]
+    fork_step: Optional[int]
+
+
+def branch_lineage(checkpoints: CheckpointManager, run_id: str, branch_id: str) -> List[LineageStep]:
+    """Root-to-`branch_id` chain of forks, ordered oldest first.
+
+    Per `tds.fork`'s own docstring, reconstructing a forked branch's full
+    lineage was explicitly punted to this module: `fork_branch` never
+    duplicates a parent's pre-fork ledger history, it only tags the new
+    branch's *first* checkpoint with `parent_branch_id`/`fork_step`. So
+    walking that chain backwards -- from `branch_id`, to whatever branch
+    it was forked from, to whatever branch *that* was forked from, until a
+    branch with no parent -- is the only way to know which other
+    branch_ids a full history of `branch_id` needs to borrow entries from,
+    and at which step boundaries.
+
+    A branch's *first* checkpoint (`CheckpointManager.earliest_step`) is
+    always the one carrying its lineage metadata: `fork_branch` is the
+    only thing that ever sets `parent_branch_id`/`fork_step` when saving,
+    and it only ever does so once, for the very first checkpoint under a
+    new branch_id."""
+    chain: List[LineageStep] = []
+    seen = set()
+    current = branch_id
+    while True:
+        if current in seen:
+            raise ValueError(f"cycle detected in branch lineage of {branch_id!r} at {current!r}")
+        seen.add(current)
+
+        step = checkpoints.earliest_step(run_id, current)
+        if step is None:
+            raise ValueError(f"no checkpoint recorded for (run_id={run_id!r}, branch_id={current!r})")
+        payload = checkpoints.load(run_id, current, step)
+        parent_branch_id = payload.get("parent_branch_id")
+        fork_step = payload.get("fork_step")
+        chain.append(LineageStep(branch_id=current, parent_branch_id=parent_branch_id, fork_step=fork_step))
+
+        if parent_branch_id is None:
+            break
+        current = parent_branch_id
+
+    chain.reverse()
+    return chain
+
+
+def _branch_lineage_entries(
+    lineage: List[LineageStep], run_id: str, end_step: int, consumption_ledger: ConsumptionLedger
+) -> List[dict]:
+    """Stitches consumption-ledger entries across every branch_id in a
+    lineage chain, splitting at each fork boundary exactly where
+    `tds.fork.fork_branch` itself splits history: steps [0, fork_step] of
+    a child come from its parent's own ledger entries (the child's ledger
+    has none there -- see tests/test_fork.py's own assertion of this),
+    steps after that come from the child's own entries, up to whichever
+    step is next: the *next* fork in the chain, or `end_step` for the
+    final (target) branch."""
+    entries: List[dict] = []
+    n = len(lineage)
+    for i, node in enumerate(lineage):
+        segment_start = 0 if i == 0 else node.fork_step + 1
+        segment_end = end_step if i == n - 1 else lineage[i + 1].fork_step + 1
+        entries.extend(
+            e
+            for e in consumption_ledger.for_branch(run_id, node.branch_id)
+            if segment_start <= e["global_step"] < segment_end
+        )
+    return entries
+
+
+def audit_branch_lineage(
+    run_id: str,
+    branch_id: str,
+    end_step: int,
+    consumption_ledger: ConsumptionLedger,
+    checkpoints: CheckpointManager,
+    schedule: CompiledSchedule,
+) -> dict:
+    """`audit_range`'s report, but for `branch_id`'s *complete* history
+    from step 0 -- across every ancestor branch its checkpoint lineage
+    passes through, not just `branch_id`'s own ledger entries. For a
+    branch that was never forked, this is identical to
+    `audit_range(run_id, branch_id, 0, end_step, ...)`; for a forked
+    branch, it also pulls in the parent's (and, transitively, the
+    parent's parent's, ...) entries for the steps before the fork that
+    only ever lived under those branch_ids.
+
+    Always starts at step 0 -- unlike `audit_range`, this reconstructs a
+    branch's *complete* history, so there's no independent `start_step`
+    to choose."""
+    if end_step <= 0:
+        raise ValueError(f"invalid end_step {end_step}")
+
+    lineage = branch_lineage(checkpoints, run_id, branch_id)
+    entries = _branch_lineage_entries(lineage, run_id, end_step, consumption_ledger)
+    if not entries:
+        raise ValueError(
+            f"no consumption ledger entries recorded across the lineage of "
+            f"(run_id={run_id!r}, branch_id={branch_id!r}) in [0, {end_step})"
+        )
+
+    return {
+        "run_id": run_id,
+        "branch_id": branch_id,
+        "start_step": 0,
+        "end_step": end_step,
+        "lineage": [
+            {"branch_id": n.branch_id, "parent_branch_id": n.parent_branch_id, "fork_step": n.fork_step}
+            for n in lineage
+        ],
+        **_aggregate_consumption_entries(entries, schedule),
     }
 
 

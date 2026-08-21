@@ -31,6 +31,7 @@ import torch  # noqa: E402
 
 from tds.audit import (  # noqa: E402
     StepTiming,
+    audit_branch_lineage,
     audit_range,
     exact_useful_tokens_range,
     mixture_compliance_report,
@@ -286,11 +287,12 @@ def main():
     )
 
     fork_seed = seed + "-fork"
+    fork_end_step = min(crash_step + 3, total_steps)
     fork_packer = Packer(fork_seed, schedule, filtered_pools, store, pipeline_config.shards_dir)
     fork_assembler = BatchAssembler(fork_packer, curriculum_config.microbatch_size)
     for step in range(crash_step + 1):
         fork_assembler.assemble_step(step)  # replay to the fork point -- same reasoning as resume
-    for step in range(crash_step + 1, min(crash_step + 3, total_steps)):
+    for step in range(crash_step + 1, fork_end_step):
         mbs = fork_assembler.assemble_step(step)
         run_training_step(fork_model, fork_optimizer, mbs)
         for mb in mbs:
@@ -300,6 +302,16 @@ def main():
                     opus_enabled=opus_config.enabled,
                 )
             )
+
+    # --- Fork lineage: fork-1's *complete* history, stitched across branches ---
+    lineage_report = audit_branch_lineage(
+        run_id, "fork-1", fork_end_step, consumption_ledger, checkpoints, schedule
+    )
+    log.log(
+        f"[event] branch lineage reconstructed "
+        f"(chain={[n['branch_id'] for n in lineage_report['lineage']]}, "
+        f"total_samples={lineage_report['total_samples']})"
+    )
 
     # --- Audit + throughput ---
     audit_report = audit_range(run_id, branch_id, 0, total_steps, consumption_ledger, schedule)
@@ -376,6 +388,15 @@ def main():
         EvidenceRow(
             "Learning trace", learning_trace_ok,
             f"{len(learning_entries)} learning-ledger entries, each linked to a real manifest shard_id",
+        ),
+        EvidenceRow(
+            "Fork lineage",
+            [n["branch_id"] for n in lineage_report["lineage"]] == [branch_id, "fork-1"]
+            and lineage_report["lineage"][-1]["fork_step"] == crash_step
+            and lineage_report["total_samples"] > 0,
+            f"branch 'fork-1' full history reconstructed across "
+            f"{[n['branch_id'] for n in lineage_report['lineage']]} (fork at step {crash_step}): "
+            f"{lineage_report['total_samples']} samples over steps [0,{fork_end_step})",
         ),
         EvidenceRow(
             "Throughput", perf_report["tokens_per_second"] > 0,

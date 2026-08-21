@@ -27,7 +27,10 @@ consumption-ledger history under the new branch_id. Steps
 the parent's branch_id -- re-recording them would be redundant, and
 reconstructing "one branch's full lineage across a fork" is an Audit-level
 concern (walking parent_branch_id/fork_step across branches), not
-something this module needs to solve.
+something this module needs to solve. See
+`tds.audit.branch_lineage`/`tds.audit.audit_branch_lineage`, which do
+exactly that walk, using the very `parent_branch_id`/`fork_step` fields
+this module writes.
 """
 
 from __future__ import annotations

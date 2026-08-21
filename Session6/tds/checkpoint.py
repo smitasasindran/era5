@@ -117,3 +117,16 @@ class CheckpointManager:
             return None
         steps = [int(p.stem.split("-")[1]) for p in branch_dir.glob("step-*.pt")]
         return max(steps) if steps else None
+
+    def earliest_step(self, run_id: str, branch_id: str) -> Optional[int]:
+        """The step a branch's own checkpoint history *starts* at -- for a
+        forked branch this is always `fork_step` (the only checkpoint
+        `fork_branch` ever writes with lineage metadata attached), which is
+        exactly what `tds.audit.branch_lineage` needs to walk
+        `parent_branch_id`/`fork_step` back across branches without
+        needing to know which step to look at in advance."""
+        branch_dir = self.dir / run_id / branch_id
+        if not branch_dir.exists():
+            return None
+        steps = [int(p.stem.split("-")[1]) for p in branch_dir.glob("step-*.pt")]
+        return min(steps) if steps else None

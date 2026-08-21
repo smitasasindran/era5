@@ -3,23 +3,39 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import torch
+
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from tds.audit import (  # noqa: E402
+    LineageStep,
     StepTiming,
+    audit_branch_lineage,
     audit_range,
+    branch_lineage,
     exact_useful_tokens_range,
     mixture_compliance_report,
     throughput_report,
 )
+from tds.checkpoint import CheckpointManager  # noqa: E402
 from tds.consumption_ledger import ConsumptionLedger, build_ledger_entry  # noqa: E402
 from tds.batch_assembler import BatchAssembler  # noqa: E402
+from tds.fork import fork_branch  # noqa: E402
 from tds.manifest_store import ManifestStore  # noqa: E402
 from tds.mixture_compiler import MixtureStage, compile_curriculum  # noqa: E402
+from tds.model import ToyTransformer, ToyTransformerConfig  # noqa: E402
 from tds.packer import Packer  # noqa: E402
+from tds.training_step import run_training_step  # noqa: E402
 
 from test_packer import EOS, make_shard, one_lane_schedule  # noqa: E402
+
+
+def make_model_and_optimizer(seed=0, lr=1e-2):
+    config = ToyTransformerConfig(vocab_size=180, max_sequence_length=8, d_model=8, n_layers=1, n_heads=2, d_ff=16)
+    model = ToyTransformer(config, seed=seed)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    return model, optimizer
 
 
 class AuditFixture(unittest.TestCase):
@@ -220,6 +236,178 @@ class TestThroughputReport(unittest.TestCase):
     def test_rejects_empty_input(self):
         with self.assertRaises(ValueError):
             throughput_report([])
+
+
+class TestBranchLineage(unittest.TestCase):
+    def setUp(self):
+        self.tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmpdir.cleanup)
+        self.checkpoints = CheckpointManager(Path(self.tmpdir.name) / "checkpoints")
+        self.model, self.optimizer = make_model_and_optimizer()
+
+    def test_unforked_branch_is_its_own_single_element_lineage(self):
+        self.checkpoints.save(self.model, self.optimizer, "run-a", "main", global_step=10)
+        lineage = branch_lineage(self.checkpoints, "run-a", "main")
+        self.assertEqual(lineage, [LineageStep(branch_id="main", parent_branch_id=None, fork_step=None)])
+
+    def test_single_fork_lineage_is_root_then_child(self):
+        self.checkpoints.save(self.model, self.optimizer, "run-a", "main", global_step=10)
+        fork_model, fork_optimizer = make_model_and_optimizer(seed=999)
+        fork_branch(self.checkpoints, "run-a", "main", 10, "fork-1", fork_model, fork_optimizer)
+
+        lineage = branch_lineage(self.checkpoints, "run-a", "fork-1")
+        self.assertEqual(
+            lineage,
+            [
+                LineageStep(branch_id="main", parent_branch_id=None, fork_step=None),
+                LineageStep(branch_id="fork-1", parent_branch_id="main", fork_step=10),
+            ],
+        )
+        # The root branch's own lineage is unaffected by being forked from.
+        self.assertEqual(
+            branch_lineage(self.checkpoints, "run-a", "main"),
+            [LineageStep(branch_id="main", parent_branch_id=None, fork_step=None)],
+        )
+
+    def test_chained_forks_produce_a_three_link_lineage(self):
+        self.checkpoints.save(self.model, self.optimizer, "run-a", "main", global_step=10)
+        fork1_model, fork1_optimizer = make_model_and_optimizer(seed=1)
+        fork_branch(self.checkpoints, "run-a", "main", 10, "fork-1", fork1_model, fork1_optimizer)
+        # fork-1 keeps training and gets forked again, later, from a later step.
+        self.checkpoints.save(fork1_model, fork1_optimizer, "run-a", "fork-1", global_step=20)
+        fork2_model, fork2_optimizer = make_model_and_optimizer(seed=2)
+        fork_branch(self.checkpoints, "run-a", "fork-1", 20, "fork-2", fork2_model, fork2_optimizer)
+
+        lineage = branch_lineage(self.checkpoints, "run-a", "fork-2")
+        self.assertEqual([n.branch_id for n in lineage], ["main", "fork-1", "fork-2"])
+        self.assertEqual([n.fork_step for n in lineage], [None, 10, 20])
+        self.assertEqual([n.parent_branch_id for n in lineage], [None, "main", "fork-1"])
+
+    def test_raises_for_a_branch_with_no_checkpoint(self):
+        with self.assertRaises(ValueError):
+            branch_lineage(self.checkpoints, "run-a", "no-such-branch")
+
+
+class TestAuditBranchLineage(unittest.TestCase):
+    def setUp(self):
+        self.tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmpdir.cleanup)
+        d = Path(self.tmpdir.name)
+        self.shards_dir = d / "shards"
+        self.store = ManifestStore(d / "manifests")
+
+        make_shard(
+            self.shards_dir, self.store, "shard-000000", "code", list(range(60)),
+            [
+                {"document_id": "c0", "start_token": 0, "end_token": 20, "response_start_token": None},
+                {"document_id": "c1", "start_token": 20, "end_token": 40, "response_start_token": None},
+                {"document_id": "c2", "start_token": 40, "end_token": 60, "response_start_token": None},
+            ],
+        )
+        make_shard(
+            self.shards_dir, self.store, "shard-000001", "qa", list(range(100, 140)),
+            [
+                {"document_id": "q0", "start_token": 0, "end_token": 20, "response_start_token": None},
+                {"document_id": "q1", "start_token": 20, "end_token": 40, "response_start_token": None},
+            ],
+        )
+        self.lane_pools = self.store.document_pool_by_lane()
+
+        stages = [
+            MixtureStage(
+                stage="mixed", token_start=0, token_end=400, sequence_length=8,
+                mixture={"code": 0.5, "qa": 0.5},
+            )
+        ]
+        self.schedule = compile_curriculum(
+            stages, {"code": 60, "qa": 40}, global_batch_size=4, scarcity_policy="repeat"
+        )
+        self.microbatch_size = 2
+        self.run_id = "run-lineage-test"
+        self.fork_step = 2
+
+        self.ledger = ConsumptionLedger(d / "consumption")
+        self.checkpoints = CheckpointManager(d / "checkpoints")
+
+        main_model, main_optimizer = make_model_and_optimizer(seed=0)
+        main_packer = Packer("seed-main", self.schedule, self.lane_pools, self.store, self.shards_dir)
+        main_assembler = BatchAssembler(main_packer, self.microbatch_size)
+        for step in range(self.fork_step + 4):  # main keeps going past the fork point too
+            mbs = main_assembler.assemble_step(step)
+            run_training_step(main_model, main_optimizer, mbs)
+            for mb in mbs:
+                self.ledger.append(build_ledger_entry(self.run_id, "main", mb, self.schedule, "sha256:tok"))
+            if step == self.fork_step:
+                self.checkpoints.save(main_model, main_optimizer, self.run_id, "main", self.fork_step)
+
+        fork_model, fork_optimizer = make_model_and_optimizer(seed=777)
+        fork_branch(self.checkpoints, self.run_id, "main", self.fork_step, "fork-1", fork_model, fork_optimizer)
+        fork_packer = Packer("seed-fork", self.schedule, self.lane_pools, self.store, self.shards_dir)
+        fork_assembler = BatchAssembler(fork_packer, self.microbatch_size)
+        for step in range(self.fork_step + 1):
+            fork_assembler.assemble_step(step)  # replay to the fork point, same as resume/fork always do
+        for step in range(self.fork_step + 1, self.fork_step + 3):
+            mbs = fork_assembler.assemble_step(step)
+            run_training_step(fork_model, fork_optimizer, mbs)
+            for mb in mbs:
+                self.ledger.append(build_ledger_entry(self.run_id, "fork-1", mb, self.schedule, "sha256:tok"))
+
+    def test_unforked_branch_matches_audit_range_exactly(self):
+        end_step = self.fork_step + 4
+        lineage_report = audit_branch_lineage(
+            self.run_id, "main", end_step, self.ledger, self.checkpoints, self.schedule
+        )
+        plain_report = audit_range(self.run_id, "main", 0, end_step, self.ledger, self.schedule)
+        for key in plain_report:
+            self.assertEqual(lineage_report[key], plain_report[key])
+        self.assertEqual(
+            lineage_report["lineage"],
+            [{"branch_id": "main", "parent_branch_id": None, "fork_step": None}],
+        )
+
+    def test_forked_branch_pulls_in_parent_history_before_the_fork(self):
+        end_step = self.fork_step + 3  # covers fork-1's own 2 post-fork steps
+        report = audit_branch_lineage(
+            self.run_id, "fork-1", end_step, self.ledger, self.checkpoints, self.schedule
+        )
+        # (fork_step + 1) steps of shared pre-fork history from "main", plus
+        # 2 steps of fork-1's own post-fork history -- each step contributes
+        # global_batch_size=4 samples.
+        expected_steps = (self.fork_step + 1) + 2
+        self.assertEqual(report["total_samples"], expected_steps * 4)
+        self.assertEqual(
+            report["lineage"],
+            [
+                {"branch_id": "main", "parent_branch_id": None, "fork_step": None},
+                {"branch_id": "fork-1", "parent_branch_id": "main", "fork_step": self.fork_step},
+            ],
+        )
+
+    def test_forked_branch_history_differs_from_its_own_ledger_entries_alone(self):
+        # fork-1's own ledger has no entries at or before fork_step (see
+        # tests/test_fork.py) -- reading only its own branch would miss the
+        # shared pre-fork history entirely and either raise or undercount.
+        end_step = self.fork_step + 3
+        lineage_report = audit_branch_lineage(
+            self.run_id, "fork-1", end_step, self.ledger, self.checkpoints, self.schedule
+        )
+        own_branch_only = audit_range(
+            self.run_id, "fork-1", self.fork_step + 1, end_step, self.ledger, self.schedule
+        )
+        self.assertGreater(lineage_report["total_samples"], own_branch_only["total_samples"])
+
+    def test_rejects_non_positive_end_step(self):
+        with self.assertRaises(ValueError):
+            audit_branch_lineage(self.run_id, "main", 0, self.ledger, self.checkpoints, self.schedule)
+
+    def test_raises_when_nothing_recorded_in_range(self):
+        # A resolvable lineage (checkpoint exists) whose ledger simply has
+        # no entries yet -- distinct from an unresolvable one (no checkpoint
+        # at all, covered by TestBranchLineage.test_raises_for_a_branch_with_no_checkpoint).
+        model, optimizer = make_model_and_optimizer()
+        self.checkpoints.save(model, optimizer, "run-empty", "main", global_step=0)
+        with self.assertRaises(ValueError):
+            audit_branch_lineage("run-empty", "main", 5, self.ledger, self.checkpoints, self.schedule)
 
 
 if __name__ == "__main__":

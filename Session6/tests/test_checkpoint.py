@@ -84,6 +84,13 @@ class TestCheckpointManager(unittest.TestCase):
         self.assertEqual(self.manager.latest_step("run-a", "main"), 10)
         self.assertEqual(self.manager.latest_step("run-a", "fork-1"), 2)
 
+    def test_earliest_step_returns_min_and_none_when_empty(self):
+        self.assertIsNone(self.manager.earliest_step("run-a", "main"))
+        model, optimizer = make_model_and_optimizer()
+        self.manager.save(model, optimizer, "run-a", "main", global_step=3)
+        self.manager.save(model, optimizer, "run-a", "main", global_step=7)
+        self.assertEqual(self.manager.earliest_step("run-a", "main"), 3)
+
     def test_fork_metadata_roundtrips_when_provided(self):
         model, optimizer = make_model_and_optimizer()
         self.manager.save(
