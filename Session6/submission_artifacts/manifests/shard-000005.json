@@ -1,0 +1,314 @@
+{
+  "shard_id": "shard-000005",
+  "content_hash": "sha256:38fdf5ed5f835df8bbf519f3d6e13fb978887fa83767300003def9514c80db32",
+  "tokenizer_hash": "sha256:32f4aec77e728a6613c014374d6b3e5efa81b301640aab4a9157783ebeb1df83",
+  "capability_lane": "code",
+  "packing_policy": "greedy",
+  "token_count": 99792,
+  "document_count": 33,
+  "license_tier": "unspecified",
+  "dedup_status": "not_checked",
+  "contamination_status": "not_checked",
+  "eval_overlap_status": "none",
+  "cleaning_pipeline_hash": null,
+  "parent_shard_ids": [],
+  "document_spans": [
+    {
+      "document_id": "doc-000572",
+      "source_document_id": "8fea9e8c5e005390efb99146b7214284eb67d755",
+      "source_id": "stackexchange",
+      "language": "en",
+      "start_token": 0,
+      "end_token": 3014,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000573",
+      "source_document_id": "7a904fc867f3b11353f4b738464000d1a3207c15",
+      "source_id": "stackexchange",
+      "language": "en",
+      "start_token": 3014,
+      "end_token": 6085,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000574",
+      "source_document_id": "7ab32f086ea43736163f06eff229baf185098687",
+      "source_id": "stackexchange",
+      "language": "en",
+      "start_token": 6085,
+      "end_token": 8826,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000575",
+      "source_document_id": "af8bca2f7910e09976f42b90a13035e901e8a4af",
+      "source_id": "stackexchange",
+      "language": "en",
+      "start_token": 8826,
+      "end_token": 10488,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000576",
+      "source_document_id": "d77d0a12b59a720bc43b3e78a8a532da2249b471",
+      "source_id": "stackexchange",
+      "language": "en",
+      "start_token": 10488,
+      "end_token": 14360,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000577",
+      "source_document_id": "7a51bcc7ac7b53cf84a51b4aff10b18d1b2f690a",
+      "source_id": "stackexchange",
+      "language": "en",
+      "start_token": 14360,
+      "end_token": 15828,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000578",
+      "source_document_id": "0fb0c8d09bb5afcab7519d0e0cd54fdb55f1f83b",
+      "source_id": "stackexchange",
+      "language": "en",
+      "start_token": 15828,
+      "end_token": 21699,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000579",
+      "source_document_id": "e2c41e9930e0bf0c65ad70017daf1363c819a7f3",
+      "source_id": "stackexchange",
+      "language": "en",
+      "start_token": 21699,
+      "end_token": 24774,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000580",
+      "source_document_id": "56647db536317840ceb5202ab0ab6f4e326ff6a5",
+      "source_id": "stackexchange",
+      "language": "en",
+      "start_token": 24774,
+      "end_token": 27449,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000581",
+      "source_document_id": "95322bd989ff07c245d961192e52eb7bfd9153d9",
+      "source_id": "stackexchange",
+      "language": "en",
+      "start_token": 27449,
+      "end_token": 29490,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000582",
+      "source_document_id": "90c9fe6d995efe4c73cf88a13ced8fabb6385449",
+      "source_id": "stackexchange",
+      "language": "en",
+      "start_token": 29490,
+      "end_token": 32302,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000583",
+      "source_document_id": "cf69286ea69862406cb358225c650bdb457aac28",
+      "source_id": "stackexchange",
+      "language": "en",
+      "start_token": 32302,
+      "end_token": 35858,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000584",
+      "source_document_id": "d8bbffbc96360448a4267ad7de2278e91860dffd",
+      "source_id": "stackexchange",
+      "language": "en",
+      "start_token": 35858,
+      "end_token": 39933,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000585",
+      "source_document_id": "390f2291d985b4b00d6f337029749de639428870",
+      "source_id": "stackexchange",
+      "language": "en",
+      "start_token": 39933,
+      "end_token": 43937,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000586",
+      "source_document_id": "e241e1ade43c4d27004991330da8599d63131eee",
+      "source_id": "stackexchange",
+      "language": "en",
+      "start_token": 43937,
+      "end_token": 45141,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000587",
+      "source_document_id": "783f1aaa3cb20832ccbae033cd48e78ac9a02c00",
+      "source_id": "stackexchange",
+      "language": "en",
+      "start_token": 45141,
+      "end_token": 46440,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000588",
+      "source_document_id": "40b904e3540bf57f7b7c18b7d3fcdb4f09a01ea7",
+      "source_id": "stackexchange",
+      "language": "en",
+      "start_token": 46440,
+      "end_token": 47575,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000589",
+      "source_document_id": "5c4babe07d8c9df4cd6e43c1415e7728c8dbf88b",
+      "source_id": "stackexchange",
+      "language": "en",
+      "start_token": 47575,
+      "end_token": 48535,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000590",
+      "source_document_id": "68ff785b39efa370655bc53b88146ca7fb652c39",
+      "source_id": "stackexchange",
+      "language": "en",
+      "start_token": 48535,
+      "end_token": 52223,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000591",
+      "source_document_id": "0d9cb6ed4f9a35c3df5a89b29d071106f6a2ca12",
+      "source_id": "stackexchange",
+      "language": "en",
+      "start_token": 52223,
+      "end_token": 56419,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000592",
+      "source_document_id": "f06124c2433c23e7abc101d8144cff07e9eeaed3",
+      "source_id": "stackexchange",
+      "language": "en",
+      "start_token": 56419,
+      "end_token": 61797,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000593",
+      "source_document_id": "20e275efb1122bd2a48033d3cc57422c1ed5b92a",
+      "source_id": "stackexchange",
+      "language": "en",
+      "start_token": 61797,
+      "end_token": 66283,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000594",
+      "source_document_id": "c40d19301d57a8d00d7a1d167d7a67caeb372a2d",
+      "source_id": "stackexchange",
+      "language": "en",
+      "start_token": 66283,
+      "end_token": 67600,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000595",
+      "source_document_id": "f6d3caad96a8c35bb39cd92ab3c1638849bda9f4",
+      "source_id": "stackexchange",
+      "language": "en",
+      "start_token": 67600,
+      "end_token": 68984,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000596",
+      "source_document_id": "a94bc1963ccc1beb2be416dbef1ae3d75d73dc74",
+      "source_id": "stackexchange",
+      "language": "en",
+      "start_token": 68984,
+      "end_token": 73862,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000597",
+      "source_document_id": "faaea258202776d542f63a46269d9e456fd2da88",
+      "source_id": "stackexchange",
+      "language": "en",
+      "start_token": 73862,
+      "end_token": 77759,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000598",
+      "source_document_id": "cfffc9e1011bf32d5561df634dcba09223c4fd2b",
+      "source_id": "stackexchange",
+      "language": "en",
+      "start_token": 77759,
+      "end_token": 80771,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000599",
+      "source_document_id": "1d15fe99486d15934416703ee749c0b6c44d24e1",
+      "source_id": "stackexchange",
+      "language": "en",
+      "start_token": 80771,
+      "end_token": 84846,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000600",
+      "source_document_id": "ba8f6d6bb4b8c3a79fe3792383090dccdcee45f6",
+      "source_id": "stackexchange",
+      "language": "en",
+      "start_token": 84846,
+      "end_token": 86120,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000601",
+      "source_document_id": "a7c2ee2b045c4ef132d66b96663a9960846f2ad6",
+      "source_id": "stackexchange",
+      "language": "en",
+      "start_token": 86120,
+      "end_token": 89120,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000602",
+      "source_document_id": "5c383c04f227a359a5dbe09ecdba87b486bb5747",
+      "source_id": "stackexchange",
+      "language": "en",
+      "start_token": 89120,
+      "end_token": 90638,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000603",
+      "source_document_id": "ac0fa25c9ad042d3ef2caeee5592e2a769b41c02",
+      "source_id": "stackexchange",
+      "language": "en",
+      "start_token": 90638,
+      "end_token": 91575,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000604",
+      "source_document_id": "050fa0adef280530ee6e153c9b98fa831e190a1a",
+      "source_id": "stackexchange",
+      "language": "en",
+      "start_token": 91575,
+      "end_token": 99792,
+      "response_start_token": null
+    }
+  ]
+}

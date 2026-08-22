@@ -1,0 +1,64 @@
+# Curriculum for the real corpus: general_web-heavy foundation, ramping
+# code/math_science/indic up through capability-expansion, narrowing to
+# indic/math_science/general_web (plus a smaller code share) in anneal.
+#
+# NOTE: at the current (deliberately small, 1/10-scale) token budgets
+# below, no lane is actually scarce against this corpus's real per-lane
+# supply -- every stage compiles to effective_weight == target_weight for
+# every lane. Scarcity/protected-floor/unallocated_share behavior is still
+# exercised and tested (see tests/test_mixture_compiler.py), just not by
+# this particular profile at this scale.
+#
+# Compiled automatically by `python scripts/run_pipeline.py` (see
+# configs/pipeline.yaml's `curriculum` field). To recompile standalone
+# without rebuilding shards: python scripts/compile_mixture.py --config configs/curriculum.yaml
+
+manifests_dir: data/manifests
+output_path: data/mixture_schedule.json
+global_batch_size: 8
+microbatch_size: 4 # gradient_accumulation_steps = global_batch_size / microbatch_size = 2
+checkpoint_interval: 10 # scripts/run_demo.py saves a checkpoint every N steps
+scarcity_policy: reduce_share # repeat | reduce_share | defer
+
+stages:
+  - stage: foundation
+    token_start: 0
+    token_end: 80000 #800000
+    sequence_length: 128
+    mixture:
+      general_web: 0.35
+      code: 0.25
+      math_science: 0.15
+      indic: 0.15
+      instruction: 0.10
+    protected_floors:
+      instruction: 0.02
+    warmup_tokens: 0
+
+  - stage: capability-expansion
+    token_start: 80000 #800000
+    token_end: 150000 #1500000
+    sequence_length: 128
+    mixture:
+      code: 0.30
+      math_science: 0.25
+      indic: 0.20
+      general_web: 0.15
+      instruction: 0.10
+    protected_floors:
+      indic: 0.15
+      instruction: 0.02
+    warmup_tokens: 10000 #100000
+
+  - stage: anneal
+    token_start: 150000 #1500000
+    token_end: 190000 #1900000
+    sequence_length: 256 # long-context annealing stage, per the design doc
+    mixture:
+      indic: 0.35
+      math_science: 0.25
+      general_web: 0.20
+      code: 0.20
+    protected_floors:
+      indic: 0.20
+    warmup_tokens: 5000 #50000

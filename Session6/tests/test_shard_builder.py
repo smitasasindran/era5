@@ -1,0 +1,293 @@
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+import numpy as np
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
+from tds.corpus import Document  # noqa: E402
+from tds.shard_builder import (  # noqa: E402
+    RESPONSE_MARKERS,
+    ShardBuilderConfig,
+    _find_response_marker,
+    _tokenize_document,
+    build_shards,
+)
+from tds.hashing import sha256_bytes  # noqa: E402
+from tds.tokenizer_utils import train_tokenizer  # noqa: E402
+
+WEB_SENTENCE = "the quick brown fox jumps over the lazy dog near the river bank. "
+CODE_SNIPPET = "def add(a, b):\n    return a + b\n\ndef sub(a, b):\n    return a - b\n"
+
+
+def make_synthetic_documents():
+    docs = []
+    for i in range(6):
+        docs.append(
+            Document(
+                document_id=f"doc-{i:06d}",
+                source_document_id=f"src-{i}",
+                source_id="toy_web",
+                language="en",
+                capability_lane="general_web",
+                text=WEB_SENTENCE * (5 + i),
+            )
+        )
+    for i in range(6, 12):
+        docs.append(
+            Document(
+                document_id=f"doc-{i:06d}",
+                source_document_id=f"src-{i}",
+                source_id="toy_code",
+                language="en",
+                capability_lane="code",
+                text=CODE_SNIPPET * (3 + i),
+            )
+        )
+    # one document deliberately much longer than any shard budget we'll use below
+    docs.append(
+        Document(
+            document_id="doc-000012",
+            source_document_id="src-12",
+            source_id="toy_web",
+            language="en",
+            capability_lane="general_web",
+            text=WEB_SENTENCE * 400,
+        )
+    )
+    return docs
+
+
+class TestShardBuilder(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.documents = make_synthetic_documents()
+        cls.tmpdir = tempfile.TemporaryDirectory()
+        tok_dir = Path(cls.tmpdir.name) / "tokenizer"
+        cls.tokenizer, cls.tok_manifest = train_tokenizer(
+            (d.text for d in cls.documents), tok_dir, vocab_size=1000, min_frequency=1
+        )
+        cls.tokenizer_hash = cls.tok_manifest["tokenizer_hash"]
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tmpdir.cleanup()
+
+    def _build(self, shard_token_budget=300):
+        run_dir = tempfile.mkdtemp(dir=self.tmpdir.name)
+        config = ShardBuilderConfig(
+            shard_token_budget=shard_token_budget,
+            shards_dir=str(Path(run_dir) / "shards"),
+            manifests_dir=str(Path(run_dir) / "manifests"),
+        )
+        manifests = build_shards(self.documents, self.tokenizer, self.tokenizer_hash, config)
+        return manifests, config
+
+    def test_produces_multiple_shards(self):
+        manifests, _ = self._build(shard_token_budget=300)
+        self.assertGreater(len(manifests), 2)
+
+    def test_every_shard_is_lane_homogeneous(self):
+        manifests, _ = self._build()
+        doc_lane = {d.document_id: d.capability_lane for d in self.documents}
+        for m in manifests:
+            spans_lanes = {doc_lane[s["document_id"]] for s in m["document_spans"]}
+            self.assertEqual(spans_lanes, {m["capability_lane"]})
+
+    def test_every_document_appears_in_exactly_one_shard(self):
+        manifests, _ = self._build()
+        seen = []
+        for m in manifests:
+            for s in m["document_spans"]:
+                seen.append(s["document_id"])
+        self.assertEqual(len(seen), len(set(seen)))
+        self.assertEqual(set(seen), {d.document_id for d in self.documents})
+
+    def test_document_spans_partition_the_shard_contiguously(self):
+        manifests, _ = self._build()
+        for m in manifests:
+            spans = sorted(m["document_spans"], key=lambda s: s["start_token"])
+            self.assertEqual(spans[0]["start_token"], 0)
+            for a, b in zip(spans, spans[1:]):
+                self.assertEqual(a["end_token"], b["start_token"])
+            self.assertEqual(spans[-1]["end_token"], m["token_count"])
+
+    def test_each_document_span_ends_with_eos(self):
+        manifests, config = self._build()
+        eos_id = self.tokenizer.token_to_id("<eos>")
+        for m in manifests:
+            arr = np.load(Path(config.shards_dir) / f"{m['shard_id']}.npy")
+            for s in m["document_spans"]:
+                self.assertEqual(arr[s["end_token"] - 1], eos_id)
+
+    def test_shard_content_hash_matches_file_on_disk(self):
+        manifests, config = self._build()
+        for m in manifests:
+            arr = np.load(Path(config.shards_dir) / f"{m['shard_id']}.npy")
+            self.assertEqual(sha256_bytes(arr.tobytes()), m["content_hash"])
+
+    def test_manifest_tokenizer_hash_matches_frozen_tokenizer(self):
+        manifests, _ = self._build()
+        for m in manifests:
+            self.assertEqual(m["tokenizer_hash"], self.tokenizer_hash)
+
+    def test_oversized_single_document_still_gets_its_own_shard(self):
+        # doc-000012 alone (400x repeats) is far larger than this budget --
+        # it must not be split across two shards.
+        manifests, _ = self._build(shard_token_budget=300)
+        owning_shards = [
+            m for m in manifests if any(s["document_id"] == "doc-000012" for s in m["document_spans"])
+        ]
+        self.assertEqual(len(owning_shards), 1)
+        self.assertEqual(owning_shards[0]["document_count"], 1)
+        self.assertGreater(owning_shards[0]["token_count"], 300)
+
+    def test_rebuild_with_same_inputs_is_deterministic(self):
+        manifests_a, _ = self._build(shard_token_budget=300)
+        manifests_b, _ = self._build(shard_token_budget=300)
+
+        ids_a = [(m["shard_id"], m["content_hash"]) for m in manifests_a]
+        ids_b = [(m["shard_id"], m["content_hash"]) for m in manifests_b]
+        self.assertEqual(ids_a, ids_b)
+
+
+INSTRUCTION_TEXT = "Instruction: summarize.\nOutput: a short summary."
+
+
+class TestStructurePreservingTokenization(unittest.TestCase):
+    """response_start_token bookkeeping for STRUCTURE_PRESERVING_LANES --
+    the boundary the Packer's structure_preserving policy loss-masks
+    against. See IMPLEMENTATION_NOTES.md §5 for why prompt/response are
+    tokenized separately rather than sliced out of a whole-text encoding."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmpdir = tempfile.TemporaryDirectory()
+        tok_dir = Path(cls.tmpdir.name) / "tokenizer"
+        cls.tokenizer, cls.tok_manifest = train_tokenizer(
+            [INSTRUCTION_TEXT, WEB_SENTENCE * 5, "Instruction with no marker at all."],
+            tok_dir,
+            vocab_size=1000,
+            min_frequency=1,
+        )
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tmpdir.cleanup()
+
+    def _build(self, documents, shard_token_budget=300):
+        run_dir = tempfile.mkdtemp(dir=self.tmpdir.name)
+        config = ShardBuilderConfig(
+            shard_token_budget=shard_token_budget,
+            shards_dir=str(Path(run_dir) / "shards"),
+            manifests_dir=str(Path(run_dir) / "manifests"),
+        )
+        manifests = build_shards(documents, self.tokenizer, self.tok_manifest["tokenizer_hash"], config)
+        return manifests, config
+
+    def test_non_structure_preserving_lane_gets_none(self):
+        doc = Document("doc-000000", "src-0", "toy_web", "en", "general_web", WEB_SENTENCE)
+        _, resp_start = _tokenize_document(doc, self.tokenizer, self.tokenizer.token_to_id("<eos>"))
+        self.assertIsNone(resp_start)
+
+    def test_marker_present_splits_at_the_marker(self):
+        eos_id = self.tokenizer.token_to_id("<eos>")
+        doc = Document("doc-000000", "src-0", "toy_instruct", "en", "instruction", INSTRUCTION_TEXT)
+        marker_pos = INSTRUCTION_TEXT.lower().find("output:")
+        prompt_ids = self.tokenizer.encode(INSTRUCTION_TEXT[:marker_pos]).ids
+        response_ids = self.tokenizer.encode(INSTRUCTION_TEXT[marker_pos:]).ids
+
+        ids, resp_start = _tokenize_document(doc, self.tokenizer, eos_id)
+        self.assertEqual(resp_start, len(prompt_ids))
+        self.assertEqual(ids, prompt_ids + response_ids + [eos_id])
+
+    def test_marker_absent_treats_whole_document_as_response(self):
+        text = "Instruction with no marker at all."
+        eos_id = self.tokenizer.token_to_id("<eos>")
+        doc = Document("doc-000000", "src-0", "toy_instruct", "en", "instruction", text)
+        ids, resp_start = _tokenize_document(doc, self.tokenizer, eos_id)
+        self.assertEqual(resp_start, 0)
+        self.assertEqual(ids, self.tokenizer.encode(text).ids + [eos_id])
+
+    def test_manifest_records_absolute_response_start_token(self):
+        doc = Document("doc-000000", "src-0", "toy_instruct", "en", "instruction", INSTRUCTION_TEXT)
+        manifests, _ = self._build([doc])
+        span = manifests[0]["document_spans"][0]
+        marker_pos = INSTRUCTION_TEXT.lower().find("output:")
+        prompt_len = len(self.tokenizer.encode(INSTRUCTION_TEXT[:marker_pos]).ids)
+        self.assertEqual(span["response_start_token"], span["start_token"] + prompt_len)
+
+    def test_response_start_token_is_none_for_non_structure_preserving_documents(self):
+        doc = Document("doc-000000", "src-0", "toy_web", "en", "general_web", WEB_SENTENCE)
+        manifests, _ = self._build([doc])
+        self.assertIsNone(manifests[0]["document_spans"][0]["response_start_token"])
+
+
+class TestFindResponseMarker(unittest.TestCase):
+    """`_find_response_marker` recognizes several common template
+    conventions, not just the single "output:" string -- the narrowness
+    called out as a known limitation. Still a plain, explainable
+    substring search, not a general boundary detector: this widens the
+    net, it doesn't add parsing or a model."""
+
+    def test_recognizes_each_known_marker_case_insensitively(self):
+        for marker in RESPONSE_MARKERS:
+            text = f"Some prompt text. {marker.upper()} the reply."
+            pos = _find_response_marker(text)
+            self.assertEqual(pos, text.lower().find(marker))
+
+    def test_returns_negative_one_when_no_marker_present(self):
+        self.assertEqual(_find_response_marker("Just plain text with no boundary at all."), -1)
+
+    def test_earliest_marker_wins_when_multiple_are_present(self):
+        # "Answer:" occurs before "Output:" here -- the earlier one is the
+        # real boundary, regardless of RESPONSE_MARKERS' own list order.
+        text = "Question: what is 2+2? Answer: 4. Output: formatted as an integer."
+        pos = _find_response_marker(text)
+        self.assertEqual(pos, text.lower().find("answer:"))
+
+    def test_response_prefix_style_marker_is_detected(self):
+        # "### Response:" (a common Alpaca-style template) contains
+        # "response:" as a substring, so it's caught without needing a
+        # marker for every possible prefix decoration.
+        text = "### Instruction:\nDo the thing.\n\n### Response:\nDone."
+        pos = _find_response_marker(text)
+        self.assertEqual(pos, text.lower().find("response:"))
+
+
+class TestStructurePreservingTokenizationWithAdditionalMarkers(unittest.TestCase):
+    """Same mechanics as TestStructurePreservingTokenization, but for the
+    markers added alongside "output:" -- proving the wider marker list is
+    actually wired into `_tokenize_document`, not just recognized by
+    `_find_response_marker` in isolation."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmpdir = tempfile.TemporaryDirectory()
+        tok_dir = Path(cls.tmpdir.name) / "tokenizer"
+        cls.text = "Question: what is the capital of France? Answer: Paris."
+        cls.tokenizer, cls.tok_manifest = train_tokenizer(
+            [cls.text, WEB_SENTENCE * 5], tok_dir, vocab_size=1000, min_frequency=1,
+        )
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tmpdir.cleanup()
+
+    def test_answer_marker_splits_prompt_from_response(self):
+        eos_id = self.tokenizer.token_to_id("<eos>")
+        doc = Document("doc-000000", "src-0", "toy_instruct", "en", "instruction", self.text)
+        marker_pos = self.text.lower().find("answer:")
+        prompt_ids = self.tokenizer.encode(self.text[:marker_pos]).ids
+        response_ids = self.tokenizer.encode(self.text[marker_pos:]).ids
+
+        ids, resp_start = _tokenize_document(doc, self.tokenizer, eos_id)
+        self.assertEqual(resp_start, len(prompt_ids))
+        self.assertEqual(ids, prompt_ids + response_ids + [eos_id])
+
+
+if __name__ == "__main__":
+    unittest.main()

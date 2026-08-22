@@ -1,0 +1,62 @@
+{
+  "shard_id": "shard-000020",
+  "content_hash": "sha256:2a30e521e7ab5314ddfd7803ba29f3184f02d3d7d81c26634e77e4572b81b0e9",
+  "tokenizer_hash": "sha256:32f4aec77e728a6613c014374d6b3e5efa81b301640aab4a9157783ebeb1df83",
+  "capability_lane": "indic",
+  "packing_policy": "greedy",
+  "token_count": 37900,
+  "document_count": 5,
+  "license_tier": "unspecified",
+  "dedup_status": "not_checked",
+  "contamination_status": "not_checked",
+  "eval_overlap_status": "none",
+  "cleaning_pipeline_hash": null,
+  "parent_shard_ids": [],
+  "document_spans": [
+    {
+      "document_id": "doc-000504",
+      "source_document_id": "5e592008fcd2e5ac0c4b9acf640ad8cf4ee2f2569fb7467a45df7017b622a679",
+      "source_id": "sangraha_mr",
+      "language": "mr",
+      "start_token": 0,
+      "end_token": 23573,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000505",
+      "source_document_id": "cec17bac3dcae6d185269e13d744b7338766f09a",
+      "source_id": "sangraha_mr",
+      "language": "mr",
+      "start_token": 23573,
+      "end_token": 25337,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000506",
+      "source_document_id": "5c9819a4888c68c859ea7015f91ad2708196590d",
+      "source_id": "sangraha_mr",
+      "language": "mr",
+      "start_token": 25337,
+      "end_token": 27291,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000507",
+      "source_document_id": "6844aa242e201818f28f962d24c69bc6ba957c83fa2674d8ea585a9a1ecf1399",
+      "source_id": "sangraha_or",
+      "language": "or",
+      "start_token": 27291,
+      "end_token": 30208,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000508",
+      "source_document_id": "17987d1756b199b0b763a9236fc9f687b6a79f15",
+      "source_id": "sangraha_ta",
+      "language": "ta",
+      "start_token": 30208,
+      "end_token": 37900,
+      "response_start_token": null
+    }
+  ]
+}

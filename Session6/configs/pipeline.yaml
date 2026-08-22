@@ -1,0 +1,19 @@
+# Default profile: the real vendored corpus.
+# Run with: python scripts/run_pipeline.py
+# (or explicitly: python scripts/run_pipeline.py --config configs/pipeline.yaml)
+
+corpus: data/corpus/small_shard.parquet
+tokenizer_dir: data/tokenizer
+shards_dir: data/shards
+manifests_dir: data/manifests
+# Shared, persistent registry of held-out content -- NOT cleared between
+# runs (see configs/eval_registry.yaml / scripts/build_eval_registry.py).
+eval_registry_dir: data/eval_registry
+
+vocab_size: 8000
+shard_token_budget: 100000
+packing_policy: greedy # greedy | best_fit
+
+# Compiled as this run's last step, against the manifests just built above.
+# Leave blank ("") to skip mixture compilation.
+curriculum: configs/curriculum.yaml

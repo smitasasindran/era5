@@ -1,0 +1,30 @@
+# OPUS candidate selection for the toy corpus fixture -- same mechanism,
+# tiny numbers, easy to check by hand against 10 admitted documents.
+#
+# Run with: python scripts/run_opus_selection.py --config configs/opus_toy.yaml
+
+enabled: true
+manifests_dir: data/manifests
+shards_dir: data/shards
+tokenizer_dir: data/tokenizer
+output_path: data/opus_decisions_toy.json
+
+checkpoint_path: ""
+schedule_path: data/mixture_schedule_toy.json
+seed: 0
+
+max_sequence_length: 16
+d_model: 16
+n_layers: 1
+n_heads: 2
+d_ff: 32
+
+# Toy vocab is ~300 tokens, so an untrained model's loss centers around
+# ln(300) =~ 5.7 -- these bounds are wide relative to that for the same
+# reason as the real corpus profile (see configs/opus.yaml).
+reject_below: 0.5
+defer_above: 7.5
+
+protected_lanes:
+  - indic
+  - instruction

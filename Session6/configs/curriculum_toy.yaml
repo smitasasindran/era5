@@ -1,0 +1,43 @@
+# Curriculum for the toy corpus fixture -- tiny numbers, but the same
+# mechanics as configs/curriculum.yaml, easy to check by hand against the
+# toy corpus's tiny per-lane shard totals (see IMPLEMENTATION_NOTES.md §3).
+# No "qa" lane here either -- folded into "code", same reasoning as the
+# real profile (see tds/corpus.py's capability_lane_for).
+#
+# Compiled automatically by `python scripts/run_pipeline.py --config
+# configs/pipeline_toy.yaml` (see that file's `curriculum` field). To
+# recompile standalone without rebuilding shards:
+# python scripts/compile_mixture.py --config configs/curriculum_toy.yaml
+
+manifests_dir: data/manifests
+output_path: data/mixture_schedule_toy.json
+global_batch_size: 2
+microbatch_size: 1 # gradient_accumulation_steps = global_batch_size / microbatch_size = 2
+checkpoint_interval: 3 # scripts/run_demo.py saves a checkpoint every N steps
+scarcity_policy: reduce_share # repeat | reduce_share | defer
+
+stages:
+  - stage: toy-foundation
+    token_start: 0
+    token_end: 300
+    sequence_length: 8
+    mixture:
+      general_web: 0.25
+      indic: 0.20
+      code: 0.45
+      math_science: 0.10
+    protected_floors:
+      code: 0.05
+    warmup_tokens: 0
+
+  - stage: toy-expansion
+    token_start: 300
+    token_end: 600
+    sequence_length: 16
+    mixture:
+      code: 0.30
+      math_science: 0.25
+      indic: 0.25
+      general_web: 0.20
+    protected_floors: {}
+    warmup_tokens: 50

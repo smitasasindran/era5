@@ -1,0 +1,233 @@
+{
+  "shard_id": "shard-000018",
+  "content_hash": "sha256:3a73916633e2d968b2adb7e05c65f540a67145e52a998d3f5a9510e79fee01ba",
+  "tokenizer_hash": "sha256:32f4aec77e728a6613c014374d6b3e5efa81b301640aab4a9157783ebeb1df83",
+  "capability_lane": "indic",
+  "packing_policy": "greedy",
+  "token_count": 99840,
+  "document_count": 24,
+  "license_tier": "unspecified",
+  "dedup_status": "not_checked",
+  "contamination_status": "not_checked",
+  "eval_overlap_status": "none",
+  "cleaning_pipeline_hash": null,
+  "parent_shard_ids": [],
+  "document_spans": [
+    {
+      "document_id": "doc-000460",
+      "source_document_id": "c6d0052cb659680135ced5ef32fb91e5b279fccf",
+      "source_id": "sangraha_bn",
+      "language": "bn",
+      "start_token": 0,
+      "end_token": 1795,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000461",
+      "source_document_id": "e3fa78a7aa661b8120eeb04f779fb9ef6607075bed59fc099b943ecc71290cdf",
+      "source_id": "sangraha_bn",
+      "language": "bn",
+      "start_token": 1795,
+      "end_token": 30039,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000462",
+      "source_document_id": "ede58e0115e596d363c366a8f71e2b4fb0a6be2f",
+      "source_id": "sangraha_bn",
+      "language": "bn",
+      "start_token": 30039,
+      "end_token": 34361,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000463",
+      "source_document_id": "130a74f4b8c5ef3fbadac973245a2ff5",
+      "source_id": "sangraha_bn",
+      "language": "bn",
+      "start_token": 34361,
+      "end_token": 44077,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000464",
+      "source_document_id": "0eada0843b5cb098f5d70eeb83d658b0",
+      "source_id": "sangraha_bn",
+      "language": "bn",
+      "start_token": 44077,
+      "end_token": 46206,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000465",
+      "source_document_id": "c43f28448b85754898d0ed64690184ffd6d9a0bc",
+      "source_id": "sangraha_bn",
+      "language": "bn",
+      "start_token": 46206,
+      "end_token": 47475,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000466",
+      "source_document_id": "5f3b88ec468b0fbfac7031da1118bf231597e49e",
+      "source_id": "sangraha_bn",
+      "language": "bn",
+      "start_token": 47475,
+      "end_token": 49774,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000467",
+      "source_document_id": "b59a710b34f0dbb1051db409a010e890",
+      "source_id": "sangraha_bn",
+      "language": "bn",
+      "start_token": 49774,
+      "end_token": 52231,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000468",
+      "source_document_id": "ffd2d12d12cf2c7fceb9fd70971bf54d",
+      "source_id": "sangraha_bn",
+      "language": "bn",
+      "start_token": 52231,
+      "end_token": 54519,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000469",
+      "source_document_id": "5aaa1ecb168ba3f0b3c76ac3cf129919f442b4a3",
+      "source_id": "sangraha_gu",
+      "language": "gu",
+      "start_token": 54519,
+      "end_token": 55976,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000470",
+      "source_document_id": "eb58c642864daa500d37d8df742907bbe9d6ce9274724fd3079750d1db0944d1",
+      "source_id": "sangraha_gu",
+      "language": "gu",
+      "start_token": 55976,
+      "end_token": 60576,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000471",
+      "source_document_id": "234e14c7e4040b7614fa9f829a407234",
+      "source_id": "sangraha_gu",
+      "language": "gu",
+      "start_token": 60576,
+      "end_token": 63525,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000472",
+      "source_document_id": "18b38624a06330d97a0d5ce0e6c8ebd2f4e0a6713fa0d437eb88abd5afa0e359",
+      "source_id": "sangraha_gu",
+      "language": "gu",
+      "start_token": 63525,
+      "end_token": 65652,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000473",
+      "source_document_id": "ff0f086da4c7c5a17d62170d225d0c7f",
+      "source_id": "sangraha_gu",
+      "language": "gu",
+      "start_token": 65652,
+      "end_token": 69385,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000474",
+      "source_document_id": "a43bd84fa0ca9ae28bd92e7b056465da1785b95c",
+      "source_id": "sangraha_gu",
+      "language": "gu",
+      "start_token": 69385,
+      "end_token": 72270,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000475",
+      "source_document_id": "2a5c44f572a328ccec2b6d0f3cd7895907945b5e",
+      "source_id": "sangraha_gu",
+      "language": "gu",
+      "start_token": 72270,
+      "end_token": 75078,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000476",
+      "source_document_id": "8653c84666c8c2b5a9a53f1fb20cf9fd628a45f9",
+      "source_id": "sangraha_gu",
+      "language": "gu",
+      "start_token": 75078,
+      "end_token": 80055,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000477",
+      "source_document_id": "c02a0ba4dc40e5d930b9c30a6d4837f94b9c7373",
+      "source_id": "sangraha_hi",
+      "language": "hi",
+      "start_token": 80055,
+      "end_token": 81249,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000478",
+      "source_document_id": "b58cc8abbe1d63cd595434dbd9f2ba568bccde28",
+      "source_id": "sangraha_hi",
+      "language": "hi",
+      "start_token": 81249,
+      "end_token": 83058,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000479",
+      "source_document_id": "d48436f4edc87396a09e14c6e6181cf18aec6194545cf693028b51665bf8bf31",
+      "source_id": "sangraha_hi",
+      "language": "hi",
+      "start_token": 83058,
+      "end_token": 90864,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000480",
+      "source_document_id": "0c79904e452ee2344b0f0ce9e49fa8cd218235bc7e1e07bed155441fcbc90aa6",
+      "source_id": "sangraha_hi",
+      "language": "hi",
+      "start_token": 90864,
+      "end_token": 96044,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000481",
+      "source_document_id": "3652c41880e5ecb38746f8b4c7c796d16187128c",
+      "source_id": "sangraha_hi",
+      "language": "hi",
+      "start_token": 96044,
+      "end_token": 97564,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000482",
+      "source_document_id": "ccc43e4950d8a71a20b9694750f5ce69d7063369",
+      "source_id": "sangraha_hi",
+      "language": "hi",
+      "start_token": 97564,
+      "end_token": 98807,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000483",
+      "source_document_id": "f8fd09ba9fe4a0bfd9a236b7bb6cb4b7ae1e946d",
+      "source_id": "sangraha_hi",
+      "language": "hi",
+      "start_token": 98807,
+      "end_token": 99840,
+      "response_start_token": null
+    }
+  ]
+}

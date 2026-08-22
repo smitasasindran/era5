@@ -1,0 +1,359 @@
+{
+  "shard_id": "shard-000002",
+  "content_hash": "sha256:ea6e52d61cafe145b62df373182ebd5599c97431ff7796cbcf3215a00147d502",
+  "tokenizer_hash": "sha256:32f4aec77e728a6613c014374d6b3e5efa81b301640aab4a9157783ebeb1df83",
+  "capability_lane": "code",
+  "packing_policy": "greedy",
+  "token_count": 99030,
+  "document_count": 38,
+  "license_tier": "unspecified",
+  "dedup_status": "not_checked",
+  "contamination_status": "not_checked",
+  "eval_overlap_status": "none",
+  "cleaning_pipeline_hash": null,
+  "parent_shard_ids": [],
+  "document_spans": [
+    {
+      "document_id": "doc-000106",
+      "source_document_id": "4227403",
+      "source_id": "Starcoder",
+      "language": "en",
+      "start_token": 0,
+      "end_token": 6542,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000107",
+      "source_document_id": "5922780",
+      "source_id": "Starcoder",
+      "language": "en",
+      "start_token": 6542,
+      "end_token": 11803,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000108",
+      "source_document_id": "19201804",
+      "source_id": "Starcoder",
+      "language": "en",
+      "start_token": 11803,
+      "end_token": 13141,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000109",
+      "source_document_id": "19358452",
+      "source_id": "Starcoder",
+      "language": "en",
+      "start_token": 13141,
+      "end_token": 14256,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000110",
+      "source_document_id": "1783265",
+      "source_id": "Starcoder",
+      "language": "en",
+      "start_token": 14256,
+      "end_token": 18412,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000111",
+      "source_document_id": "345772",
+      "source_id": "Starcoder",
+      "language": "en",
+      "start_token": 18412,
+      "end_token": 20162,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000112",
+      "source_document_id": "3253274",
+      "source_id": "Starcoder",
+      "language": "en",
+      "start_token": 20162,
+      "end_token": 24074,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000113",
+      "source_document_id": "34299",
+      "source_id": "Starcoder",
+      "language": "en",
+      "start_token": 24074,
+      "end_token": 31364,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000114",
+      "source_document_id": "7323022",
+      "source_id": "Starcoder",
+      "language": "en",
+      "start_token": 31364,
+      "end_token": 33527,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000115",
+      "source_document_id": "17572682",
+      "source_id": "Starcoder",
+      "language": "en",
+      "start_token": 33527,
+      "end_token": 34434,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000116",
+      "source_document_id": "6329916",
+      "source_id": "Starcoder",
+      "language": "en",
+      "start_token": 34434,
+      "end_token": 36236,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000117",
+      "source_document_id": "168607",
+      "source_id": "Starcoder",
+      "language": "en",
+      "start_token": 36236,
+      "end_token": 37570,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000118",
+      "source_document_id": "7987714",
+      "source_id": "Starcoder",
+      "language": "en",
+      "start_token": 37570,
+      "end_token": 40224,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000119",
+      "source_document_id": "6414677",
+      "source_id": "Starcoder",
+      "language": "en",
+      "start_token": 40224,
+      "end_token": 41306,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000120",
+      "source_document_id": "11758774",
+      "source_id": "Starcoder",
+      "language": "en",
+      "start_token": 41306,
+      "end_token": 43931,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000121",
+      "source_document_id": "9099701",
+      "source_id": "Starcoder",
+      "language": "en",
+      "start_token": 43931,
+      "end_token": 45787,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000122",
+      "source_document_id": "5192990",
+      "source_id": "Starcoder",
+      "language": "en",
+      "start_token": 45787,
+      "end_token": 47955,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000123",
+      "source_document_id": "3225869",
+      "source_id": "Starcoder",
+      "language": "en",
+      "start_token": 47955,
+      "end_token": 49363,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000124",
+      "source_document_id": "16909596",
+      "source_id": "Starcoder",
+      "language": "en",
+      "start_token": 49363,
+      "end_token": 55808,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000125",
+      "source_document_id": "16908249",
+      "source_id": "Starcoder",
+      "language": "en",
+      "start_token": 55808,
+      "end_token": 59283,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000126",
+      "source_document_id": "7352482",
+      "source_id": "Starcoder",
+      "language": "en",
+      "start_token": 59283,
+      "end_token": 60909,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000127",
+      "source_document_id": "5596564",
+      "source_id": "Starcoder",
+      "language": "en",
+      "start_token": 60909,
+      "end_token": 64243,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000128",
+      "source_document_id": "1989456",
+      "source_id": "Starcoder",
+      "language": "en",
+      "start_token": 64243,
+      "end_token": 65404,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000129",
+      "source_document_id": "2055379",
+      "source_id": "Starcoder",
+      "language": "en",
+      "start_token": 65404,
+      "end_token": 67005,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000130",
+      "source_document_id": "1505025",
+      "source_id": "Starcoder",
+      "language": "en",
+      "start_token": 67005,
+      "end_token": 68510,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000131",
+      "source_document_id": "523070",
+      "source_id": "Starcoder",
+      "language": "en",
+      "start_token": 68510,
+      "end_token": 70021,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000132",
+      "source_document_id": "14843134",
+      "source_id": "Starcoder",
+      "language": "en",
+      "start_token": 70021,
+      "end_token": 71606,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000133",
+      "source_document_id": "375234",
+      "source_id": "Starcoder",
+      "language": "en",
+      "start_token": 71606,
+      "end_token": 73276,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000134",
+      "source_document_id": "11590736",
+      "source_id": "Starcoder",
+      "language": "en",
+      "start_token": 73276,
+      "end_token": 76104,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000135",
+      "source_document_id": "6556523",
+      "source_id": "Starcoder",
+      "language": "en",
+      "start_token": 76104,
+      "end_token": 81826,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000136",
+      "source_document_id": "1808524",
+      "source_id": "Starcoder",
+      "language": "en",
+      "start_token": 81826,
+      "end_token": 83374,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000137",
+      "source_document_id": "1317573",
+      "source_id": "Starcoder",
+      "language": "en",
+      "start_token": 83374,
+      "end_token": 84796,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000138",
+      "source_document_id": "12054630",
+      "source_id": "Starcoder",
+      "language": "en",
+      "start_token": 84796,
+      "end_token": 87071,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000139",
+      "source_document_id": "5269869",
+      "source_id": "Starcoder",
+      "language": "en",
+      "start_token": 87071,
+      "end_token": 88533,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000140",
+      "source_document_id": "1779096",
+      "source_id": "Starcoder",
+      "language": "en",
+      "start_token": 88533,
+      "end_token": 90896,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000141",
+      "source_document_id": "95946",
+      "source_id": "Starcoder",
+      "language": "en",
+      "start_token": 90896,
+      "end_token": 92443,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000142",
+      "source_document_id": "1424209",
+      "source_id": "Starcoder",
+      "language": "en",
+      "start_token": 92443,
+      "end_token": 94231,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000143",
+      "source_document_id": "15613180",
+      "source_id": "Starcoder",
+      "language": "en",
+      "start_token": 94231,
+      "end_token": 99030,
+      "response_start_token": null
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "shard_id": "shard-000023",
+  "content_hash": "sha256:3764154765269b04751286e267e2ac25c5835fdddfe561e5f1380a70c75ce3be",
+  "tokenizer_hash": "sha256:32f4aec77e728a6613c014374d6b3e5efa81b301640aab4a9157783ebeb1df83",
+  "capability_lane": "math_science",
+  "packing_policy": "greedy",
+  "token_count": 29556,
+  "document_count": 7,
+  "license_tier": "unspecified",
+  "dedup_status": "not_checked",
+  "contamination_status": "not_checked",
+  "eval_overlap_status": "none",
+  "cleaning_pipeline_hash": null,
+  "parent_shard_ids": [],
+  "document_spans": [
+    {
+      "document_id": "doc-000390",
+      "source_document_id": "proofpile-shard-0037-26144",
+      "source_id": "proof_pile_2-open_web_math",
+      "language": "en",
+      "start_token": 0,
+      "end_token": 1178,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000391",
+      "source_document_id": "proofpile-shard-0038-89092",
+      "source_id": "proof_pile_2-open_web_math",
+      "language": "en",
+      "start_token": 1178,
+      "end_token": 5209,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000392",
+      "source_document_id": "proofpile-shard-0039-85446",
+      "source_id": "proof_pile_2-open_web_math",
+      "language": "en",
+      "start_token": 5209,
+      "end_token": 6376,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000393",
+      "source_document_id": "proofpile-python0027-47036",
+      "source_id": "proof_pile_2-open_web_math",
+      "language": "en",
+      "start_token": 6376,
+      "end_token": 8132,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000399",
+      "source_document_id": "8dde0409ce797a49379efd5a43eae414b86b6927",
+      "source_id": "redpajama-arxiv",
+      "language": "en",
+      "start_token": 8132,
+      "end_token": 14090,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000400",
+      "source_document_id": "3b70f5c547b03a6df65caf00064fb1a487ada704",
+      "source_id": "redpajama-arxiv",
+      "language": "en",
+      "start_token": 14090,
+      "end_token": 22350,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000401",
+      "source_document_id": "a0e688be91c51ad701f52e5dee3791413693fc7a",
+      "source_id": "redpajama-arxiv",
+      "language": "en",
+      "start_token": 22350,
+      "end_token": 29556,
+      "response_start_token": null
+    }
+  ]
+}

@@ -1,0 +1,512 @@
+{
+  "shard_id": "shard-000015",
+  "content_hash": "sha256:7e00a6dc887c453f46efcefe2abf53ff3cb5d9684d427532c280fcaadd7bcfd0",
+  "tokenizer_hash": "sha256:32f4aec77e728a6613c014374d6b3e5efa81b301640aab4a9157783ebeb1df83",
+  "capability_lane": "general_web",
+  "packing_policy": "greedy",
+  "token_count": 99708,
+  "document_count": 55,
+  "license_tier": "unspecified",
+  "dedup_status": "not_checked",
+  "contamination_status": "not_checked",
+  "eval_overlap_status": "none",
+  "cleaning_pipeline_hash": null,
+  "parent_shard_ids": [],
+  "document_spans": [
+    {
+      "document_id": "doc-000245",
+      "source_document_id": "https://www.quoteikon.com/peter-paul-rubens-quotes.html",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 0,
+      "end_token": 1255,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000246",
+      "source_document_id": "https://www.weststreetwellbeing.com.au/antibiotics-why-they-dont-work-in-the-long-run-and-how-to-effectively-treat-chronic-infections-with-natural-medicine/",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 1255,
+      "end_token": 2928,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000247",
+      "source_document_id": "https://www.powersystemsdesign.com/articles/sic-mosfets-empower-led-driver-design/36/8175",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 2928,
+      "end_token": 7510,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000248",
+      "source_document_id": "https://www.phcppros.com/articles/14453-harris-products-group-acquires-ftp-and-shoals-tubular",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 7510,
+      "end_token": 8274,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000249",
+      "source_document_id": "https://npengage.com/healthcare/a-curated-bbcon-experience-for-healthcare-fundraising-professionals/",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 8274,
+      "end_token": 9539,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000250",
+      "source_document_id": "https://greenbusinessonly.com/8-sales-role-play-exercises-to-prepare-your-team-for-the-win/",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 9539,
+      "end_token": 13635,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000251",
+      "source_document_id": "https://www.anime-internet.com/sasuke-uchiha-top-12-special-moments-from-naruto-shippuden/",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 13635,
+      "end_token": 14737,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000252",
+      "source_document_id": "https://hapax.github.io/mathematics/logic/philosophy/provability/",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 14737,
+      "end_token": 17143,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000253",
+      "source_document_id": "https://generictadalafilbuy.com/jodie-sweetin-shades-candace-cameron-bure-after-marriage-comments/",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 17143,
+      "end_token": 18049,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000254",
+      "source_document_id": "https://www.rodwhite.net/resistance-the-vaccine-fight-may-be-an-example/",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 18049,
+      "end_token": 21735,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000255",
+      "source_document_id": "https://fogjaktycks.com/2021/5/6/22424096/ihsa-bass-fishing-challenging-weather-diminish-return-sectionalsg--z53186j20nm",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 21735,
+      "end_token": 23960,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000256",
+      "source_document_id": "https://www.mamapedia.com/article/walking-partner-374",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 23960,
+      "end_token": 24507,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000257",
+      "source_document_id": "https://www.debateart.com/forum/topics/3456-the-way",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 24507,
+      "end_token": 25686,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000258",
+      "source_document_id": "https://www.swapadvd.com/Room-Rent/dvd/183305/",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 25686,
+      "end_token": 26583,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000259",
+      "source_document_id": "https://www.foodbusinessnews.net/articles/13551-ruling-determines-two-mgpi-ingredients-satisfy-fda-fiber-definition",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 26583,
+      "end_token": 27427,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000260",
+      "source_document_id": "https://www.nzherald.co.nz/hawkes-bay-today/news/love-of-yachting-inspires-artist/4K7LA6KPZLTTFPSZIQPUNDIMOE/",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 27427,
+      "end_token": 29054,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000261",
+      "source_document_id": "https://www.tamrawade.com/news/page/21/",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 29054,
+      "end_token": 30235,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000262",
+      "source_document_id": "https://www.mtbr.com/threads/stumpjumper-29-st-vs-kona-honzo.1101843/",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 30235,
+      "end_token": 31067,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000263",
+      "source_document_id": "https://www.prolificnorth.co.uk/featured/features/2013/05/what-ive-learnt-nicky-unsworth-bjl-group",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 31067,
+      "end_token": 32237,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000264",
+      "source_document_id": "https://www.lawtrades.com/forward-gc/the-mass-counterfeiting-lawsuit-is-the-latest-trick-in-the-copycat-wars/",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 32237,
+      "end_token": 33726,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000265",
+      "source_document_id": "https://cartermatt.com/188034/fargo-season-2-episode-9-review-a-gerhardt-motel-massacre-also-ufos/",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 33726,
+      "end_token": 34347,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000266",
+      "source_document_id": "https://community.mcafee.com/t5/Malware/Help-Artemis-56C9EF26F88B-ZeroAccess/td-p/307109/page/8",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 34347,
+      "end_token": 35543,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000267",
+      "source_document_id": "https://za-zdraveto.com/arizona-state-rwfysm/data-warehouse-case-study-for-university-eb3c65",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 35543,
+      "end_token": 39540,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000268",
+      "source_document_id": "http://mmj.eg.net/article.asp?issn=1110-2098;year=2014;volume=27;issue=1;spage=60;epage=65;aulast=El-Kafrawy",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 39540,
+      "end_token": 45987,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000269",
+      "source_document_id": "http://blogs.ifas.ufl.edu/news/2018/11/07/citrus-advisory-system-may-help-prevent-losses-from-postbloom-fruit-drop/",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 45987,
+      "end_token": 46815,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000270",
+      "source_document_id": "https://wiki.seds.org/index.php?title=Prepare_To_Snicker_Minecraft_Server_Will_not_be_Harmless_As_you_Would_possibly_Think_Take_a_look_at_These_Nice_Examples",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 46815,
+      "end_token": 48049,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000271",
+      "source_document_id": "https://maggamer.com/h-hour-love-to-socom-and-third-person-tactical-shooters/",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 48049,
+      "end_token": 49293,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000272",
+      "source_document_id": "https://theartcult.net/best-air-fryers-rated-by-consumers-2021/",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 49293,
+      "end_token": 53407,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000273",
+      "source_document_id": "https://www.new-casinosites.uk/review/slots-animal/",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 53407,
+      "end_token": 55045,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000274",
+      "source_document_id": "https://www.breakinglatest.news/sports/pordenone-anticipated-the-first-at-teghil-against-juventus-nextgen/",
+      "source_id": "cc_news",
+      "language": "en",
+      "start_token": 55045,
+      "end_token": 55963,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000275",
+      "source_document_id": "https://www.naplesnews.com/story/money/real-estate/2022/08/27/community-law-q/7867369001/",
+      "source_id": "cc_news",
+      "language": "en",
+      "start_token": 55963,
+      "end_token": 57997,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000276",
+      "source_document_id": "https://www.telegraph.co.uk/news/2022/09/13/europeans-increasingly-envious-monarchy-no-surprise-when-see/",
+      "source_id": "cc_news",
+      "language": "en",
+      "start_token": 57997,
+      "end_token": 59434,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000277",
+      "source_document_id": "https://www.goodtimes.sc/two-years-after-czu-rethinking-wildfire-prevention/?utm_source=rss&utm_medium=rss&utm_campaign=two-years-after-czu-rethinking-wildfire-prevention",
+      "source_id": "cc_news",
+      "language": "en",
+      "start_token": 59434,
+      "end_token": 61449,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000278",
+      "source_document_id": "https://www.bakercityherald.com/sports/powder-valleys-football-season-ends-with-40-14-loss-to-lost-river-in-semifinal-game/article_a2ab99d4-686e-11ed-bfd0-83514024453a.html",
+      "source_id": "cc_news",
+      "language": "en",
+      "start_token": 61449,
+      "end_token": 62269,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000279",
+      "source_document_id": "https://insurify.com/car-insurance/knowledge/hertz-used-cars/",
+      "source_id": "cc_news",
+      "language": "en",
+      "start_token": 62269,
+      "end_token": 64049,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000280",
+      "source_document_id": "https://www.etfdailynews.com/2022/12/10/newedge-advisors-llc-increases-stock-position-in-nuveen-municipal-value-fund-inc-nysenuv/",
+      "source_id": "cc_news",
+      "language": "en",
+      "start_token": 64049,
+      "end_token": 64843,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000281",
+      "source_document_id": "https://www.yenisafak.com/en/world/joint-turkish-mongolian-delegation-on-the-trail-of-turkic-history-in-orkhon-valley-3654959",
+      "source_id": "cc_news",
+      "language": "en",
+      "start_token": 64843,
+      "end_token": 66009,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000282",
+      "source_document_id": "https://www.newsbreak.com/news/2856285681712/how-point-per-game-players-became-commonplace-in-the-nhl",
+      "source_id": "cc_news",
+      "language": "en",
+      "start_token": 66009,
+      "end_token": 68281,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000283",
+      "source_document_id": "https://www.bt.com/tv/comedy/wednesday-netflix-secrets-set-making-of",
+      "source_id": "cc_news",
+      "language": "en",
+      "start_token": 68281,
+      "end_token": 70958,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000284",
+      "source_document_id": "https://www.etfdailynews.com/2022/06/13/bp-lonbp-price-target-raised-to-gbx-510-at-berenberg-bank/",
+      "source_id": "cc_news",
+      "language": "en",
+      "start_token": 70958,
+      "end_token": 71763,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000285",
+      "source_document_id": "https://www.getthegloss.com/beauty/skincare/how-safe-is-clean-beauty-and-are-paranbens-bad-a-top-dermatologist-gives-her-view",
+      "source_id": "cc_news",
+      "language": "en",
+      "start_token": 71763,
+      "end_token": 73161,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000286",
+      "source_document_id": "https://seekingalpha.com/article/4217137-orion-group-holdings-inc-orn-ceo-mark-stauffer-on-q3-2018-results-earnings-call-transcript",
+      "source_id": "cc_news",
+      "language": "en",
+      "start_token": 73161,
+      "end_token": 78955,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000287",
+      "source_document_id": "https://codelist.biz/2022/08/03/feels-targeted-by-ten-hag/",
+      "source_id": "cc_news",
+      "language": "en",
+      "start_token": 78955,
+      "end_token": 79689,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000288",
+      "source_document_id": "https://www.themarketsdaily.com/2022/06/01/81-97-million-in-sales-expected-for-ready-capital-co-nyserc-this-quarter.html",
+      "source_id": "cc_news",
+      "language": "en",
+      "start_token": 79689,
+      "end_token": 80817,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000289",
+      "source_document_id": "https://pledgetimes.com/thousands-of-people-could-lose-their-jobs-this-year/",
+      "source_id": "cc_news",
+      "language": "en",
+      "start_token": 80817,
+      "end_token": 82350,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000290",
+      "source_document_id": "https://nation.com.pk/2022/07/23/all-eyes-again-on-top-court/",
+      "source_id": "cc_news",
+      "language": "en",
+      "start_token": 82350,
+      "end_token": 84447,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000291",
+      "source_document_id": "https://www.americanbankingnews.com/2022/07/01/denali-advisors-llc-takes-position-in-natural-grocers-by-vitamin-cottage-inc-nysengvc.html",
+      "source_id": "cc_news",
+      "language": "en",
+      "start_token": 84447,
+      "end_token": 85412,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000292",
+      "source_document_id": "https://www.losaltosonline.com/auto/a-luxury-car-for-those-with-quiet-wealth/article_f465c35a-fca6-11ec-9235-6f3b8a00841a.html",
+      "source_id": "cc_news",
+      "language": "en",
+      "start_token": 85412,
+      "end_token": 86845,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000293",
+      "source_document_id": "https://www.northeasttoday.in/2022/05/25/naga-political-talks-can-be-amicably-resolved-through-inclusive-approach-npf-president/",
+      "source_id": "cc_news",
+      "language": "en",
+      "start_token": 86845,
+      "end_token": 87571,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000294",
+      "source_document_id": "https://www.steelers.com/news/2022-triple-take-dt-take-two",
+      "source_id": "cc_news",
+      "language": "en",
+      "start_token": 87571,
+      "end_token": 93241,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000295",
+      "source_document_id": "https://dailypost.ng/2022/05/26/calls-for-cancellation-of-akwa-ibom-pdp-primaries-suffers-setback-as-court-upholds-elections/",
+      "source_id": "cc_news",
+      "language": "en",
+      "start_token": 93241,
+      "end_token": 94340,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000296",
+      "source_document_id": "https://www.marketwatch.com/story/heres-why-more-employers-are-dropping-college-degree-requirements-11652969148",
+      "source_id": "cc_news",
+      "language": "en",
+      "start_token": 94340,
+      "end_token": 95108,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000297",
+      "source_document_id": "https://style.nine.com.au/latest/maddie-edwards-beauty-influencer-acne-eczema-skin-journey-interview/b29ce2da-afe1-4187-a42f-5ec47fa90970",
+      "source_id": "cc_news",
+      "language": "en",
+      "start_token": 95108,
+      "end_token": 97512,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000298",
+      "source_document_id": "https://pledgetimes.com/the-lion-king-are-simba-and-nala-brothers-popular-theory-on-reddit-is-debunked/",
+      "source_id": "cc_news",
+      "language": "en",
+      "start_token": 97512,
+      "end_token": 98387,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000299",
+      "source_document_id": "https://www.news.com.au/sport/afl/tribute-to-ben-cousins-after-former-stars-fitting-footy-cameo/news-story/1fa3d868e24fd5e99d9afd8f26fcb475",
+      "source_id": "cc_news",
+      "language": "en",
+      "start_token": 98387,
+      "end_token": 99708,
+      "response_start_token": null
+    }
+  ]
+}

@@ -1,0 +1,237 @@
+=== Training Data Execution System demo -- corpus=real ===
+[INFO] run_id=demo-run-real branch_id=main seed=demo-seed-1
+[event] evaluation data blocked (2 document(s))
+[PASS] eval_shard_blocked: 2 document(s) blocked
+[PASS] tokenizer_hash_verified: sha256:32f4aec77e728a6613c014374d6b3e5efa81b301640aab4a9157783ebeb1df83
+[event] shards created (24 shards)
+[event] manifests validated (24 shard manifests on record)
+[event] mixture compiled (3 stages, total_steps=165)
+[event] OPUS decisions recorded (850/850 docs accepted, enabled=True)
+[event] === entering curriculum stage 'foundation' (steps [0, 78)) ===
+[step] step=0 stage='foundation' branch=main batch_ids=['mb-0-0', 'mb-0-1'] lanes=['code', 'general_web', 'indic']
+[PASS] checkpoint_saved step=0
+[step] step=1 stage='foundation' branch=main batch_ids=['mb-1-0', 'mb-1-1'] lanes=['code', 'general_web', 'indic']
+[step] step=2 stage='foundation' branch=main batch_ids=['mb-2-0', 'mb-2-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[step] step=3 stage='foundation' branch=main batch_ids=['mb-3-0', 'mb-3-1'] lanes=['general_web', 'indic', 'instruction', 'math_science']
+[step] step=4 stage='foundation' branch=main batch_ids=['mb-4-0', 'mb-4-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[step] step=5 stage='foundation' branch=main batch_ids=['mb-5-0', 'mb-5-1'] lanes=['code', 'general_web', 'indic', 'instruction']
+[step] step=6 stage='foundation' branch=main batch_ids=['mb-6-0', 'mb-6-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[step] step=7 stage='foundation' branch=main batch_ids=['mb-7-0', 'mb-7-1'] lanes=['code', 'general_web', 'math_science']
+[step] step=8 stage='foundation' branch=main batch_ids=['mb-8-0', 'mb-8-1'] lanes=['general_web', 'indic', 'instruction', 'math_science']
+[step] step=9 stage='foundation' branch=main batch_ids=['mb-9-0', 'mb-9-1'] lanes=['code', 'general_web', 'indic', 'instruction', 'math_science']
+[step] step=10 stage='foundation' branch=main batch_ids=['mb-10-0', 'mb-10-1'] lanes=['code', 'general_web', 'indic', 'instruction', 'math_science']
+[PASS] checkpoint_saved step=10
+[step] step=11 stage='foundation' branch=main batch_ids=['mb-11-0', 'mb-11-1'] lanes=['code', 'general_web', 'indic', 'instruction', 'math_science']
+[step] step=12 stage='foundation' branch=main batch_ids=['mb-12-0', 'mb-12-1'] lanes=['code', 'general_web', 'instruction', 'math_science']
+[step] step=13 stage='foundation' branch=main batch_ids=['mb-13-0', 'mb-13-1'] lanes=['general_web', 'instruction', 'math_science']
+[step] step=14 stage='foundation' branch=main batch_ids=['mb-14-0', 'mb-14-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[step] step=15 stage='foundation' branch=main batch_ids=['mb-15-0', 'mb-15-1'] lanes=['code', 'general_web', 'indic', 'instruction', 'math_science']
+[step] step=16 stage='foundation' branch=main batch_ids=['mb-16-0', 'mb-16-1'] lanes=['code', 'general_web', 'indic', 'instruction', 'math_science']
+[step] step=17 stage='foundation' branch=main batch_ids=['mb-17-0', 'mb-17-1'] lanes=['code', 'general_web', 'instruction', 'math_science']
+[step] step=18 stage='foundation' branch=main batch_ids=['mb-18-0', 'mb-18-1'] lanes=['code', 'general_web', 'indic', 'instruction']
+[step] step=19 stage='foundation' branch=main batch_ids=['mb-19-0', 'mb-19-1'] lanes=['code', 'general_web', 'indic', 'instruction', 'math_science']
+[step] step=20 stage='foundation' branch=main batch_ids=['mb-20-0', 'mb-20-1'] lanes=['code', 'general_web', 'indic', 'instruction', 'math_science']
+[PASS] checkpoint_saved step=20
+[step] step=21 stage='foundation' branch=main batch_ids=['mb-21-0', 'mb-21-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[step] step=22 stage='foundation' branch=main batch_ids=['mb-22-0', 'mb-22-1'] lanes=['code', 'general_web', 'math_science']
+[step] step=23 stage='foundation' branch=main batch_ids=['mb-23-0', 'mb-23-1'] lanes=['code', 'general_web', 'indic', 'instruction']
+[step] step=24 stage='foundation' branch=main batch_ids=['mb-24-0', 'mb-24-1'] lanes=['code', 'general_web', 'indic']
+[step] step=25 stage='foundation' branch=main batch_ids=['mb-25-0', 'mb-25-1'] lanes=['code', 'general_web', 'instruction', 'math_science']
+[step] step=26 stage='foundation' branch=main batch_ids=['mb-26-0', 'mb-26-1'] lanes=['code', 'general_web', 'indic', 'instruction']
+[step] step=27 stage='foundation' branch=main batch_ids=['mb-27-0', 'mb-27-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[step] step=28 stage='foundation' branch=main batch_ids=['mb-28-0', 'mb-28-1'] lanes=['code', 'general_web', 'indic']
+[step] step=29 stage='foundation' branch=main batch_ids=['mb-29-0', 'mb-29-1'] lanes=['general_web', 'indic', 'instruction']
+[step] step=30 stage='foundation' branch=main batch_ids=['mb-30-0', 'mb-30-1'] lanes=['general_web', 'indic', 'instruction', 'math_science']
+[PASS] checkpoint_saved step=30
+[step] step=31 stage='foundation' branch=main batch_ids=['mb-31-0', 'mb-31-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[step] step=32 stage='foundation' branch=main batch_ids=['mb-32-0', 'mb-32-1'] lanes=['code', 'general_web', 'instruction', 'math_science']
+[step] step=33 stage='foundation' branch=main batch_ids=['mb-33-0', 'mb-33-1'] lanes=['code', 'general_web', 'indic']
+[step] step=34 stage='foundation' branch=main batch_ids=['mb-34-0', 'mb-34-1'] lanes=['general_web', 'instruction', 'math_science']
+[step] step=35 stage='foundation' branch=main batch_ids=['mb-35-0', 'mb-35-1'] lanes=['code', 'general_web', 'indic', 'instruction', 'math_science']
+[step] step=36 stage='foundation' branch=main batch_ids=['mb-36-0', 'mb-36-1'] lanes=['general_web', 'indic', 'math_science']
+[step] step=37 stage='foundation' branch=main batch_ids=['mb-37-0', 'mb-37-1'] lanes=['code', 'general_web', 'indic']
+[step] step=38 stage='foundation' branch=main batch_ids=['mb-38-0', 'mb-38-1'] lanes=['code', 'general_web', 'instruction']
+[step] step=39 stage='foundation' branch=main batch_ids=['mb-39-0', 'mb-39-1'] lanes=['general_web', 'indic', 'instruction', 'math_science']
+[event] crash simulated after step 39
+[event] searching for the last saved checkpoint for branch=main...
+[event] found checkpoint step=30
+[event] run resumed from checkpoint step=30
+[event] identified next batch to resume from: step=31
+[event] retraining steps [31,39] on the resumed model -- lost since checkpoint step=30
+[step] step=31 stage='foundation' branch=main batch_ids=['mb-31-0', 'mb-31-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[step] step=32 stage='foundation' branch=main batch_ids=['mb-32-0', 'mb-32-1'] lanes=['code', 'general_web', 'instruction', 'math_science']
+[step] step=33 stage='foundation' branch=main batch_ids=['mb-33-0', 'mb-33-1'] lanes=['code', 'general_web', 'indic']
+[step] step=34 stage='foundation' branch=main batch_ids=['mb-34-0', 'mb-34-1'] lanes=['general_web', 'instruction', 'math_science']
+[step] step=35 stage='foundation' branch=main batch_ids=['mb-35-0', 'mb-35-1'] lanes=['code', 'general_web', 'indic', 'instruction', 'math_science']
+[step] step=36 stage='foundation' branch=main batch_ids=['mb-36-0', 'mb-36-1'] lanes=['general_web', 'indic', 'math_science']
+[step] step=37 stage='foundation' branch=main batch_ids=['mb-37-0', 'mb-37-1'] lanes=['code', 'general_web', 'indic']
+[step] step=38 stage='foundation' branch=main batch_ids=['mb-38-0', 'mb-38-1'] lanes=['code', 'general_web', 'instruction']
+[step] step=39 stage='foundation' branch=main batch_ids=['mb-39-0', 'mb-39-1'] lanes=['general_web', 'indic', 'instruction', 'math_science']
+[event] redo complete: 9 step(s) retrained in 0.73s
+[PASS] resume_next_batch_matched step=31 batch_ids=['mb-31-0', 'mb-31-1']
+[event] historical stream replayed (steps [0, 39))
+[PASS] replay_hash_matched steps=[0,39)
+[step] step=40 stage='foundation' branch=main batch_ids=['mb-40-0', 'mb-40-1'] lanes=['code', 'general_web', 'math_science']
+[PASS] checkpoint_saved step=40
+[step] step=41 stage='foundation' branch=main batch_ids=['mb-41-0', 'mb-41-1'] lanes=['code', 'general_web', 'indic', 'instruction']
+[step] step=42 stage='foundation' branch=main batch_ids=['mb-42-0', 'mb-42-1'] lanes=['code', 'general_web', 'instruction', 'math_science']
+[step] step=43 stage='foundation' branch=main batch_ids=['mb-43-0', 'mb-43-1'] lanes=['general_web', 'indic', 'instruction', 'math_science']
+[step] step=44 stage='foundation' branch=main batch_ids=['mb-44-0', 'mb-44-1'] lanes=['code', 'general_web', 'math_science']
+[step] step=45 stage='foundation' branch=main batch_ids=['mb-45-0', 'mb-45-1'] lanes=['code', 'general_web', 'indic', 'instruction', 'math_science']
+[step] step=46 stage='foundation' branch=main batch_ids=['mb-46-0', 'mb-46-1'] lanes=['code', 'general_web', 'indic', 'instruction', 'math_science']
+[step] step=47 stage='foundation' branch=main batch_ids=['mb-47-0', 'mb-47-1'] lanes=['code', 'general_web', 'instruction', 'math_science']
+[step] step=48 stage='foundation' branch=main batch_ids=['mb-48-0', 'mb-48-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[step] step=49 stage='foundation' branch=main batch_ids=['mb-49-0', 'mb-49-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[step] step=50 stage='foundation' branch=main batch_ids=['mb-50-0', 'mb-50-1'] lanes=['code', 'general_web', 'instruction', 'math_science']
+[PASS] checkpoint_saved step=50
+[step] step=51 stage='foundation' branch=main batch_ids=['mb-51-0', 'mb-51-1'] lanes=['code', 'general_web', 'instruction']
+[step] step=52 stage='foundation' branch=main batch_ids=['mb-52-0', 'mb-52-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[step] step=53 stage='foundation' branch=main batch_ids=['mb-53-0', 'mb-53-1'] lanes=['code', 'general_web', 'indic', 'instruction']
+[step] step=54 stage='foundation' branch=main batch_ids=['mb-54-0', 'mb-54-1'] lanes=['code', 'general_web']
+[step] step=55 stage='foundation' branch=main batch_ids=['mb-55-0', 'mb-55-1'] lanes=['code', 'general_web', 'indic', 'instruction']
+[step] step=56 stage='foundation' branch=main batch_ids=['mb-56-0', 'mb-56-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[step] step=57 stage='foundation' branch=main batch_ids=['mb-57-0', 'mb-57-1'] lanes=['code', 'general_web', 'indic', 'instruction', 'math_science']
+[step] step=58 stage='foundation' branch=main batch_ids=['mb-58-0', 'mb-58-1'] lanes=['code', 'general_web', 'indic', 'instruction', 'math_science']
+[step] step=59 stage='foundation' branch=main batch_ids=['mb-59-0', 'mb-59-1'] lanes=['code', 'general_web', 'indic', 'instruction']
+[step] step=60 stage='foundation' branch=main batch_ids=['mb-60-0', 'mb-60-1'] lanes=['code', 'general_web', 'instruction', 'math_science']
+[PASS] checkpoint_saved step=60
+[step] step=61 stage='foundation' branch=main batch_ids=['mb-61-0', 'mb-61-1'] lanes=['code', 'general_web', 'indic', 'instruction', 'math_science']
+[step] step=62 stage='foundation' branch=main batch_ids=['mb-62-0', 'mb-62-1'] lanes=['general_web', 'indic', 'instruction', 'math_science']
+[step] step=63 stage='foundation' branch=main batch_ids=['mb-63-0', 'mb-63-1'] lanes=['code', 'general_web', 'math_science']
+[step] step=64 stage='foundation' branch=main batch_ids=['mb-64-0', 'mb-64-1'] lanes=['code', 'general_web', 'indic', 'instruction', 'math_science']
+[step] step=65 stage='foundation' branch=main batch_ids=['mb-65-0', 'mb-65-1'] lanes=['code', 'general_web', 'instruction', 'math_science']
+[step] step=66 stage='foundation' branch=main batch_ids=['mb-66-0', 'mb-66-1'] lanes=['code', 'general_web', 'indic', 'instruction']
+[step] step=67 stage='foundation' branch=main batch_ids=['mb-67-0', 'mb-67-1'] lanes=['general_web', 'indic', 'math_science']
+[step] step=68 stage='foundation' branch=main batch_ids=['mb-68-0', 'mb-68-1'] lanes=['code', 'general_web', 'indic', 'instruction', 'math_science']
+[step] step=69 stage='foundation' branch=main batch_ids=['mb-69-0', 'mb-69-1'] lanes=['code', 'general_web', 'indic', 'instruction', 'math_science']
+[step] step=70 stage='foundation' branch=main batch_ids=['mb-70-0', 'mb-70-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[PASS] checkpoint_saved step=70
+[step] step=71 stage='foundation' branch=main batch_ids=['mb-71-0', 'mb-71-1'] lanes=['code', 'general_web', 'indic', 'instruction', 'math_science']
+[step] step=72 stage='foundation' branch=main batch_ids=['mb-72-0', 'mb-72-1'] lanes=['code', 'general_web', 'indic']
+[step] step=73 stage='foundation' branch=main batch_ids=['mb-73-0', 'mb-73-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[step] step=74 stage='foundation' branch=main batch_ids=['mb-74-0', 'mb-74-1'] lanes=['code', 'general_web', 'indic', 'instruction', 'math_science']
+[step] step=75 stage='foundation' branch=main batch_ids=['mb-75-0', 'mb-75-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[step] step=76 stage='foundation' branch=main batch_ids=['mb-76-0', 'mb-76-1'] lanes=['code', 'general_web', 'math_science']
+[step] step=77 stage='foundation' branch=main batch_ids=['mb-77-0', 'mb-77-1'] lanes=['code', 'general_web', 'indic']
+[event] stage 'foundation' audit (lanes=['code', 'general_web', 'indic', 'instruction', 'math_science'], shards=16, samples=624, packing_utilization=1.000, estimated_useful_tokens=79248)
+[event] stage 'foundation' mixture compliance: {"code": {"planned_share": 0.25, "actual_share": 0.2564102564102564, "delta": 0.0064102564102563875}, "general_web": {"planned_share": 0.3500000000000005, "actual_share": 0.32371794871794873, "delta": -0.026282051282051744}, "indic": {"planned_share": 0.15000000000000022, "actual_share": 0.14583333333333334, "delta": -0.004166666666666874}, "instruction": {"planned_share": 0.09999999999999985, "actual_share": 0.10897435897435898, "delta": 0.008974358974359123}, "math_science": {"planned_share": 0.15000000000000022, "actual_share": 0.16506410256410256, "delta": 0.015064102564102344}}
+[event] === stage 'foundation' complete: 78 step(s) trained (crash/resume=PASS, replay=PASS, audit: samples=624, useful_tokens=79248) ===
+[event] === entering curriculum stage 'capability-expansion' (steps [78, 146)) ===
+[step] step=78 stage='capability-expansion' branch=main batch_ids=['mb-78-0', 'mb-78-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[step] step=79 stage='capability-expansion' branch=main batch_ids=['mb-79-0', 'mb-79-1'] lanes=['code', 'general_web', 'indic', 'instruction', 'math_science']
+[step] step=80 stage='capability-expansion' branch=main batch_ids=['mb-80-0', 'mb-80-1'] lanes=['code', 'general_web', 'math_science']
+[PASS] checkpoint_saved step=80
+[step] step=81 stage='capability-expansion' branch=main batch_ids=['mb-81-0', 'mb-81-1'] lanes=['code', 'general_web', 'instruction', 'math_science']
+[step] step=82 stage='capability-expansion' branch=main batch_ids=['mb-82-0', 'mb-82-1'] lanes=['code', 'general_web', 'indic']
+[step] step=83 stage='capability-expansion' branch=main batch_ids=['mb-83-0', 'mb-83-1'] lanes=['code', 'general_web', 'indic']
+[step] step=84 stage='capability-expansion' branch=main batch_ids=['mb-84-0', 'mb-84-1'] lanes=['code', 'indic', 'math_science']
+[step] step=85 stage='capability-expansion' branch=main batch_ids=['mb-85-0', 'mb-85-1'] lanes=['code', 'general_web', 'indic', 'instruction']
+[step] step=86 stage='capability-expansion' branch=main batch_ids=['mb-86-0', 'mb-86-1'] lanes=['code', 'instruction', 'math_science']
+[step] step=87 stage='capability-expansion' branch=main batch_ids=['mb-87-0', 'mb-87-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[step] step=88 stage='capability-expansion' branch=main batch_ids=['mb-88-0', 'mb-88-1'] lanes=['general_web', 'indic', 'instruction', 'math_science']
+[step] step=89 stage='capability-expansion' branch=main batch_ids=['mb-89-0', 'mb-89-1'] lanes=['code', 'general_web', 'indic', 'instruction']
+[step] step=90 stage='capability-expansion' branch=main batch_ids=['mb-90-0', 'mb-90-1'] lanes=['code', 'general_web', 'instruction', 'math_science']
+[PASS] checkpoint_saved step=90
+[step] step=91 stage='capability-expansion' branch=main batch_ids=['mb-91-0', 'mb-91-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[step] step=92 stage='capability-expansion' branch=main batch_ids=['mb-92-0', 'mb-92-1'] lanes=['code', 'general_web', 'instruction', 'math_science']
+[step] step=93 stage='capability-expansion' branch=main batch_ids=['mb-93-0', 'mb-93-1'] lanes=['indic', 'math_science']
+[step] step=94 stage='capability-expansion' branch=main batch_ids=['mb-94-0', 'mb-94-1'] lanes=['code', 'indic', 'instruction', 'math_science']
+[step] step=95 stage='capability-expansion' branch=main batch_ids=['mb-95-0', 'mb-95-1'] lanes=['code', 'indic', 'math_science']
+[step] step=96 stage='capability-expansion' branch=main batch_ids=['mb-96-0', 'mb-96-1'] lanes=['code', 'general_web', 'instruction', 'math_science']
+[step] step=97 stage='capability-expansion' branch=main batch_ids=['mb-97-0', 'mb-97-1'] lanes=['code', 'general_web', 'instruction', 'math_science']
+[step] step=98 stage='capability-expansion' branch=main batch_ids=['mb-98-0', 'mb-98-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[step] step=99 stage='capability-expansion' branch=main batch_ids=['mb-99-0', 'mb-99-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[step] step=100 stage='capability-expansion' branch=main batch_ids=['mb-100-0', 'mb-100-1'] lanes=['code', 'general_web', 'indic', 'instruction']
+[PASS] checkpoint_saved step=100
+[step] step=101 stage='capability-expansion' branch=main batch_ids=['mb-101-0', 'mb-101-1'] lanes=['code', 'general_web', 'indic', 'instruction']
+[step] step=102 stage='capability-expansion' branch=main batch_ids=['mb-102-0', 'mb-102-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[step] step=103 stage='capability-expansion' branch=main batch_ids=['mb-103-0', 'mb-103-1'] lanes=['code', 'indic', 'instruction', 'math_science']
+[step] step=104 stage='capability-expansion' branch=main batch_ids=['mb-104-0', 'mb-104-1'] lanes=['code', 'general_web', 'indic', 'instruction', 'math_science']
+[step] step=105 stage='capability-expansion' branch=main batch_ids=['mb-105-0', 'mb-105-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[step] step=106 stage='capability-expansion' branch=main batch_ids=['mb-106-0', 'mb-106-1'] lanes=['code', 'general_web', 'indic', 'instruction', 'math_science']
+[step] step=107 stage='capability-expansion' branch=main batch_ids=['mb-107-0', 'mb-107-1'] lanes=['code', 'indic', 'math_science']
+[step] step=108 stage='capability-expansion' branch=main batch_ids=['mb-108-0', 'mb-108-1'] lanes=['code', 'general_web', 'math_science']
+[step] step=109 stage='capability-expansion' branch=main batch_ids=['mb-109-0', 'mb-109-1'] lanes=['general_web', 'indic', 'instruction', 'math_science']
+[step] step=110 stage='capability-expansion' branch=main batch_ids=['mb-110-0', 'mb-110-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[PASS] checkpoint_saved step=110
+[step] step=111 stage='capability-expansion' branch=main batch_ids=['mb-111-0', 'mb-111-1'] lanes=['general_web', 'indic', 'math_science']
+[step] step=112 stage='capability-expansion' branch=main batch_ids=['mb-112-0', 'mb-112-1'] lanes=['code', 'general_web', 'indic', 'instruction', 'math_science']
+[PASS] checkpoint_saved step=112
+[step] step=113 stage='capability-expansion' branch=main batch_ids=['mb-113-0', 'mb-113-1'] lanes=['code', 'indic', 'instruction', 'math_science']
+[step] step=114 stage='capability-expansion' branch=main batch_ids=['mb-114-0', 'mb-114-1'] lanes=['general_web', 'indic', 'instruction', 'math_science']
+[step] step=115 stage='capability-expansion' branch=main batch_ids=['mb-115-0', 'mb-115-1'] lanes=['code', 'general_web', 'indic', 'instruction', 'math_science']
+[step] step=116 stage='capability-expansion' branch=main batch_ids=['mb-116-0', 'mb-116-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[step] step=117 stage='capability-expansion' branch=main batch_ids=['mb-117-0', 'mb-117-1'] lanes=['general_web', 'indic', 'instruction', 'math_science']
+[step] step=118 stage='capability-expansion' branch=main batch_ids=['mb-118-0', 'mb-118-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[step] step=119 stage='capability-expansion' branch=main batch_ids=['mb-119-0', 'mb-119-1'] lanes=['code', 'general_web', 'indic', 'instruction']
+[step] step=120 stage='capability-expansion' branch=main batch_ids=['mb-120-0', 'mb-120-1'] lanes=['code', 'indic', 'math_science']
+[PASS] checkpoint_saved step=120
+[step] step=121 stage='capability-expansion' branch=main batch_ids=['mb-121-0', 'mb-121-1'] lanes=['general_web', 'indic', 'instruction', 'math_science']
+[step] step=122 stage='capability-expansion' branch=main batch_ids=['mb-122-0', 'mb-122-1'] lanes=['code', 'general_web', 'indic', 'instruction', 'math_science']
+[step] step=123 stage='capability-expansion' branch=main batch_ids=['mb-123-0', 'mb-123-1'] lanes=['code', 'general_web', 'math_science']
+[step] step=124 stage='capability-expansion' branch=main batch_ids=['mb-124-0', 'mb-124-1'] lanes=['code', 'general_web', 'indic', 'instruction', 'math_science']
+[step] step=125 stage='capability-expansion' branch=main batch_ids=['mb-125-0', 'mb-125-1'] lanes=['code', 'general_web', 'indic', 'instruction', 'math_science']
+[step] step=126 stage='capability-expansion' branch=main batch_ids=['mb-126-0', 'mb-126-1'] lanes=['code', 'instruction', 'math_science']
+[step] step=127 stage='capability-expansion' branch=main batch_ids=['mb-127-0', 'mb-127-1'] lanes=['code', 'general_web', 'indic', 'instruction', 'math_science']
+[step] step=128 stage='capability-expansion' branch=main batch_ids=['mb-128-0', 'mb-128-1'] lanes=['code', 'indic', 'instruction', 'math_science']
+[step] step=129 stage='capability-expansion' branch=main batch_ids=['mb-129-0', 'mb-129-1'] lanes=['code', 'general_web', 'indic', 'instruction', 'math_science']
+[step] step=130 stage='capability-expansion' branch=main batch_ids=['mb-130-0', 'mb-130-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[PASS] checkpoint_saved step=130
+[step] step=131 stage='capability-expansion' branch=main batch_ids=['mb-131-0', 'mb-131-1'] lanes=['code', 'indic', 'instruction', 'math_science']
+[step] step=132 stage='capability-expansion' branch=main batch_ids=['mb-132-0', 'mb-132-1'] lanes=['code', 'general_web', 'indic', 'instruction', 'math_science']
+[step] step=133 stage='capability-expansion' branch=main batch_ids=['mb-133-0', 'mb-133-1'] lanes=['code', 'general_web', 'indic', 'instruction', 'math_science']
+[step] step=134 stage='capability-expansion' branch=main batch_ids=['mb-134-0', 'mb-134-1'] lanes=['code', 'indic', 'instruction', 'math_science']
+[step] step=135 stage='capability-expansion' branch=main batch_ids=['mb-135-0', 'mb-135-1'] lanes=['code', 'general_web', 'indic', 'instruction', 'math_science']
+[step] step=136 stage='capability-expansion' branch=main batch_ids=['mb-136-0', 'mb-136-1'] lanes=['code', 'general_web', 'indic', 'instruction', 'math_science']
+[step] step=137 stage='capability-expansion' branch=main batch_ids=['mb-137-0', 'mb-137-1'] lanes=['general_web', 'indic', 'math_science']
+[step] step=138 stage='capability-expansion' branch=main batch_ids=['mb-138-0', 'mb-138-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[step] step=139 stage='capability-expansion' branch=main batch_ids=['mb-139-0', 'mb-139-1'] lanes=['code', 'indic', 'instruction']
+[step] step=140 stage='capability-expansion' branch=main batch_ids=['mb-140-0', 'mb-140-1'] lanes=['code', 'indic', 'instruction', 'math_science']
+[PASS] checkpoint_saved step=140
+[step] step=141 stage='capability-expansion' branch=main batch_ids=['mb-141-0', 'mb-141-1'] lanes=['code', 'indic', 'instruction']
+[step] step=142 stage='capability-expansion' branch=main batch_ids=['mb-142-0', 'mb-142-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[step] step=143 stage='capability-expansion' branch=main batch_ids=['mb-143-0', 'mb-143-1'] lanes=['code', 'general_web', 'indic', 'instruction', 'math_science']
+[step] step=144 stage='capability-expansion' branch=main batch_ids=['mb-144-0', 'mb-144-1'] lanes=['code', 'general_web', 'indic', 'instruction', 'math_science']
+[step] step=145 stage='capability-expansion' branch=main batch_ids=['mb-145-0', 'mb-145-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[event] forking a new branch from checkpoint step=112 (parent branch=main)
+[event] branch forked parent=main fork_step=112 new_branch=fork-1
+[event] diverging branch 'fork-1' on seed='demo-seed-1-fork' (parent's own seed='demo-seed-1') -- same weights, different subsequent data stream from here on
+[step] step=113 stage='capability-expansion' branch=fork-1 batch_ids=['mb-113-0', 'mb-113-1'] lanes=['code', 'general_web', 'instruction', 'math_science']
+[step] step=114 stage='capability-expansion' branch=fork-1 batch_ids=['mb-114-0', 'mb-114-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[step] step=115 stage='capability-expansion' branch=fork-1 batch_ids=['mb-115-0', 'mb-115-1'] lanes=['code', 'general_web', 'indic', 'instruction', 'math_science']
+[step] step=116 stage='capability-expansion' branch=fork-1 batch_ids=['mb-116-0', 'mb-116-1'] lanes=['code', 'indic', 'instruction', 'math_science']
+[PASS] fork_diverged_from_parent steps=[113, 114, 115, 116]/[113, 114, 115, 116]: fork-1's served shards/lanes differ from branch=main's own recorded entries at these same step numbers
+[event] branch lineage reconstructed (chain=['main', 'fork-1'], total_samples=936)
+[event] stage 'capability-expansion' audit (lanes=['code', 'general_web', 'indic', 'instruction', 'math_science'], shards=17, samples=544, packing_utilization=1.000, estimated_useful_tokens=69088)
+[event] stage 'capability-expansion' mixture compliance: {"code": {"planned_share": 0.29632352941176504, "actual_share": 0.31066176470588236, "delta": 0.014338235294117319}, "general_web": {"planned_share": 0.1647058823529414, "actual_share": 0.15073529411764705, "delta": -0.013970588235294346}, "indic": {"planned_share": 0.19632352941176448, "actual_share": 0.20588235294117646, "delta": 0.00955882352941198}, "instruction": {"planned_share": 0.09999999999999988, "actual_share": 0.10110294117647059, "delta": 0.0011029411764707092}, "math_science": {"planned_share": 0.2426470588235294, "actual_share": 0.23161764705882354, "delta": -0.011029411764705871}}
+[event] === stage 'capability-expansion' complete: 68 step(s) trained (fork=fork-1@step112 diverged=4/4, audit: samples=544, useful_tokens=69088) ===
+[event] === entering curriculum stage 'anneal' (steps [146, 165)) ===
+[step] step=146 stage='anneal' branch=main batch_ids=['mb-146-0', 'mb-146-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[step] step=147 stage='anneal' branch=main batch_ids=['mb-147-0', 'mb-147-1'] lanes=['code', 'general_web', 'math_science']
+[step] step=148 stage='anneal' branch=main batch_ids=['mb-148-0', 'mb-148-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[step] step=149 stage='anneal' branch=main batch_ids=['mb-149-0', 'mb-149-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[step] step=150 stage='anneal' branch=main batch_ids=['mb-150-0', 'mb-150-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[PASS] checkpoint_saved step=150
+[step] step=151 stage='anneal' branch=main batch_ids=['mb-151-0', 'mb-151-1'] lanes=['general_web', 'indic', 'math_science']
+[step] step=152 stage='anneal' branch=main batch_ids=['mb-152-0', 'mb-152-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[step] step=153 stage='anneal' branch=main batch_ids=['mb-153-0', 'mb-153-1'] lanes=['code', 'general_web', 'indic']
+[step] step=154 stage='anneal' branch=main batch_ids=['mb-154-0', 'mb-154-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[step] step=155 stage='anneal' branch=main batch_ids=['mb-155-0', 'mb-155-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[step] step=156 stage='anneal' branch=main batch_ids=['mb-156-0', 'mb-156-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[step] step=157 stage='anneal' branch=main batch_ids=['mb-157-0', 'mb-157-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[step] step=158 stage='anneal' branch=main batch_ids=['mb-158-0', 'mb-158-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[step] step=159 stage='anneal' branch=main batch_ids=['mb-159-0', 'mb-159-1'] lanes=['general_web', 'indic', 'math_science']
+[step] step=160 stage='anneal' branch=main batch_ids=['mb-160-0', 'mb-160-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[PASS] checkpoint_saved step=160
+[step] step=161 stage='anneal' branch=main batch_ids=['mb-161-0', 'mb-161-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[step] step=162 stage='anneal' branch=main batch_ids=['mb-162-0', 'mb-162-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[step] step=163 stage='anneal' branch=main batch_ids=['mb-163-0', 'mb-163-1'] lanes=['code', 'general_web', 'indic', 'math_science']
+[step] step=164 stage='anneal' branch=main batch_ids=['mb-164-0', 'mb-164-1'] lanes=['code', 'indic', 'math_science']
+[event] audit completed (lanes=['code', 'general_web', 'indic', 'instruction', 'math_science'], shards=21, packing_utilization=1.000)
+[event] exact useful tokens recomputed (estimated=187096, exact=185972)
+[event] performance measured (tokens/sec=10522.4, useful_tokens/sec=10385.9)
+[event] stage 'anneal' audit (lanes=['code', 'general_web', 'indic', 'math_science'], shards=12, samples=152, packing_utilization=1.000, estimated_useful_tokens=38760)
+[event] stage 'anneal' mixture compliance: {"code": {"planned_share": 0.20789473684210535, "actual_share": 0.23684210526315788, "delta": 0.028947368421052527}, "general_web": {"planned_share": 0.19605263157894742, "actual_share": 0.19078947368421054, "delta": -0.005263157894736886}, "indic": {"planned_share": 0.338157894736842, "actual_share": 0.2631578947368421, "delta": -0.0749999999999999}, "instruction": {"planned_share": 0.007894736842105265, "actual_share": 0.0, "delta": -0.007894736842105265}, "math_science": {"planned_share": 0.25, "actual_share": 0.3092105263157895, "delta": 0.05921052631578949}}
+[event] === stage 'anneal' complete: 19 step(s) trained (audit: samples=152, useful_tokens=38760) ===
+[event] batches packed (165 steps trained)
+=== Demo complete: overall=PASS ===

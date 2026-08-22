@@ -1,0 +1,14 @@
+# Registers a small held-out benchmark against the real corpus: one
+# general_web document (doc-000000, source C4) and one indic document
+# (doc-000500, source sangraha_mr) -- deliberately from two different
+# lanes, to show the firewall isn't specific to any one capability lane.
+#
+# Run with: python scripts/build_eval_registry.py --config configs/eval_registry.yaml
+
+corpus: data/corpus/small_shard.parquet
+registry_dir: data/eval_registry
+benchmark_id: session6-real-holdout-v1
+version_tag: v1
+held_out_document_ids:
+  - doc-000000
+  - doc-000500

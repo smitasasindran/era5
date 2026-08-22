@@ -1,0 +1,17 @@
+# Registers a held-out benchmark against the toy corpus fixture.
+#
+# doc-000004 (toy-0005, "Q: How do I check if a Python list is empty...")
+# is held out here. tds/toy_corpus.py also defines toy-0012 as a deliberate exact-text
+# duplicate of that same document under a completely different
+# source/domain/lane, specifically to prove the firewall matches on
+# content hash, not on document id, source, or lane -- both should end up
+# blocked even though only one of them is listed below.
+#
+# Run with: python scripts/build_eval_registry.py --config configs/eval_registry_toy.yaml
+
+corpus: toy
+registry_dir: data/eval_registry
+benchmark_id: session6-toy-holdout-v1
+version_tag: v1
+held_out_document_ids:
+  - doc-000004
