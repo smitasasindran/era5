@@ -20,6 +20,10 @@ lane feeds, per the compiled schedule at that path (see
 tds/opus.py's `stages_for_lane`). Optional: leave `schedule_path` blank
 to run OPUS selection before mixture compilation exists at all, exactly
 as before.
+
+Part of the standalone per-stage workflow (see run_pipeline.py's own
+docstring) -- not needed for, and not read by, scripts/run_demo.py,
+which runs its own in-process OPUS selection instead.
 """
 
 import argparse

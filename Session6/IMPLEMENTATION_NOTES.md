@@ -6,6 +6,22 @@ gets folded together with the design doc into the final submission README
 — this file is the "what we actually did and why" half; the design doc is
 the "what we planned" half.
 
+## Two entry points, on purpose
+
+`scripts/run_demo.py` is the assignment's one required command ("the
+complete system should run using one command") — fully self-contained,
+builds everything itself in-process, writes `submission_artifacts/`.
+
+Separately, `scripts/run_pipeline.py` → `compile_mixture.py` →
+`run_opus_selection.py` (plus `build_eval_registry.py`) is an optional
+standalone workflow for iterating on *one* pipeline stage at a time —
+e.g. rebuild shards under `best_fit` packing and inspect the resulting
+manifests without also running OPUS/training. Not required by the
+assignment, not read by `run_demo.py`, and `run_demo.py` isn't read by
+it either — the two never share file outputs, only the same `configs/*.yaml`
+profiles (see `tds/config.py`'s module docstring). Running the standalone
+chain before or after `run_demo.py` has no effect on it either way.
+
 ## Status
 
 | Component | Status | Key files |

@@ -18,6 +18,9 @@ planned lane shares -- cumulatively across stages, since a lane's supply is
 shared across the whole curriculum -- and writes the compiled result to the
 config's output_path. Run scripts/run_pipeline.py against the matching
 corpus first; this script does not build shards itself.
+
+Part of the standalone per-stage workflow (see run_pipeline.py's own
+docstring) -- not needed for, and not read by, scripts/run_demo.py.
 """
 
 import argparse

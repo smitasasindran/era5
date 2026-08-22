@@ -259,7 +259,6 @@ def _write_shard(
         "packing_policy": packing_policy,
         "token_count": int(arr.shape[0]),
         "document_count": len(spans),
-        "document_spans": spans,
         # Not re-implemented here -- see DATALOADER_DESIGN.md scope assumptions.
         # An upstream admission pipeline would populate these for real.
         "license_tier": "unspecified",
@@ -268,6 +267,7 @@ def _write_shard(
         "eval_overlap_status": "none",
         "cleaning_pipeline_hash": None,
         "parent_shard_ids": [],
+        "document_spans": spans,
     }
     store.append(manifest)
     return manifest

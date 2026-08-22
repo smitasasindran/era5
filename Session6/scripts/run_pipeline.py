@@ -5,6 +5,17 @@
     python scripts/run_pipeline.py                                  # configs/pipeline.yaml (real corpus)
     python scripts/run_pipeline.py --config configs/pipeline_toy.yaml # tiny hand-authored fixture
 
+Not the assignment's required one-command demo -- that's
+`scripts/run_demo.py`, which is fully self-contained and does not read
+anything this script writes. This script (together with
+`compile_mixture.py`, `run_opus_selection.py`, and
+`build_eval_registry.py`) is a separate, optional standalone workflow:
+build or inspect one pipeline stage at a time -- e.g. rebuild shards
+under `best_fit` packing and look at the resulting manifests, without
+also running OPUS/training/etc. Each of those scripts reads the file
+outputs this one writes (shards, manifests, the frozen mixture schedule)
+rather than sharing any in-process state with it.
+
 All tunables (corpus, output dirs, vocab size, shard token budget, packing
 policy) live in the config file -- see configs/pipeline.yaml and
 configs/pipeline_toy.yaml for the two ready-made profiles. To run a one-off

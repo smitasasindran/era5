@@ -16,6 +16,13 @@ runs -- it's meant to accumulate held-out fingerprints across benchmarks
 documents is a no-op; registering a *different* benchmark under a content
 hash that's already claimed by another benchmark is an error, not a
 silent overwrite.
+
+Part of the standalone per-stage workflow (see run_pipeline.py's own
+docstring), but harmless to run before scripts/run_demo.py too: that
+script registers the exact same held-out documents itself, from the same
+config, as one of its own first steps -- registration is idempotent, so
+running this first just makes that step a no-op rather than a first-time
+write. Neither script depends on the other having run.
 """
 
 import argparse

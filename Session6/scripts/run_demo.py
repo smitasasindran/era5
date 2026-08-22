@@ -6,15 +6,26 @@ learning ledgers), save a checkpoint, deliberately simulate a crash and
 resume from it, replay a historical range, fork a branch, audit the run,
 measure throughput, and assemble the evidence bundle.
 
-    python scripts/run_demo.py                  # toy corpus (default: fast, fully deterministic)
-    python scripts/run_demo.py --corpus real     # real vendored corpus
+    python scripts/run_demo.py                  # real vendored corpus (default)
+    python scripts/run_demo.py --corpus toy      # tiny hand-authored fixture: fast, fully deterministic
     python scripts/run_demo.py --num-steps 12    # override step count
 
 Writes submission_artifacts/: run.log, evidence.json, evidence.md,
 manifests/, ledgers/, checkpoints/, performance.json -- wiping and
 rebuilding that directory (and the shared data/tokenizer, data/shards,
-data/manifests directories) fresh each run, exactly like run_pipeline.py
-already does for a single profile.
+data/manifests directories) fresh each run.
+
+This is the assignment's one required entry point ("the complete system
+should run using one command"), and it is fully self-contained: it builds
+the tokenizer/shards/manifests/mixture schedule/OPUS decisions itself,
+in-process, exactly like `scripts/run_pipeline.py` + `compile_mixture.py`
++ `run_opus_selection.py` do when run as separate steps -- but it never
+reads any of those other scripts' output files. Running any of them
+beforehand has no effect on this script (it will just overwrite whatever
+they produced); you never need to run anything before this one. Those
+other scripts exist for a different, optional workflow -- iterating on a
+single pipeline stage without paying for the others -- see
+`scripts/run_pipeline.py`'s own docstring.
 """
 
 import argparse
@@ -87,7 +98,7 @@ def main():
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    parser.add_argument("--corpus", choices=["toy", "real"], default="toy")
+    parser.add_argument("--corpus", choices=["toy", "real"], default="real")
     parser.add_argument(
         "--num-steps", type=int, default=None,
         help="override: number of training steps (default: the compiled schedule's total_steps)",

@@ -18,6 +18,14 @@ Three config shapes:
   document under a model snapshot and freeze accept/reject/defer
   decisions) -- `enabled: false` writes a pass-through decision log
   instead of running any model.
+
+All four are also loaded directly by scripts/run_demo.py, which reads the
+exact same YAML files (`configs/{pipeline,eval_registry,curriculum,opus}
+{,_toy}.yaml`) as the standalone scripts above -- editing one of those
+files changes both workflows at once, even though the two workflows never
+share file *outputs* with each other (run_demo.py never reads a shard,
+manifest, schedule, or decision file the standalone scripts wrote, or
+vice versa -- see scripts/run_demo.py's own docstring).
 """
 
 from __future__ import annotations
