@@ -10,18 +10,26 @@ measure throughput, and assemble the evidence bundle.
     python scripts/run_demo.py --corpus toy      # tiny hand-authored fixture: fast, fully deterministic
     python scripts/run_demo.py --num-steps 200   # override step count (default: the full compiled schedule)
 
-Trains the *entire* compiled schedule by default -- for the real corpus
-that's ~1,659 steps across 3 curriculum stages, which takes a few minutes
-(not ~15 seconds), because reaching any step requires replaying every
-step before it (the Packer's per-lane document position is cumulative,
-not O(1)-jumpable -- see IMPLEMENTATION_NOTES.md §10). The payoff: crash/
-resume/replay/fork/audit are spread across genuinely different curriculum
-stages rather than all crammed into an early, single-stage window --
-crash+resume+replay happen at the end of the first stage actually
-reached, fork happens in the second, and the final audit happens in the
-last. Pass --num-steps to cut this short (e.g. for a quick sanity check);
-with a small enough value every stage-specific step collapses back into
-whichever single stage is reached, same as a smaller demo always did.
+Trains the *entire* compiled schedule by default, across every curriculum
+stage the config defines. Crash/resume/replay/fork/audit are spread
+across genuinely different stages rather than all crammed into an early,
+single-stage window -- crash+resume+replay happen at the end of the
+first stage actually reached, fork happens in the second, and the final
+audit happens in the last. Pass --num-steps to cut this short (e.g. for
+a quick sanity check); with a small enough value every stage-specific
+step collapses back into whichever single stage is reached.
+
+The simulated crash is real, not just narrated: training periodically
+checkpoints (`checkpoint_interval`), and on "crash" the run searches for
+the most recent checkpoint (which may be earlier than the crash step --
+periodic checkpointing means real work can be lost, same as a real
+system), restores fresh model/optimizer/Packer objects from it, actually
+retrains whatever was lost, and hands the run over to those resumed
+objects for everything after -- not a parallel throwaway check discarded
+once it passes. Reaching a later curriculum stage always costs real
+training time, since there's no way to jump ahead: the Packer's per-lane
+document position is cumulative, not O(1)-jumpable (see
+IMPLEMENTATION_NOTES.md §10).
 
 Writes submission_artifacts/: run.log, evidence.json, evidence.md,
 manifests/, ledgers/, checkpoints/, performance.json -- wiping and
@@ -249,6 +257,39 @@ def main():
         lanes = sorted({sample.lane for mb in microbatches for sample in mb.samples})
         log.log(f"[step] step={step} stage={stage_name!r} branch={branch} batch_ids={batch_ids} lanes={lanes}")
 
+    def train_step_and_record(
+        step, stage_name, branch, step_model, step_optimizer, step_assembler,
+        record_learning=True, record_timing=True,
+    ):
+        """One training step's full side effects: assemble, train, log, and
+        append to both ledgers -- shared by the main loop, the crash-redo
+        catch-up loop, and the fork's own loop, so all three can never
+        silently diverge in what "running a step" actually means."""
+        start = time.perf_counter()
+        microbatches = step_assembler.assemble_step(step)
+        result = run_training_step(step_model, step_optimizer, microbatches)
+        elapsed = time.perf_counter() - start
+
+        if record_timing:
+            total_tokens = sum(mb.token_ids.size for mb in microbatches)
+            useful_tokens = sum(int(mb.loss_mask.sum()) for mb in microbatches)
+            timings.append(StepTiming(step, elapsed, total_tokens, useful_tokens))
+        log_step(step, stage_name, branch, microbatches)
+
+        for mb in microbatches:
+            consumption_ledger.append(
+                build_ledger_entry(
+                    run_id, branch, mb, schedule, tok_manifest["tokenizer_hash"],
+                    opus_enabled=opus_config.enabled,
+                )
+            )
+        if record_learning:
+            for entry in build_learning_ledger_entries(
+                run_id, branch, result, schedule, consumption_ledger, opus_decisions=opus_decisions
+            ):
+                learning_ledger.append(entry)
+        return microbatches, result
+
     def stage_step(compiled_stage, fraction, clipped_end):
         """A step at roughly `fraction` of the way through `compiled_stage`,
         clamped inside [step_start, clipped_end) -- clipped_end accounts for
@@ -297,27 +338,7 @@ def main():
         stage_outcomes = []
 
         for step in range(stage_start, stage_end):
-            start = time.perf_counter()
-            microbatches = assembler.assemble_step(step)
-            result = run_training_step(model, optimizer, microbatches)
-            elapsed = time.perf_counter() - start
-
-            total_tokens = sum(mb.token_ids.size for mb in microbatches)
-            useful_tokens = sum(int(mb.loss_mask.sum()) for mb in microbatches)
-            timings.append(StepTiming(step, elapsed, total_tokens, useful_tokens))
-            log_step(step, stage_name, branch_id, microbatches)
-
-            for mb in microbatches:
-                consumption_ledger.append(
-                    build_ledger_entry(
-                        run_id, branch_id, mb, schedule, tok_manifest["tokenizer_hash"],
-                        opus_enabled=opus_config.enabled,
-                    )
-                )
-            for entry in build_learning_ledger_entries(
-                run_id, branch_id, result, schedule, consumption_ledger, opus_decisions=opus_decisions
-            ):
-                learning_ledger.append(entry)
+            train_step_and_record(step, stage_name, branch_id, model, optimizer, assembler)
 
             # Periodic checkpointing (configurable), plus an explicit one at
             # fork_step -- the point we deliberately choose to fork from, as
@@ -339,20 +360,20 @@ def main():
                 pending_resume_step = None
 
             if step == crash_step:
-                # --- Crash simulation, narrated in the order it actually
-                # happens in a real system: crash -> find the last durable
-                # checkpoint (deliberately *not* assumed to be crash_step
-                # itself -- periodic checkpointing means real work can be
-                # lost between the last save and the crash, exactly like a
-                # real system) -> resume from it -> identify the next batch
-                # to run -> verify it's correct -> replay the pre-crash
-                # history. The "live" model/optimizer/packer are never
-                # actually swapped out below: Packer/Cursor are pure
-                # functions of frozen inputs, so continuing this same live
-                # loop for the rest of the stage is computationally
-                # identical to what resuming onto a fresh Packer and
-                # continuing *would* produce -- this block exists to prove
-                # that equivalence, not to fork the process's own state. ---
+                # --- Crash simulation, narrated -- and actually carried out --
+                # in the order it happens in a real system: crash -> find the
+                # last durable checkpoint (deliberately *not* assumed to be
+                # crash_step itself -- periodic checkpointing means real work
+                # can be lost between the last save and the crash, exactly
+                # like a real system) -> restore fresh model/optimizer from
+                # it -> identify the next batch to run -> rebuild a Packer
+                # positioned at exactly that point -> retrain whatever was
+                # lost since the checkpoint, for real, on the resumed objects
+                # -> those resumed objects become "live" for the rest of the
+                # run. Packer/Cursor are pure functions of frozen inputs, so
+                # this redo is guaranteed to reproduce the original steps'
+                # ledger entries exactly (idempotent re-append, not a
+                # mismatch) -- but it's real retraining, not a shortcut. ---
                 log.log(f"[event] crash simulated after step {crash_step}")
                 log.log(f"[event] searching for the last saved checkpoint for branch={branch_id}...")
                 last_checkpoint_step = checkpoints.latest_step(run_id, branch_id)
@@ -377,14 +398,42 @@ def main():
                     curriculum_config.microbatch_size, resume_step,
                 )
                 expected_ids = [f"mb-{mb.global_step}-{mb.microbatch_index}" for mb in expected_microbatches]
-                if last_checkpoint_step < crash_step:
-                    # Steps (last_checkpoint_step, crash_step] were already
-                    # trained and recorded before the crash was even
-                    # detected -- their ledger entries already exist, so the
-                    # check can run immediately instead of waiting.
+
+                # Reposition a fresh Packer/Assembler for the resumed objects
+                # -- same reasoning as fork's "replay to the fork point":
+                # document-consumption position is cumulative, so there's no
+                # jumping straight to resume_step.
+                resumed_packer = Packer(seed, schedule, filtered_pools, store, pipeline_config.shards_dir)
+                resumed_assembler = BatchAssembler(resumed_packer, curriculum_config.microbatch_size)
+                for s in range(resume_step):
+                    resumed_assembler.assemble_step(s)
+
+                lost_steps = list(range(resume_step, crash_step + 1))
+                if lost_steps:
+                    log.log(
+                        f"[event] retraining steps [{resume_step},{crash_step}] on the resumed model -- "
+                        f"lost since checkpoint step={last_checkpoint_step}"
+                    )
+                    redo_start = time.perf_counter()
+                    for s in lost_steps:
+                        train_step_and_record(
+                            s, stage_name, branch_id, resumed_model, resumed_optimizer, resumed_assembler,
+                            record_timing=False,
+                        )
+                    log.log(f"[event] redo complete: {len(lost_steps)} step(s) retrained in {time.perf_counter() - redo_start:.2f}s")
+                    # resume_step's ledger entry now exists (either freshly
+                    # written just above, or an idempotent re-append that
+                    # matched what was already there) -- verify immediately.
                     verify_and_log_resume(resume_step)
                 else:
+                    # Checkpoint was taken at crash_step itself -- nothing
+                    # lost, resume_step is a step nothing has trained yet.
+                    log.log(f"[event] no steps lost -- checkpoint step={last_checkpoint_step} covers everything trained so far")
                     pending_resume_step = resume_step
+
+                # From here on, the resumed objects *are* the live ones --
+                # not a parallel/throwaway check, an actual handover.
+                model, optimizer, packer, assembler = resumed_model, resumed_optimizer, resumed_packer, resumed_assembler
 
                 # --- Replay this stage's pre-crash history ---
                 replay_result = replay_range(
@@ -400,8 +449,13 @@ def main():
                 stage_outcomes.append(f"replay={'PASS' if replay_result.matched else 'FAIL'}")
 
         if stage is fork_stage:
-            # --- Fork a branch from this stage's checkpoint, diverging on a different seed ---
-            fork_model = ToyTransformer(model_config, seed=555)
+            # --- Fork: same checkpoint (weights) as the parent branch, but
+            # a genuinely different subsequent seed -- narrated and verified
+            # the same way crash/resume proves *equivalence*, fork proves
+            # *divergence*: same starting point, different seed, provably
+            # different data stream from here on. ---
+            log.log(f"[event] forking a new branch from checkpoint step={fork_step} (parent branch={branch_id})")
+            fork_model = ToyTransformer(model_config, seed=555)  # overwritten immediately by fork_branch's restore
             fork_optimizer = torch.optim.Adam(fork_model.parameters(), lr=3e-3)
             fork_result = fork_branch(checkpoints, run_id, branch_id, fork_step, "fork-1", fork_model, fork_optimizer)
             log.log(
@@ -410,22 +464,51 @@ def main():
             )
 
             fork_seed = seed + "-fork"
-            fork_end_step = min(fork_step + 3, total_steps)
+            log.log(
+                f"[event] diverging branch 'fork-1' on seed={fork_seed!r} "
+                f"(parent's own seed={seed!r}) -- same weights, different subsequent data stream from here on"
+            )
+            fork_end_step = min(fork_step + 5, stage_end)
             fork_packer = Packer(fork_seed, schedule, filtered_pools, store, pipeline_config.shards_dir)
             fork_assembler = BatchAssembler(fork_packer, curriculum_config.microbatch_size)
             for s in range(fork_step + 1):
                 fork_assembler.assemble_step(s)  # replay to the fork point -- same reasoning as resume
             for s in range(fork_step + 1, fork_end_step):
-                mbs = fork_assembler.assemble_step(s)
-                run_training_step(fork_model, fork_optimizer, mbs)
-                log_step(s, schedule.stage_at_step(s).stage.stage, "fork-1", mbs)
-                for mb in mbs:
-                    consumption_ledger.append(
-                        build_ledger_entry(
-                            run_id, "fork-1", mb, schedule, tok_manifest["tokenizer_hash"],
-                            opus_enabled=opus_config.enabled,
-                        )
-                    )
+                train_step_and_record(
+                    s, schedule.stage_at_step(s).stage.stage, "fork-1", fork_model, fork_optimizer, fork_assembler,
+                    record_learning=False, record_timing=False,
+                )
+
+            # --- Prove the divergence, not just assert it: branch_id (the
+            # parent) already trained through this same step range on its
+            # own seed earlier in this stage's loop, so its ledger entries
+            # for these exact steps already exist -- compare fork-1's
+            # against them directly. ---
+            microbatches_per_step = curriculum_config.global_batch_size // curriculum_config.microbatch_size
+
+            def branch_signature_at_step(branch, step):
+                return [
+                    (entry["mixture_lane"], entry["shard_ids"], entry["token_span_ids"])
+                    for i in range(microbatches_per_step)
+                    for entry in [consumption_ledger.get(run_id, branch, f"mb-{step}-{i}")]
+                ]
+
+            diverged_steps = [
+                s for s in range(fork_step + 1, fork_end_step)
+                if branch_signature_at_step(branch_id, s) != branch_signature_at_step("fork-1", s)
+            ]
+            if diverged_steps:
+                log.log(
+                    f"[PASS] fork_diverged_from_parent steps={diverged_steps}/"
+                    f"{list(range(fork_step + 1, fork_end_step))}: fork-1's served shards/lanes differ from "
+                    f"branch={branch_id}'s own recorded entries at these same step numbers"
+                )
+            else:
+                log.log(
+                    f"[FAIL] fork_diverged_from_parent: fork-1 served identical shards/lanes to "
+                    f"branch={branch_id} at every compared step -- the new seed had no visible effect"
+                )
+            stage_outcomes.append(f"fork=fork-1@step{fork_step} diverged={len(diverged_steps)}/{fork_end_step - fork_step - 1}")
 
             lineage_report = audit_branch_lineage(
                 run_id, "fork-1", fork_end_step, consumption_ledger, checkpoints, schedule
@@ -435,7 +518,6 @@ def main():
                 f"(chain={[n['branch_id'] for n in lineage_report['lineage']]}, "
                 f"total_samples={lineage_report['total_samples']})"
             )
-            stage_outcomes.append(f"fork=fork-1@step{fork_step}")
 
         if stage is final_stage:
             # --- Audit + throughput, over the whole run ---
@@ -541,10 +623,13 @@ def main():
             "Fork lineage",
             [n["branch_id"] for n in lineage_report["lineage"]] == [branch_id, "fork-1"]
             and lineage_report["lineage"][-1]["fork_step"] == fork_step
-            and lineage_report["total_samples"] > 0,
+            and lineage_report["total_samples"] > 0
+            and len(diverged_steps) > 0,
             f"branch 'fork-1' full history reconstructed across "
             f"{[n['branch_id'] for n in lineage_report['lineage']]} (fork at step {fork_step}): "
-            f"{lineage_report['total_samples']} samples over steps [0,{fork_end_step})",
+            f"{lineage_report['total_samples']} samples over steps [0,{fork_end_step}); "
+            f"diverged from parent at {len(diverged_steps)}/{fork_end_step - fork_step - 1} post-fork steps "
+            f"(different seed, same starting checkpoint)",
         ),
         EvidenceRow(
             "Throughput", perf_report["tokens_per_second"] > 0,
