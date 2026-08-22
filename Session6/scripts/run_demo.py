@@ -8,7 +8,20 @@ measure throughput, and assemble the evidence bundle.
 
     python scripts/run_demo.py                  # real vendored corpus (default)
     python scripts/run_demo.py --corpus toy      # tiny hand-authored fixture: fast, fully deterministic
-    python scripts/run_demo.py --num-steps 12    # override step count
+    python scripts/run_demo.py --num-steps 200   # override step count (default: the full compiled schedule)
+
+Trains the *entire* compiled schedule by default -- for the real corpus
+that's ~1,659 steps across 3 curriculum stages, which takes a few minutes
+(not ~15 seconds), because reaching any step requires replaying every
+step before it (the Packer's per-lane document position is cumulative,
+not O(1)-jumpable -- see IMPLEMENTATION_NOTES.md §10). The payoff: crash/
+resume/replay/fork/audit are spread across genuinely different curriculum
+stages rather than all crammed into an early, single-stage window --
+crash+resume+replay happen at the end of the first stage actually
+reached, fork happens in the second, and the final audit happens in the
+last. Pass --num-steps to cut this short (e.g. for a quick sanity check);
+with a small enough value every stage-specific step collapses back into
+whichever single stage is reached, same as a smaller demo always did.
 
 Writes submission_artifacts/: run.log, evidence.json, evidence.md,
 manifests/, ledgers/, checkpoints/, performance.json -- wiping and
@@ -122,6 +135,7 @@ def main():
     seed = "demo-seed-1"
 
     log.log(f"=== Training Data Execution System demo -- corpus={args.corpus} ===")
+    log.log(f"[INFO] run_id={run_id} branch_id={branch_id} seed={seed}")
 
     # --- Eval registry (persistent, not cleared -- idempotent re-registration) ---
     registry = EvalRegistry(eval_config.registry_dir)
@@ -191,7 +205,7 @@ def main():
     opus_manifest = freeze_opus_selection(opus_decisions, opus_config.output_path)
     accepted_count = sum(1 for d in opus_decisions if d.status == "accepted")
     log.log(
-        f"[event] OPUS decisions recorded ({accepted_count}/{len(opus_decisions)} accepted, "
+        f"[event] OPUS decisions recorded ({accepted_count}/{len(opus_decisions)} docs accepted, "
         f"enabled={opus_config.enabled})"
     )
     rejected_by_stage = {}
@@ -203,21 +217,19 @@ def main():
     if rejected_by_stage:
         log.log(f"[event] rejected/deferred documents by curriculum stage they would have fed: {rejected_by_stage}")
 
-    # --- Training: real steps, consumption + learning ledgers, periodic checkpoint ---
-    # Default caps at 50 steps regardless of corpus: the point of this demo is
-    # proving the mechanism (crash/resume/replay/fork/audit all correct), not
-    # exhausting the real corpus's full schedule (1000+ steps) end to end --
-    # replay and fork each additionally re-walk a large fraction of whatever
-    # this is set to, so an uncapped real-corpus run is not a quick demo.
-    # Pass --num-steps to run more (or the schedule's own total_steps for a
-    # full run).
-    default_steps = min(schedule.total_steps, 50)
-    total_steps = args.num_steps or default_steps
-    if args.num_steps is None and default_steps < schedule.total_steps:
-        log.log(
-            f"[INFO] running {total_steps}/{schedule.total_steps} scheduled steps "
-            f"(pass --num-steps to override)"
-        )
+    # --- Training: real steps, consumption + learning ledgers, spread across stages ---
+    # Default is the *entire* compiled schedule -- pass --num-steps to cut it
+    # short. Whatever range results gets split into the curriculum stages it
+    # actually touches, and crash/resume/replay/fork/audit are distributed
+    # one-per-stage (see module docstring) rather than crammed into one
+    # early window: crash+resume+replay close out the first stage reached,
+    # fork closes out the second, and the final audit closes out the last --
+    # for a range that never leaves a single stage, all three collapse into
+    # that one stage's closing block, in the same order as before.
+    total_steps = args.num_steps or schedule.total_steps
+    if args.num_steps is not None and args.num_steps < schedule.total_steps:
+        log.log(f"[INFO] running {total_steps}/{schedule.total_steps} scheduled steps (--num-steps override)")
+
     max_seq_len = max(cs.stage.sequence_length for cs in schedule.stages)
     model_config = ToyTransformerConfig(
         vocab_size=tok_manifest["vocab_size"], max_sequence_length=max_seq_len,
@@ -232,129 +244,181 @@ def main():
     learning_ledger = LearningLedger(artifacts_dir / "ledgers" / "learning")
     checkpoints = CheckpointManager(artifacts_dir / "checkpoints")
 
-    crash_step = max(1, total_steps // 2)
+    def log_step(step, stage_name, branch, microbatches):
+        batch_ids = [f"mb-{mb.global_step}-{mb.microbatch_index}" for mb in microbatches]
+        lanes = sorted({sample.lane for mb in microbatches for sample in mb.samples})
+        log.log(f"[step] step={step} stage={stage_name!r} branch={branch} batch_ids={batch_ids} lanes={lanes}")
+
+    def stage_step(compiled_stage, fraction, clipped_end):
+        """A step at roughly `fraction` of the way through `compiled_stage`,
+        clamped inside [step_start, clipped_end) -- clipped_end accounts for
+        --num-steps cutting a stage short of its own compiled step_end."""
+        raw = compiled_stage.step_start + int((clipped_end - compiled_stage.step_start) * fraction)
+        return max(compiled_stage.step_start, min(raw, clipped_end - 1))
+
+    effective_stages = [cs for cs in schedule.stages if cs.step_start < total_steps]
+    crash_stage = effective_stages[0]
+    fork_stage = effective_stages[1] if len(effective_stages) > 1 else effective_stages[0]
+
+    crash_end = min(crash_stage.step_end, total_steps)
+    crash_step = stage_step(crash_stage, 0.5, crash_end)
+    fork_end = min(fork_stage.step_end, total_steps)
+    if fork_stage is crash_stage:
+        # Same stage as crash (a short --num-steps run never left it) -- put
+        # the fork checkpoint later in the stage so the two never collide.
+        fork_step = max(stage_step(fork_stage, 0.75, fork_end), crash_step + 1)
+        fork_step = min(fork_step, fork_end - 1)
+    else:
+        fork_step = stage_step(fork_stage, 0.5, fork_end)
+    final_stage = effective_stages[-1]
+
     timings = []
 
-    for step in range(total_steps):
-        start = time.perf_counter()
-        microbatches = assembler.assemble_step(step)
-        result = run_training_step(model, optimizer, microbatches)
-        elapsed = time.perf_counter() - start
+    for stage in effective_stages:
+        stage_name = stage.stage.stage
+        stage_start = stage.step_start
+        stage_end = min(stage.step_end, total_steps)
+        log.log(f"[event] === entering curriculum stage {stage_name!r} (steps [{stage_start}, {stage_end})) ===")
 
-        total_tokens = sum(mb.token_ids.size for mb in microbatches)
-        useful_tokens = sum(int(mb.loss_mask.sum()) for mb in microbatches)
-        timings.append(StepTiming(step, elapsed, total_tokens, useful_tokens))
+        for step in range(stage_start, stage_end):
+            start = time.perf_counter()
+            microbatches = assembler.assemble_step(step)
+            result = run_training_step(model, optimizer, microbatches)
+            elapsed = time.perf_counter() - start
 
-        for mb in microbatches:
-            consumption_ledger.append(
-                build_ledger_entry(
-                    run_id, branch_id, mb, schedule, tok_manifest["tokenizer_hash"],
-                    opus_enabled=opus_config.enabled,
+            total_tokens = sum(mb.token_ids.size for mb in microbatches)
+            useful_tokens = sum(int(mb.loss_mask.sum()) for mb in microbatches)
+            timings.append(StepTiming(step, elapsed, total_tokens, useful_tokens))
+            log_step(step, stage_name, branch_id, microbatches)
+
+            for mb in microbatches:
+                consumption_ledger.append(
+                    build_ledger_entry(
+                        run_id, branch_id, mb, schedule, tok_manifest["tokenizer_hash"],
+                        opus_enabled=opus_config.enabled,
+                    )
                 )
-            )
-        for entry in build_learning_ledger_entries(
-            run_id, branch_id, result, schedule, consumption_ledger, opus_decisions=opus_decisions
-        ):
-            learning_ledger.append(entry)
+            for entry in build_learning_ledger_entries(
+                run_id, branch_id, result, schedule, consumption_ledger, opus_decisions=opus_decisions
+            ):
+                learning_ledger.append(entry)
 
-        if step == crash_step:
-            checkpoints.save(model, optimizer, run_id, branch_id, step)
-            log.log(f"[PASS] checkpoint_saved step={step}")
+            if step == crash_step:
+                checkpoints.save(model, optimizer, run_id, branch_id, step)
+                log.log(f"[PASS] checkpoint_saved step={step}")
+            if step == fork_step:
+                checkpoints.save(model, optimizer, run_id, branch_id, step)
+                log.log(f"[PASS] checkpoint_saved step={step}")
+
+        stage_outcomes = []
+
+        if stage is crash_stage:
+            # --- Crash simulation + resume: brand-new objects, never touching the live ones ---
+            log.log(f"[event] crash simulated after step {crash_step}")
+            resumed_model = ToyTransformer(model_config, seed=999)  # deliberately different -- must be overwritten
+            resumed_optimizer = torch.optim.Adam(resumed_model.parameters(), lr=3e-3)
+            checkpoint_metadata = checkpoints.restore(run_id, branch_id, crash_step, resumed_model, resumed_optimizer)
+            log.log(f"[event] run resumed from checkpoint step={checkpoint_metadata.global_step}")
+
+            resume_step = next_step_after_checkpoint(checkpoint_metadata)
+            expected_microbatches = recompute_step(
+                seed, schedule, filtered_pools, store, pipeline_config.shards_dir,
+                curriculum_config.microbatch_size, resume_step,
+            )
+            expected_ids = [f"mb-{mb.global_step}-{mb.microbatch_index}" for mb in expected_microbatches]
+            resume_result = verify_resume(
+                run_id, branch_id, resume_step, seed, schedule, filtered_pools, store, pipeline_config.shards_dir,
+                curriculum_config.microbatch_size, tok_manifest["tokenizer_hash"], consumption_ledger,
+            )
+            if resume_result.matched:
+                log.log(f"[PASS] resume_next_batch_matched step={resume_step} batch_ids={expected_ids}")
+            else:
+                log.log(f"[FAIL] resume_next_batch_matched step={resume_step} mismatches={resume_result.mismatches}")
+            stage_outcomes.append(f"crash/resume={'PASS' if resume_result.matched else 'FAIL'}")
+
+            # --- Replay this stage's pre-crash history ---
+            replay_result = replay_range(
+                run_id, branch_id, stage_start, crash_step, seed, schedule, filtered_pools, store,
+                pipeline_config.shards_dir, curriculum_config.microbatch_size, tok_manifest["tokenizer_hash"],
+                consumption_ledger,
+            )
+            log.log(f"[event] historical stream replayed (steps [{stage_start}, {crash_step}))")
+            if replay_result.matched:
+                log.log(f"[PASS] replay_hash_matched steps=[{stage_start},{crash_step})")
+            else:
+                log.log(f"[FAIL] replay_hash_matched mismatched_steps={replay_result.mismatched_steps}")
+            stage_outcomes.append(f"replay={'PASS' if replay_result.matched else 'FAIL'}")
+
+        if stage is fork_stage:
+            # --- Fork a branch from this stage's checkpoint, diverging on a different seed ---
+            fork_model = ToyTransformer(model_config, seed=555)
+            fork_optimizer = torch.optim.Adam(fork_model.parameters(), lr=3e-3)
+            fork_result = fork_branch(checkpoints, run_id, branch_id, fork_step, "fork-1", fork_model, fork_optimizer)
+            log.log(
+                f"[event] branch forked parent={fork_result.parent_branch_id} "
+                f"fork_step={fork_result.fork_step} new_branch={fork_result.new_branch_id}"
+            )
+
+            fork_seed = seed + "-fork"
+            fork_end_step = min(fork_step + 3, total_steps)
+            fork_packer = Packer(fork_seed, schedule, filtered_pools, store, pipeline_config.shards_dir)
+            fork_assembler = BatchAssembler(fork_packer, curriculum_config.microbatch_size)
+            for s in range(fork_step + 1):
+                fork_assembler.assemble_step(s)  # replay to the fork point -- same reasoning as resume
+            for s in range(fork_step + 1, fork_end_step):
+                mbs = fork_assembler.assemble_step(s)
+                run_training_step(fork_model, fork_optimizer, mbs)
+                log_step(s, schedule.stage_at_step(s).stage.stage, "fork-1", mbs)
+                for mb in mbs:
+                    consumption_ledger.append(
+                        build_ledger_entry(
+                            run_id, "fork-1", mb, schedule, tok_manifest["tokenizer_hash"],
+                            opus_enabled=opus_config.enabled,
+                        )
+                    )
+
+            lineage_report = audit_branch_lineage(
+                run_id, "fork-1", fork_end_step, consumption_ledger, checkpoints, schedule
+            )
+            log.log(
+                f"[event] branch lineage reconstructed "
+                f"(chain={[n['branch_id'] for n in lineage_report['lineage']]}, "
+                f"total_samples={lineage_report['total_samples']})"
+            )
+            stage_outcomes.append(f"fork=fork-1@step{fork_step}")
+
+        if stage is final_stage:
+            # --- Audit + throughput, over the whole run ---
+            audit_report = audit_range(run_id, branch_id, 0, total_steps, consumption_ledger, schedule)
+            mixture_report = mixture_compliance_report(run_id, branch_id, 0, total_steps, consumption_ledger, schedule)
+            exact_tokens_report = exact_useful_tokens_range(
+                0, total_steps, seed, schedule, filtered_pools, store, pipeline_config.shards_dir,
+                curriculum_config.microbatch_size,
+            )
+            perf_report = throughput_report(timings)
+            with open(artifacts_dir / "performance.json", "w") as f:
+                json.dump(perf_report, f, indent=2)
+            log.log(
+                f"[event] audit completed (lanes={audit_report['lanes_touched']}, "
+                f"shards={len(audit_report['shards_touched'])}, "
+                f"packing_utilization={audit_report['packing_utilization']:.3f})"
+            )
+            log.log(
+                f"[event] exact useful tokens recomputed (estimated={audit_report['estimated_useful_tokens']}, "
+                f"exact={exact_tokens_report['exact_useful_tokens']})"
+            )
+            log.log(
+                f"[event] performance measured (tokens/sec={perf_report['tokens_per_second']:.1f}, "
+                f"useful_tokens/sec={perf_report['useful_tokens_per_second']:.1f})"
+            )
+            stage_outcomes.append(f"packing_utilization={audit_report['packing_utilization']:.3f}")
+
+        log.log(
+            f"[event] === stage {stage_name!r} complete: {stage_end - stage_start} step(s) trained "
+            f"({', '.join(stage_outcomes) if stage_outcomes else 'no stage-closing checks'}) ==="
+        )
 
     log.log(f"[event] batches packed ({total_steps} steps trained)")
-
-    # --- Crash simulation + resume: brand-new objects, never touching the live ones ---
-    log.log(f"[event] crash simulated after step {crash_step}")
-    resumed_model = ToyTransformer(model_config, seed=999)  # deliberately different -- must be overwritten
-    resumed_optimizer = torch.optim.Adam(resumed_model.parameters(), lr=3e-3)
-    checkpoint_metadata = checkpoints.restore(run_id, branch_id, crash_step, resumed_model, resumed_optimizer)
-    log.log(f"[event] run resumed from checkpoint step={checkpoint_metadata.global_step}")
-
-    resume_step = next_step_after_checkpoint(checkpoint_metadata)
-    expected_microbatches = recompute_step(
-        seed, schedule, filtered_pools, store, pipeline_config.shards_dir,
-        curriculum_config.microbatch_size, resume_step,
-    )
-    expected_ids = [f"mb-{mb.global_step}-{mb.microbatch_index}" for mb in expected_microbatches]
-    resume_result = verify_resume(
-        run_id, branch_id, resume_step, seed, schedule, filtered_pools, store, pipeline_config.shards_dir,
-        curriculum_config.microbatch_size, tok_manifest["tokenizer_hash"], consumption_ledger,
-    )
-    if resume_result.matched:
-        log.log(f"[PASS] resume_next_batch_matched step={resume_step} batch_ids={expected_ids}")
-    else:
-        log.log(f"[FAIL] resume_next_batch_matched step={resume_step} mismatches={resume_result.mismatches}")
-
-    # --- Replay a historical range ---
-    replay_result = replay_range(
-        run_id, branch_id, 0, crash_step, seed, schedule, filtered_pools, store, pipeline_config.shards_dir,
-        curriculum_config.microbatch_size, tok_manifest["tokenizer_hash"], consumption_ledger,
-    )
-    log.log(f"[event] historical stream replayed (steps [0, {crash_step}))")
-    if replay_result.matched:
-        log.log(f"[PASS] replay_hash_matched steps=[0,{crash_step})")
-    else:
-        log.log(f"[FAIL] replay_hash_matched mismatched_steps={replay_result.mismatched_steps}")
-
-    # --- Fork a branch from the checkpoint, diverging on a different seed ---
-    fork_model = ToyTransformer(model_config, seed=555)
-    fork_optimizer = torch.optim.Adam(fork_model.parameters(), lr=3e-3)
-    fork_result = fork_branch(checkpoints, run_id, branch_id, crash_step, "fork-1", fork_model, fork_optimizer)
-    log.log(
-        f"[event] branch forked parent={fork_result.parent_branch_id} "
-        f"fork_step={fork_result.fork_step} new_branch={fork_result.new_branch_id}"
-    )
-
-    fork_seed = seed + "-fork"
-    fork_end_step = min(crash_step + 3, total_steps)
-    fork_packer = Packer(fork_seed, schedule, filtered_pools, store, pipeline_config.shards_dir)
-    fork_assembler = BatchAssembler(fork_packer, curriculum_config.microbatch_size)
-    for step in range(crash_step + 1):
-        fork_assembler.assemble_step(step)  # replay to the fork point -- same reasoning as resume
-    for step in range(crash_step + 1, fork_end_step):
-        mbs = fork_assembler.assemble_step(step)
-        run_training_step(fork_model, fork_optimizer, mbs)
-        for mb in mbs:
-            consumption_ledger.append(
-                build_ledger_entry(
-                    run_id, "fork-1", mb, schedule, tok_manifest["tokenizer_hash"],
-                    opus_enabled=opus_config.enabled,
-                )
-            )
-
-    # --- Fork lineage: fork-1's *complete* history, stitched across branches ---
-    lineage_report = audit_branch_lineage(
-        run_id, "fork-1", fork_end_step, consumption_ledger, checkpoints, schedule
-    )
-    log.log(
-        f"[event] branch lineage reconstructed "
-        f"(chain={[n['branch_id'] for n in lineage_report['lineage']]}, "
-        f"total_samples={lineage_report['total_samples']})"
-    )
-
-    # --- Audit + throughput ---
-    audit_report = audit_range(run_id, branch_id, 0, total_steps, consumption_ledger, schedule)
-    mixture_report = mixture_compliance_report(run_id, branch_id, 0, total_steps, consumption_ledger, schedule)
-    exact_tokens_report = exact_useful_tokens_range(
-        0, total_steps, seed, schedule, filtered_pools, store, pipeline_config.shards_dir,
-        curriculum_config.microbatch_size,
-    )
-    perf_report = throughput_report(timings)
-    with open(artifacts_dir / "performance.json", "w") as f:
-        json.dump(perf_report, f, indent=2)
-    log.log(
-        f"[event] audit completed (lanes={audit_report['lanes_touched']}, "
-        f"shards={len(audit_report['shards_touched'])}, "
-        f"packing_utilization={audit_report['packing_utilization']:.3f})"
-    )
-    log.log(
-        f"[event] exact useful tokens recomputed (estimated={audit_report['estimated_useful_tokens']}, "
-        f"exact={exact_tokens_report['exact_useful_tokens']})"
-    )
-    log.log(
-        f"[event] performance measured (tokens/sec={perf_report['tokens_per_second']:.1f}, "
-        f"useful_tokens/sec={perf_report['useful_tokens_per_second']:.1f})"
-    )
 
     # --- Evidence bundle: every row backed by a real result computed above ---
     learning_entries = learning_ledger.for_branch(run_id, branch_id)
@@ -411,10 +475,10 @@ def main():
         EvidenceRow(
             "Fork lineage",
             [n["branch_id"] for n in lineage_report["lineage"]] == [branch_id, "fork-1"]
-            and lineage_report["lineage"][-1]["fork_step"] == crash_step
+            and lineage_report["lineage"][-1]["fork_step"] == fork_step
             and lineage_report["total_samples"] > 0,
             f"branch 'fork-1' full history reconstructed across "
-            f"{[n['branch_id'] for n in lineage_report['lineage']]} (fork at step {crash_step}): "
+            f"{[n['branch_id'] for n in lineage_report['lineage']]} (fork at step {fork_step}): "
             f"{lineage_report['total_samples']} samples over steps [0,{fork_end_step})",
         ),
         EvidenceRow(

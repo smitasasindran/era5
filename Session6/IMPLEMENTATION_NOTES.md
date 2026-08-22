@@ -2135,24 +2135,89 @@ actually happen (the eval firewall runs *before* "shards created," since
 shards are only ever built from the admitted set -- the assignment's own
 listed order isn't necessarily temporal).
 
-**A real scale correction made after actually running it**: the real
-corpus's compiled schedule has 1,659 steps. An uncapped default would
-mean training all 1,659 steps, *then* `replay_range` re-walking roughly
-half of them again, *then* the fork re-walking a similar span a third
-time -- not a "quick demo" by any reasonable measure, and not the point
-of this assignment ("the goal is not scale"). Caught by actually running
-it against the real corpus (it didn't finish in a reasonable time) rather
-than reasoning about it in the abstract. Fixed with a default cap
-(`min(schedule.total_steps, 50)`), overridable via `--num-steps` for
-anyone who wants a full run. The toy corpus's schedule (27 steps) was
-never affected and runs its full, uncapped schedule by default.
+**A real scale correction made after actually running it (later revised -- see below)**:
+the real corpus's compiled schedule has 1,659 steps. An uncapped default
+would mean training all 1,659 steps, *then* `replay_range` re-walking
+roughly half of them again, *then* the fork re-walking a similar span a
+third time -- not a "quick demo" by any reasonable measure, and not the
+point of this assignment ("the goal is not scale"). Caught by actually
+running it against the real corpus (it didn't finish in a reasonable
+time) rather than reasoning about it in the abstract. Fixed, at the time,
+with a default cap (`min(schedule.total_steps, 50)`), overridable via
+`--num-steps` for anyone who wants a full run.
+
+#### Per-step logging and per-stage spread (extension, closed)
+
+The 50-step cap traded speed for a real loss of legibility: the real
+corpus's 3 curriculum stages span steps `[0,781)`/`[781,1464)`/`[1464,1659)`,
+so a 50-step run never left `foundation` at all -- crash, resume, replay,
+fork, and audit all happened within one stage, back to back, with no
+per-step visibility into what was actually being trained on at any given
+moment. That's a real usability problem for a system whose whole point is
+being easy to audit.
+
+Two changes closed it:
+
+- **Per-step logging.** Every training step (main branch and the forked
+  branch alike) now logs `[step] step=N stage='name' branch=main|fork-1
+  batch_ids=[...] lanes=[...]` -- the exact microbatch ids and lanes
+  served, and which curriculum stage and branch produced them. Cheap to
+  add (everything logged was already computed to build the ledger entry
+  for that step) and immediately answers "what was happening at step X."
+- **Crash/resume/replay/fork/audit spread across curriculum stages,
+  not all crammed into one.** `scripts/run_demo.py`'s training loop now
+  iterates `schedule.stages` directly. Whichever *effective* stages the
+  run's step count actually reaches (`[cs for cs in schedule.stages if
+  cs.step_start < total_steps]`), crash+resume+replay close out the
+  first one, a fork closes out the second (its own checkpoint, saved
+  partway through that stage -- deliberately not reusing the crash
+  checkpoint, to show fork works from an arbitrary point, not just
+  the one point resume already exercised), and the final audit closes
+  out the last. A `[event] === entering curriculum stage '...' ===` /
+  `=== stage '...' complete: ... ===` pair brackets each one, with the
+  closing line naming exactly what that stage's block proved (e.g.
+  `crash/resume=PASS, replay=PASS`, or `fork=fork-1@step1122`). For a
+  run that never leaves a single stage (a small `--num-steps`, or the
+  toy corpus reaching only its first stage), all three collapse into
+  that one stage's closing block, in the same relative order as before
+  -- fully backward compatible with the old single-block behavior.
+
+**This forced the real question the 50-step cap was dodging**: reaching
+`capability-expansion` or `anneal` means the demo now defaults to
+training the *entire* schedule (removing the cap entirely), since
+there's no way to jump to a later stage without replaying every step
+before it (§10's own finding: Packer document-consumption position is
+cumulative, `O(step)` not `O(1)`). Measured directly rather than assumed:
+900 steps (into `capability-expansion`) took ~99 seconds wall-clock; the
+full 1,659-step, 3-stage run took ~3 minutes. Slower than the old
+15-second cap, but a deliberate, informed trade -- accepted once the
+actual cost was known, not before -- for a demo that genuinely exercises
+every curriculum stage instead of only ever touching the first one.
+`--num-steps` still exists for anyone who wants the old fast, single-stage
+behavior back.
+
+**An unplanned bonus from actually reaching further into the schedule**:
+the 900-step and full 1,659-step runs are the first ones to show
+`exact_useful_tokens_range` (§13's earlier extension) actually diverge
+from `audit_range`'s estimate for real, not just in a synthetic test --
+`estimated=1885224` vs. `exact=1882149` over the full run, since this is
+finally far enough into `instruction`'s scarce, low-share lane to reach
+one of its real structure-preserving documents. The 50-step and 300-step
+demo runs discussed under that earlier extension never reached it; this
+one does.
 
 ### Verified
 
 Both corpora, full command: `python scripts/run_demo.py --corpus toy` /
-`--corpus real`. Real corpus, capped at 50 steps, completes in ~15
-seconds and produces `overall: PASS` with all nine evidence rows passing.
-Toy corpus runs its full 27-step schedule and also passes all nine.
+`--corpus real`. Real corpus, the full 1,659-step/3-stage schedule,
+completes in ~3 minutes and produces `overall: PASS` with all eleven
+evidence rows passing, crash/resume/replay genuinely closing out
+`foundation`, the fork genuinely closing out `capability-expansion`
+(`fork_step=1122`), and the final audit genuinely closing out `anneal`.
+Toy corpus runs its full 27-step, 2-stage schedule (crash/resume/replay
+closing `toy-foundation`, fork *and* the final audit both closing
+`toy-expansion`, since it's both the second and the last stage there)
+and also passes all eleven.
 
 **Determinism check**: ran the real-corpus demo twice independently and
 diffed `evidence.json`. Every field was byte-for-byte identical --

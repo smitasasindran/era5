@@ -74,6 +74,8 @@ Each box is a real, independently-tested module under `tds/`:
 
 **Ledgers are append-only with the same mutation guard throughout.** The manifest store, eval registry, consumption ledger, and learning ledger all share one rule: re-appending identical content under an existing key is a harmless no-op (so a crash-recovery retry never corrupts anything), but appending *different* content under a key already in use raises loudly. That single rule is what would catch "resume produced a different batch than the original run" the instant it happened, rather than letting it silently drift.
 
+**Crash/resume/replay/fork/audit are spread one-per-curriculum-stage, not crammed into one window.** `scripts/run_demo.py` iterates the compiled schedule's own stages: crash+resume+replay close out the first stage reached, a fork closes out the second, and the final audit closes out the last. This is possible without any shortcut *because* recomputing a step is only ever `O(step)`, never `O(1)` (see the cursor note above) — there's no way to "jump ahead" to a later stage's checkpoint, so demonstrating all five mechanisms in genuinely different stages means training through every step in between for real, not skipping to them.
+
 ## Assumptions and known scope boundaries
 
 - **Corpus**: parquet with `id`, `source`, `domain`, `language`, `text` columns; capability lane is derived from `domain`/`language`, not assumed pre-tagged. A real vendored corpus (~850 admitted documents, 6 lanes) and a tiny hand-authored fixture (11 documents) are both checked in under `data/corpus/`.
@@ -104,12 +106,14 @@ This README is the short version; `IMPLEMENTATION_NOTES.md` is the long one, wit
 ```bash
 pip install -r requirements.txt
 
-python scripts/run_demo.py                  # real vendored corpus (default)
+python scripts/run_demo.py                  # real vendored corpus (default) -- trains the full schedule, ~3 minutes
 python scripts/run_demo.py --corpus toy      # tiny fixture: fast, fully deterministic, human-checkable
-python scripts/run_demo.py --num-steps 200   # override the step count (default: min(schedule.total_steps, 50))
+python scripts/run_demo.py --num-steps 200   # override the step count (default: the full compiled schedule)
 ```
 
-One command builds the tokenizer, shards, and manifests; compiles the mixture schedule; runs OPUS selection; trains the toy model for real steps; saves a checkpoint; deliberately simulates a crash and resumes from it; replays the pre-crash history; forks a branch; audits the run; measures throughput; and writes the evidence bundle. No manual steps in between.
+One command builds the tokenizer, shards, and manifests; compiles the mixture schedule; runs OPUS selection; trains the toy model for real steps across every curriculum stage; saves a checkpoint; deliberately simulates a crash and resumes from it; replays the pre-crash history; forks a branch; audits the run; measures throughput; and writes the evidence bundle. No manual steps in between.
+
+The real corpus's schedule has 3 curriculum stages (`foundation`, `capability-expansion`, `anneal`) spanning 1,659 steps; the demo trains through all of them by default rather than stopping early, so that crash/resume/replay/fork/audit each land in a genuinely different stage instead of all being crammed into one early window (see *Key design decisions* below for why reaching a later stage can't be done any faster than training every step up to it). That's the ~3 minutes; pass `--num-steps` for a faster, single-stage sanity check instead.
 
 To run the automated test suite:
 
@@ -132,7 +136,7 @@ submission_artifacts/
   performance.json        throughput numbers
 ```
 
-`run.log` contains the full event sequence the assignment specifies, in the order they actually happen (the eval firewall runs before shard creation, since shards are only ever built from admitted documents):
+`run.log` contains the full event sequence the assignment specifies, in the order they actually happen (the eval firewall runs before shard creation, since shards are only ever built from admitted documents), plus a `[step]` line per training step (step number, curriculum stage, branch, batch ids, lanes touched) and an `=== entering ... ===` / `=== stage ... complete ===` pair bracketing each curriculum stage, so crash/resume/replay/fork/audit are each easy to find under the stage they closed out rather than all appearing in one block:
 
 ```
 [event] evaluation data blocked (...)
@@ -142,20 +146,35 @@ submission_artifacts/
 [event] manifests validated (N shard manifests on record)
 [event] mixture compiled (3 stages, total_steps=1659)
 [event] OPUS decisions recorded (.../... accepted, enabled=True)
-[PASS] checkpoint_saved step=...
-[event] batches packed (50 steps trained)
-[event] crash simulated after step ...
-[event] run resumed from checkpoint step=...
-[PASS] resume_next_batch_matched step=... batch_ids=[...]
-[event] historical stream replayed (steps [0, ...))
-[PASS] replay_hash_matched steps=[0,...)
-[event] branch forked parent=main fork_step=... new_branch=fork-1
+[event] === entering curriculum stage 'foundation' (steps [0, 781)) ===
+[step] step=0 stage='foundation' branch=main batch_ids=[...] lanes=[...]
+...
+[PASS] checkpoint_saved step=390
+...
+[event] crash simulated after step 390
+[event] run resumed from checkpoint step=390
+[PASS] resume_next_batch_matched step=391 batch_ids=[...]
+[event] historical stream replayed (steps [0, 390))
+[PASS] replay_hash_matched steps=[0,390)
+[event] === stage 'foundation' complete: 781 step(s) trained (crash/resume=PASS, replay=PASS) ===
+[event] === entering curriculum stage 'capability-expansion' (steps [781, 1464)) ===
+...
+[PASS] checkpoint_saved step=1122
+[event] branch forked parent=main fork_step=1122 new_branch=fork-1
+[step] step=1123 stage='capability-expansion' branch=fork-1 batch_ids=[...] lanes=[...]
 [event] branch lineage reconstructed (chain=['main', 'fork-1'], total_samples=...)
+[event] === stage 'capability-expansion' complete: 683 step(s) trained (fork=fork-1@step1122) ===
+[event] === entering curriculum stage 'anneal' (steps [1464, 1659)) ===
+...
 [event] audit completed (lanes=[...], shards=..., packing_utilization=1.000)
 [event] exact useful tokens recomputed (estimated=..., exact=...)
 [event] performance measured (tokens/sec=..., useful_tokens/sec=...)
+[event] === stage 'anneal' complete: 195 step(s) trained (packing_utilization=1.000) ===
+[event] batches packed (1659 steps trained)
 === Demo complete: overall=PASS ===
 ```
+
+For a run that never leaves a single stage (e.g. a small `--num-steps` override, or the toy corpus's 2-stage schedule when only its first stage is reached), crash/resume/replay/fork/audit all collapse into that one stage's closing block, in the same relative order.
 
 `evidence.md` reports on eleven requirements — the nine the assignment lists plus two the audit layer was extended to cover (exact useful-token accounting and fork-branch lineage). Every row's evidence string is generated from a real value computed during that run, for example:
 
