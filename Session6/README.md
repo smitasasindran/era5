@@ -43,7 +43,7 @@ Each box is a real, independently-tested module under `tds/`:
 
 | Stage | Module(s) | What it does |
 |---|---|---|
-| Corpus | `tds/corpus.py` | Loads parquet documents, maps each to a *capability lane* (`code`, `qa`, `math_science`, `indic`, `instruction`, `general_web`) from its `domain`/`language` columns |
+| Corpus | `tds/corpus.py` | Loads parquet documents, maps each to a *capability lane* (`code`, `math_science`, `indic`, `instruction`, `general_web`) from its `domain`/`language` columns |
 | Eval/Test Firewall | `tds/eval_registry.py`, `tds/eval_firewall.py`, `tds/hashing.py` | A persistent registry of held-out content hashes; any document whose *content* (not id/source) matches is blocked before it ever reaches the tokenizer |
 | Shard Builder & Manifest Store | `tds/tokenizer_utils.py`, `tds/shard_builder.py`, `tds/manifest_store.py` | Trains a frozen byte-level BPE tokenizer, packs admitted documents into immutable, lane-homogeneous, content-hashed shards, and records them in an append-only manifest store |
 | Curriculum & Mixture Compiler | `tds/mixture_compiler.py` | Turns human-authored stages (token ranges, lane weights, protected floors) into a `CompiledSchedule` that maps any `global_step` to a stage and an effective per-lane mixture, checked against real shard supply |

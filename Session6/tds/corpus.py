@@ -22,7 +22,7 @@ from .hashing import sha256_text
 
 # Languages tagged "indic" regardless of domain -- mirrors the course's
 # "indic" capability lane, which cuts across domain (a stackexchange
-# question in Hindi is still an indic-lane document, not a qa-lane one).
+# question in Hindi is still an indic-lane document, not a code-lane one).
 INDIC_LANGUAGES = {"bn", "mr", "hi", "gu", "kn", "ml", "or", "ta", "pa", "ne", "as", "te", "sa"}
 
 CORPUS_COLUMNS = ["id", "source", "domain", "language", "text"]
@@ -52,17 +52,22 @@ def capability_lane_for(domain: str, language: str) -> str:
     """Deterministic domain+language -> capability lane mapping.
 
     Language wins over domain for indic content: a stackexchange thread in
-    Hindi is scarce indic-lane data, not just more qa data, and should be
-    protectable as such later by the mixture compiler.
+    Hindi is scarce indic-lane data, not just more code-lane data, and
+    should be protectable as such later by the mixture compiler.
+
+    `domain == "qa"` folds into `code`, not its own lane: every "qa"-domain
+    row in the vendored corpus is `source == "stackexchange"` -- checked
+    directly, not assumed -- and is itself a programming question (C++,
+    build tooling, library APIs, ...), not general-knowledge Q&A. Treating
+    it as a distinct lane would have meant a "qa" lane that was actually
+    just code, mislabeled.
     """
     if language in INDIC_LANGUAGES:
         return "indic"
-    if domain == "code":
+    if domain in ("code", "qa"):
         return "code"
     if domain in ("math", "science"):
         return "math_science"
-    if domain == "qa":
-        return "qa"
     if domain == "instruction":
         return "instruction"
     return "general_web"

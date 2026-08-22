@@ -12,7 +12,7 @@ REAL_CORPUS = ROOT / "data" / "corpus" / "small_shard.parquet"
 
 class TestCapabilityLaneMapping(unittest.TestCase):
     def test_indic_language_wins_over_domain(self):
-        # A Hindi stackexchange thread is indic-lane, not qa-lane.
+        # A Hindi stackexchange thread is indic-lane, not code-lane.
         self.assertEqual(capability_lane_for("qa", "hi"), "indic")
 
     def test_code_domain(self):
@@ -22,8 +22,11 @@ class TestCapabilityLaneMapping(unittest.TestCase):
         self.assertEqual(capability_lane_for("math", "en"), "math_science")
         self.assertEqual(capability_lane_for("science", "en"), "math_science")
 
-    def test_qa_domain(self):
-        self.assertEqual(capability_lane_for("qa", "en"), "qa")
+    def test_qa_domain_folds_into_code(self):
+        # Every "qa"-domain row in the vendored corpus is source=stackexchange
+        # and is itself a programming question, not general-knowledge Q&A --
+        # see TestLoadCorpus.test_stackexchange_documents_land_in_code_lane.
+        self.assertEqual(capability_lane_for("qa", "en"), "code")
 
     def test_instruction_domain(self):
         self.assertEqual(capability_lane_for("instruction", "en"), "instruction")
@@ -64,6 +67,16 @@ class TestLoadCorpus(unittest.TestCase):
         lanes = [doc.capability_lane for doc in self.documents]
         indic_share = lanes.count("indic") / len(lanes)
         self.assertLess(indic_share, 0.15)
+
+    def test_stackexchange_documents_land_in_code_lane(self):
+        # The corpus's former "qa" domain was, on inspection, entirely
+        # source=stackexchange programming questions -- verified directly
+        # against the vendored file, not assumed. capability_lane_for folds
+        # "qa" into "code" on that basis; confirm it holds for every such
+        # document actually in this corpus, not just the domain string.
+        stackexchange_docs = [d for d in self.documents if d.source_id == "stackexchange"]
+        self.assertGreater(len(stackexchange_docs), 200)
+        self.assertTrue(all(d.capability_lane == "code" for d in stackexchange_docs))
 
 
 if __name__ == "__main__":

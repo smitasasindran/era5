@@ -3,7 +3,7 @@
 Not a replacement for the real corpus (data/corpus/small_shard.parquet) --
 this exists purely so the shard builder / manifest pipeline can be run and
 its output verified by eye in under a second: 12 short documents spanning
-all 6 capability lanes the real corpus also produces, short enough that
+all 5 capability lanes the real corpus also produces, short enough that
 every one of them is readable right here.
 
 Document at index 4 (toy-0005, document_id "doc-000004") is the one
@@ -36,9 +36,10 @@ TOY_DOCUMENTS = [
      "def add(a, b):\n    return a + b\n"),
     ("toy-0004", "toy_code", "code", "en",
      "def factorial(n):\n    if n == 0:\n        return 1\n    return n * factorial(n - 1)\n"),
-    ("toy-0005", "toy_qa", "qa", "en",
-     "Q: What is the boiling point of water at sea level?\nA: 100 degrees Celsius."),
-    ("toy-0006", "toy_qa", "qa", "en",
+    ("toy-0005", "toy_stackexchange", "code", "en",
+     "Q: How do I check if a Python list is empty?\nA: Use `if not my_list:` -- "
+     "an empty list is falsy, so this reads naturally as \"if the list has nothing in it\"."),
+    ("toy-0006", "toy_stackexchange", "code", "en",
      "Q: How do you reverse a singly linked list?\nA: Iterate through it, re-pointing each "
      "node's next pointer to the previous node."),
     ("toy-0007", "toy_math", "math", "en",
@@ -47,7 +48,7 @@ TOY_DOCUMENTS = [
      "Photosynthesis converts sunlight, water, and carbon dioxide into glucose and oxygen."),
     ("toy-0009", "toy_indic", "web", "hi",
      "यह एक हिंदी वाक्य है जो परीक्षण के लिए लिखा गया है।"),
-    ("toy-0010", "toy_indic", "qa", "bn",
+    ("toy-0010", "toy_indic", "code", "bn",
      "এটি একটি বাংলা বাক্য যা পরীক্ষার জন্য লেখা হয়েছে।"),
     ("toy-0011", "toy_instruction", "instruction", "en",
      "Instruction: Summarize the following paragraph in one sentence.\n"

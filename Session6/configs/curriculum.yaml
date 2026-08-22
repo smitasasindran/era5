@@ -1,8 +1,13 @@
-# Curriculum for the real corpus. Token budgets below are deliberately
-# larger than some lanes can supply -- instruction, code, math_science and
-# indic all become scarce at some point across these 3 stages, on purpose,
-# to exercise cumulative scarcity tracking, protected floors, and the
-# "unallocated_share" reporting (see IMPLEMENTATION_NOTES.md §3).
+# Curriculum for the real corpus: general_web-heavy foundation, ramping
+# code/math_science/indic up through capability-expansion, narrowing to
+# indic/math_science/general_web (plus a smaller code share) in anneal.
+#
+# NOTE: at the current (deliberately small, 1/10-scale) token budgets
+# below, no lane is actually scarce against this corpus's real per-lane
+# supply -- every stage compiles to effective_weight == target_weight for
+# every lane. Scarcity/protected-floor/unallocated_share behavior is still
+# exercised and tested (see tests/test_mixture_compiler.py), just not by
+# this particular profile at this scale.
 #
 # Compiled automatically by `python scripts/run_pipeline.py` (see
 # configs/pipeline.yaml's `curriculum` field). To recompile standalone
@@ -21,12 +26,11 @@ stages:
     token_end: 80000 #800000
     sequence_length: 128
     mixture:
-      general_web: 0.30
-      qa: 0.30
-      code: 0.20
-      math_science: 0.10
-      indic: 0.07
-      instruction: 0.03
+      general_web: 0.35
+      code: 0.25
+      math_science: 0.15
+      indic: 0.15
+      instruction: 0.10
     protected_floors:
       instruction: 0.02
     warmup_tokens: 0
@@ -36,12 +40,11 @@ stages:
     token_end: 150000 #1500000
     sequence_length: 128
     mixture:
-      code: 0.25
-      math_science: 0.20
+      code: 0.30
+      math_science: 0.25
       indic: 0.20
-      qa: 0.15
       general_web: 0.15
-      instruction: 0.05
+      instruction: 0.10
     protected_floors:
       indic: 0.15
       instruction: 0.02
@@ -53,9 +56,9 @@ stages:
     sequence_length: 256 # long-context annealing stage, per the design doc
     mixture:
       indic: 0.35
-      math_science: 0.30
-      qa: 0.20
-      general_web: 0.15
+      math_science: 0.25
+      general_web: 0.20
+      code: 0.20
     protected_floors:
       indic: 0.20
     warmup_tokens: 5000 #50000

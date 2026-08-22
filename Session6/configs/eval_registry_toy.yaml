@@ -1,7 +1,7 @@
 # Registers a held-out benchmark against the toy corpus fixture.
 #
-# doc-000004 (toy-0005, "Q: What is the boiling point...") is held out
-# here. tds/toy_corpus.py also defines toy-0012 as a deliberate exact-text
+# doc-000004 (toy-0005, "Q: How do I check if a Python list is empty...")
+# is held out here. tds/toy_corpus.py also defines toy-0012 as a deliberate exact-text
 # duplicate of that same document under a completely different
 # source/domain/lane, specifically to prove the firewall matches on
 # content hash, not on document id, source, or lane -- both should end up
