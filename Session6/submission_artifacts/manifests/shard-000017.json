@@ -1,0 +1,530 @@
+{
+  "shard_id": "shard-000017",
+  "content_hash": "sha256:6f2757ceb95dc9c57988e0f5e3f642357f7c23dbc6a2219435e02767ddb47e37",
+  "tokenizer_hash": "sha256:32f4aec77e728a6613c014374d6b3e5efa81b301640aab4a9157783ebeb1df83",
+  "capability_lane": "general_web",
+  "packing_policy": "greedy",
+  "token_count": 92463,
+  "document_count": 57,
+  "license_tier": "unspecified",
+  "dedup_status": "not_checked",
+  "contamination_status": "not_checked",
+  "eval_overlap_status": "none",
+  "cleaning_pipeline_hash": null,
+  "parent_shard_ids": [],
+  "document_spans": [
+    {
+      "document_id": "doc-000403",
+      "source_document_id": "7628c12fd5a1f269672b13cced2ba2a3",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 0,
+      "end_token": 5851,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000404",
+      "source_document_id": "5c0e57bf41ec23e4f0efb6f6bf968364",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 5851,
+      "end_token": 6810,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000405",
+      "source_document_id": "4f289398260d0f3a6e3a285ad7b4f4ea",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 6810,
+      "end_token": 7669,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000406",
+      "source_document_id": "677f2c184a32e4e8ae97bb55cf0c46ef",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 7669,
+      "end_token": 8903,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000407",
+      "source_document_id": "f16da3f10ca3c12965ec39d750b5b4ee",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 8903,
+      "end_token": 9841,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000408",
+      "source_document_id": "72f4c73e97622629d558bfc34be20acc",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 9841,
+      "end_token": 13386,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000409",
+      "source_document_id": "12cdcc18280b900a7e13931327b30705",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 13386,
+      "end_token": 16825,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000410",
+      "source_document_id": "3d7b2eb32ff53ce2739467949b86d1a0",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 16825,
+      "end_token": 19974,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000411",
+      "source_document_id": "6d3df67555f8d36c40c2134fa43e98dc",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 19974,
+      "end_token": 20906,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000412",
+      "source_document_id": "4dd54875cc0c7cfc1860ff0d26ce153a",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 20906,
+      "end_token": 23228,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000413",
+      "source_document_id": "9bea590dc98e1caa343d6f2ab1eed90d",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 23228,
+      "end_token": 24985,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000414",
+      "source_document_id": "ef57fe2fdf51196cf9330af1c47e4710",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 24985,
+      "end_token": 25863,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000415",
+      "source_document_id": "8b01a952bd832e9ecdc14ab886cf1c27",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 25863,
+      "end_token": 27115,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000416",
+      "source_document_id": "e952c8e55248ffd53a2dbab406eb67ab",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 27115,
+      "end_token": 31674,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000417",
+      "source_document_id": "b39fdc0b771cb5f4871987e44f2b9936",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 31674,
+      "end_token": 35296,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000418",
+      "source_document_id": "399ede0ef7969add8ed4b88abb733aed",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 35296,
+      "end_token": 36345,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000419",
+      "source_document_id": "2ac0aa3b8fb3b333f3f72fc9c8243ef2",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 36345,
+      "end_token": 37260,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000420",
+      "source_document_id": "0e9f9a54fae502a28ecc1f8adbc99408",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 37260,
+      "end_token": 38791,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000421",
+      "source_document_id": "8d6410fbd61ac70b415fdc01597b355c",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 38791,
+      "end_token": 39457,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000422",
+      "source_document_id": "99430871d0a01e4b73319aaaa5fbb48e",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 39457,
+      "end_token": 41110,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000423",
+      "source_document_id": "b0000ced369640fa2bcd3d34f3a7b89e",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 41110,
+      "end_token": 42112,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000424",
+      "source_document_id": "1c157aeaa9771f4bab142dc4c899d4c5",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 42112,
+      "end_token": 43791,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000425",
+      "source_document_id": "e2431cdfa60449335053984bd8fc25ec",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 43791,
+      "end_token": 44570,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000426",
+      "source_document_id": "93d3a29d50403081ab6d3293639694c2",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 44570,
+      "end_token": 46340,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000427",
+      "source_document_id": "cb66123622acfe3571774d54418d4a7b",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 46340,
+      "end_token": 47161,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000428",
+      "source_document_id": "3d48a16c0bc2f6fbf6dd88a934562985",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 47161,
+      "end_token": 47962,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000429",
+      "source_document_id": "146b37ae05fba21d27935182c052307e",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 47962,
+      "end_token": 48825,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000430",
+      "source_document_id": "237e31c7b2dfcf8e50afd931d89b863c",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 48825,
+      "end_token": 49923,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000431",
+      "source_document_id": "5ea93bec37f3da2ffd9bc32f14a35d1d",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 49923,
+      "end_token": 51930,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000432",
+      "source_document_id": "787d64fea1a0a774f810c9fb9416e503",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 51930,
+      "end_token": 53036,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000433",
+      "source_document_id": "0978b144a0388b58f924f03655e74483",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 53036,
+      "end_token": 54630,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000434",
+      "source_document_id": "c6d436b43363b776a5b019c66152712f",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 54630,
+      "end_token": 56861,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000435",
+      "source_document_id": "a35f953fe7c767103e7237b368ec352e",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 56861,
+      "end_token": 57796,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000436",
+      "source_document_id": "337dcc873cd23740e6d64dacfa295499",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 57796,
+      "end_token": 59525,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000437",
+      "source_document_id": "8c5f00d8354d1549435125641cb09b1e",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 59525,
+      "end_token": 60648,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000438",
+      "source_document_id": "7afc04f197cf258c28c1aa1933ff9eaa",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 60648,
+      "end_token": 64221,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000439",
+      "source_document_id": "d2ba4e004e4c5bff690ebe9955ed8327",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 64221,
+      "end_token": 65357,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000440",
+      "source_document_id": "08f2c191ad3b924014e9f90f34509285",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 65357,
+      "end_token": 66831,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000441",
+      "source_document_id": "cf29c3ae01dbda0e6930228858cc003d",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 66831,
+      "end_token": 67705,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000442",
+      "source_document_id": "e819181be2cd7cafdcf33fb7e521bc34",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 67705,
+      "end_token": 68775,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000443",
+      "source_document_id": "f6e56c1bfa0b12a594a48343288b2ffb",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 68775,
+      "end_token": 69554,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000444",
+      "source_document_id": "2179bf28fdff9fff845a5c7a31b64024",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 69554,
+      "end_token": 70383,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000445",
+      "source_document_id": "1ee63578d903b9a98eee46c00b62a3c2",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 70383,
+      "end_token": 71071,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000446",
+      "source_document_id": "1d2deff81dcabc5050731e8a41792e33",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 71071,
+      "end_token": 74418,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000447",
+      "source_document_id": "b223800117cc90358b451fcb15adaf22",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 74418,
+      "end_token": 76698,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000448",
+      "source_document_id": "edefbb646fe9cd19427993cc893dbcd3",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 76698,
+      "end_token": 78303,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000449",
+      "source_document_id": "245def63d45e6d4904ede3d1778712ce",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 78303,
+      "end_token": 79142,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000450",
+      "source_document_id": "cdb2448f0cb391f709e4b60e745cc8a8",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 79142,
+      "end_token": 80093,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000451",
+      "source_document_id": "51926b94ccfe46c9d237cd8ee291bf01",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 80093,
+      "end_token": 81064,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000452",
+      "source_document_id": "640cd6e11444c32ed5045e4f28b29128",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 81064,
+      "end_token": 82029,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000453",
+      "source_document_id": "d224583c821ca34da1b843f88cb1deb6",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 82029,
+      "end_token": 83923,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000454",
+      "source_document_id": "de70fb9b921cc3fbf4f365c0f5e1a42a",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 83923,
+      "end_token": 85391,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000455",
+      "source_document_id": "48460e8c47b7e4d48579023d50303723",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 85391,
+      "end_token": 86911,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000456",
+      "source_document_id": "8e1ac06db55534743055a2e3fdf1f44c",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 86911,
+      "end_token": 88149,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000457",
+      "source_document_id": "7fa83cd880b76ba9d6128ad0406abd3d",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 88149,
+      "end_token": 89466,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000458",
+      "source_document_id": "b6fb0263d140504f3c0472273fd75c02",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 89466,
+      "end_token": 90938,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000459",
+      "source_document_id": "c2deadda0b795064ce6477cc51c275e6",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 90938,
+      "end_token": 92463,
+      "response_start_token": null
+    }
+  ]
+}

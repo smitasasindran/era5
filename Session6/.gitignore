@@ -34,4 +34,4 @@ data/mixture_schedule*.json
 data/opus_decisions*.json
 
 # Will hold the full-pipeline demo output once later stages exist.
-submission_artifacts/
+submission_artifacts/checkpoints

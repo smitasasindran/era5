@@ -1,0 +1,629 @@
+{
+  "shard_id": "shard-000013",
+  "content_hash": "sha256:782b38a7613376a237bfa06cd8835d407f21f28d0ccbb405024d6cf1be3d8a00",
+  "tokenizer_hash": "sha256:32f4aec77e728a6613c014374d6b3e5efa81b301640aab4a9157783ebeb1df83",
+  "capability_lane": "general_web",
+  "packing_policy": "greedy",
+  "token_count": 99165,
+  "document_count": 68,
+  "license_tier": "unspecified",
+  "dedup_status": "not_checked",
+  "contamination_status": "not_checked",
+  "eval_overlap_status": "none",
+  "cleaning_pipeline_hash": null,
+  "parent_shard_ids": [],
+  "document_spans": [
+    {
+      "document_id": "doc-000001",
+      "source_document_id": "b0652a68161e39457c9aa3885f3e56e4",
+      "source_id": "C4",
+      "language": "en",
+      "start_token": 0,
+      "end_token": 1034,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000002",
+      "source_document_id": "81c110d8a2f47b9c9681c4840b7b8d30",
+      "source_id": "C4",
+      "language": "en",
+      "start_token": 1034,
+      "end_token": 8552,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000003",
+      "source_document_id": "06ee3374cdc74349f53e71909346c286",
+      "source_id": "C4",
+      "language": "en",
+      "start_token": 8552,
+      "end_token": 9283,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000004",
+      "source_document_id": "5b13ac1f386569c0a28030f8514025ba",
+      "source_id": "C4",
+      "language": "en",
+      "start_token": 9283,
+      "end_token": 10068,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000005",
+      "source_document_id": "5cd9cad40d25c197ba3b75f54b9500bc",
+      "source_id": "C4",
+      "language": "en",
+      "start_token": 10068,
+      "end_token": 10845,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000006",
+      "source_document_id": "8c217a105685aa4383ecb4404e8acf4b",
+      "source_id": "C4",
+      "language": "en",
+      "start_token": 10845,
+      "end_token": 12430,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000007",
+      "source_document_id": "0fc4c45123aa361f7cb52aa7714e7964",
+      "source_id": "C4",
+      "language": "en",
+      "start_token": 12430,
+      "end_token": 15054,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000008",
+      "source_document_id": "e2035c307af724adf3525ddf240d096e",
+      "source_id": "C4",
+      "language": "en",
+      "start_token": 15054,
+      "end_token": 16078,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000009",
+      "source_document_id": "a24f2cc0eaa12c5e3275da53f959eae6",
+      "source_id": "C4",
+      "language": "en",
+      "start_token": 16078,
+      "end_token": 17261,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000010",
+      "source_document_id": "c5a73bf91332532e78d27bd5142b34b0",
+      "source_id": "C4",
+      "language": "en",
+      "start_token": 17261,
+      "end_token": 19233,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000011",
+      "source_document_id": "0c8c4884b2b8eec9c5e0dc55c8bb2c97",
+      "source_id": "C4",
+      "language": "en",
+      "start_token": 19233,
+      "end_token": 20174,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000012",
+      "source_document_id": "239718808d72fa1c5e9b9cc2c3fff1d8",
+      "source_id": "C4",
+      "language": "en",
+      "start_token": 20174,
+      "end_token": 21973,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000013",
+      "source_document_id": "a8bbc48cea6f5aa90558a7d5518d2035",
+      "source_id": "C4",
+      "language": "en",
+      "start_token": 21973,
+      "end_token": 23644,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000014",
+      "source_document_id": "72e3580fdbcc3a69dfe44c5ca49d21ed",
+      "source_id": "C4",
+      "language": "en",
+      "start_token": 23644,
+      "end_token": 28471,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000015",
+      "source_document_id": "ffa8dee6163d275a1ecc73d0fa461473",
+      "source_id": "C4",
+      "language": "en",
+      "start_token": 28471,
+      "end_token": 29191,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000016",
+      "source_document_id": "2ddfa98ef163e0b57b463ecc7b0d71a8",
+      "source_id": "C4",
+      "language": "en",
+      "start_token": 29191,
+      "end_token": 31515,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000017",
+      "source_document_id": "6e6de48b99f63086e10568d0773c5a88",
+      "source_id": "C4",
+      "language": "en",
+      "start_token": 31515,
+      "end_token": 32377,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000018",
+      "source_document_id": "d9db7490aeb5f23ffc8f8f0d04df2954",
+      "source_id": "C4",
+      "language": "en",
+      "start_token": 32377,
+      "end_token": 33578,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000019",
+      "source_document_id": "56a402ea9b5860b25da86b493a6b1666",
+      "source_id": "C4",
+      "language": "en",
+      "start_token": 33578,
+      "end_token": 35567,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000020",
+      "source_document_id": "2cb6278474d404e7b3356d15b57ceea0",
+      "source_id": "C4",
+      "language": "en",
+      "start_token": 35567,
+      "end_token": 36647,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000021",
+      "source_document_id": "bfab2087372fb5ac43d1d34e73f9ebcd",
+      "source_id": "C4",
+      "language": "en",
+      "start_token": 36647,
+      "end_token": 38522,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000022",
+      "source_document_id": "ee5613c6ff8709d0c6118c7a83eec7e0",
+      "source_id": "C4",
+      "language": "en",
+      "start_token": 38522,
+      "end_token": 39653,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000023",
+      "source_document_id": "35a24f33902d1e5b335e3928d65a7094",
+      "source_id": "C4",
+      "language": "en",
+      "start_token": 39653,
+      "end_token": 40365,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000024",
+      "source_document_id": "e76daec677e76288c2319d6999d62956",
+      "source_id": "C4",
+      "language": "en",
+      "start_token": 40365,
+      "end_token": 41364,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000025",
+      "source_document_id": "a565e28f8189b840cd234d9f809db60a",
+      "source_id": "C4",
+      "language": "en",
+      "start_token": 41364,
+      "end_token": 42304,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000026",
+      "source_document_id": "c32297888c96cfd61f27b3979abfc477",
+      "source_id": "C4",
+      "language": "en",
+      "start_token": 42304,
+      "end_token": 43703,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000027",
+      "source_document_id": "7678b86f34a8991dfd1e2babca554a5a",
+      "source_id": "C4",
+      "language": "en",
+      "start_token": 43703,
+      "end_token": 44583,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000028",
+      "source_document_id": "f69da1d381dd4bf8c346bdab652352a1",
+      "source_id": "C4",
+      "language": "en",
+      "start_token": 44583,
+      "end_token": 45530,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000029",
+      "source_document_id": "871d0b85eeb580de7f3a5d7e75065506",
+      "source_id": "C4",
+      "language": "en",
+      "start_token": 45530,
+      "end_token": 46273,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000030",
+      "source_document_id": "cb631e2073c019b1e8934325125facb6",
+      "source_id": "C4",
+      "language": "en",
+      "start_token": 46273,
+      "end_token": 47079,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000031",
+      "source_document_id": "c02434ee7b2d6483a3c6ffeefe76ddc5",
+      "source_id": "C4",
+      "language": "en",
+      "start_token": 47079,
+      "end_token": 49288,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000032",
+      "source_document_id": "d8bc3652ee399526d67cb0631c31ffbb",
+      "source_id": "C4",
+      "language": "en",
+      "start_token": 49288,
+      "end_token": 52150,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000033",
+      "source_document_id": "dcf988ef2657be40751a7e0785d6110c",
+      "source_id": "C4",
+      "language": "en",
+      "start_token": 52150,
+      "end_token": 53311,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000154",
+      "source_document_id": "https://www.reasonablefaith.org/writings/question-answer/what-does-one-mean-by-the-universe",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 53311,
+      "end_token": 55260,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000155",
+      "source_document_id": "https://www.exploringbystarlight.ofblue.org/unbookish-confessions/",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 55260,
+      "end_token": 56770,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000156",
+      "source_document_id": "https://zestythings.com/incredible-tips-for-easing-back-to-normal-life-after-a-stroke/",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 56770,
+      "end_token": 57946,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000157",
+      "source_document_id": "https://www.focustechnica.com/what-you-believe-about-indoor-air-health-risks-is-probably-wrong/",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 57946,
+      "end_token": 58953,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000158",
+      "source_document_id": "https://www.xylem.com/en-lc/making-waves/water-utilities-news/2021-sustainability-report/",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 58953,
+      "end_token": 60388,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000159",
+      "source_document_id": "https://theworldseesnormal.com/2018/09/08/2018-09-08-2207/",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 60388,
+      "end_token": 61597,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000160",
+      "source_document_id": "http://psychiatric-disorders.com/bipolar-disorder/bipolar-disorder-types/",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 61597,
+      "end_token": 62432,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000161",
+      "source_document_id": "https://www.kckwlaw.com/advantages-of-alternative-dispute-resolution/",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 62432,
+      "end_token": 63691,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000162",
+      "source_document_id": "https://amiyasahu.com/for-the-first-time-this-year-boston-city-councilors-have-the-power-to-tear-up-the-mayors-budget-are-they-going/",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 63691,
+      "end_token": 65361,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000163",
+      "source_document_id": "https://www.popmatters.com/blaqk-audio-cexcells-2496204535.html",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 65361,
+      "end_token": 66550,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000164",
+      "source_document_id": "https://www.csmonitor.com/1985/0627/dbmary-f.html",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 66550,
+      "end_token": 67508,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000165",
+      "source_document_id": "https://thenewnine.com/quinn-xcii-has-a-lesson-for-his-younger-self/",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 67508,
+      "end_token": 68456,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000166",
+      "source_document_id": "https://www.houstontexans.com/news/deshaun-watson-gets-emotional-after-signing-long-term-deal",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 68456,
+      "end_token": 69632,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000167",
+      "source_document_id": "https://powerofattorneymanchester.co.uk/will-and-estate-lawyers/?utm_source=rss&utm_medium=rss&utm_campaign=will-and-estate-lawyers",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 69632,
+      "end_token": 70365,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000168",
+      "source_document_id": "http://www.globaldomainsnews.com/fleetwood-macs-rumours-45-years-later-how-the-legend-band-managed-to-juggle-scandal-and-success",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 70365,
+      "end_token": 71441,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000169",
+      "source_document_id": "https://exploredrinks.com/explore-house-lanson/",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 71441,
+      "end_token": 73195,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000170",
+      "source_document_id": "https://thepodiumfinish.net/grala-hopes-to-capitalize-on-opportunity-with-sam-hunt-racing/",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 73195,
+      "end_token": 74674,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000171",
+      "source_document_id": "https://acceleratorsu.art/en/evenemang/art-research-performative-power-of-language/",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 74674,
+      "end_token": 75569,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000172",
+      "source_document_id": "https://www.lifestream.org/who-is-to-blame/",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 75569,
+      "end_token": 76981,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000173",
+      "source_document_id": "https://philosophyforrenewingreason.com/philosophy-for-renewing-reason-6/",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 76981,
+      "end_token": 80179,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000174",
+      "source_document_id": "https://www.sportsbignews.com/cricket/prize-money-for-t20-world-cup/",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 80179,
+      "end_token": 80898,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000175",
+      "source_document_id": "https://eurovisionary.com/eurovision-news/day-5-press-conferences",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 80898,
+      "end_token": 82146,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000176",
+      "source_document_id": "http://debt-credit-refi.com/loan-refinancing/",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 82146,
+      "end_token": 82855,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000177",
+      "source_document_id": "https://www.cryptosavvy.com/2018/11/garlic-milk-excellent-homemade-remedy-sciatica-backpain.html",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 82855,
+      "end_token": 83977,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000178",
+      "source_document_id": "https://cib.bnpparibas/australias-sunshine-state-turns-to-batteries/",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 83977,
+      "end_token": 85537,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000179",
+      "source_document_id": "https://merylyrics.com/how-to-write-a-review-book-where-to-start-tips-and-tricks/",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 85537,
+      "end_token": 86859,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000180",
+      "source_document_id": "https://www.phcppros.com/articles/10842-to-see-us-pvf-spending-increase",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 86859,
+      "end_token": 89160,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000181",
+      "source_document_id": "http://www.psiegenthaler.com/2013/12/30/best-ma-deal-of-the-year-but-for-whom/",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 89160,
+      "end_token": 90665,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000182",
+      "source_document_id": "https://www.ctinsider.com/uconn/nhregister/article/Dan-Hurley-unmasked-UConn-coach-a-bit-miffed-by-15834837.php",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 90665,
+      "end_token": 91761,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000183",
+      "source_document_id": "https://www.hemophilia.org/research/fund-your-research/jeanne-marie-lusher-diversity-fellowship",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 91761,
+      "end_token": 92851,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000184",
+      "source_document_id": "http://home-lan.jp/641323/",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 92851,
+      "end_token": 93660,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000185",
+      "source_document_id": "https://heavy.com/sports/2019/09/redskins-rbs-should-be-a-strength-not-a-dilemma/",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 93660,
+      "end_token": 94417,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000186",
+      "source_document_id": "https://bookadept.com/2020/01/07/kate-5/",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 94417,
+      "end_token": 95559,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000187",
+      "source_document_id": "https://www.calltutors.com/data/assignments/requirements/16319/PSY101%20-%20Module%204.5.shtml",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 95559,
+      "end_token": 98331,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000188",
+      "source_document_id": "https://kjk.com/2016/10/03/lawsuits-congress-aim-delay-dol-rule/",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 98331,
+      "end_token": 99165,
+      "response_start_token": null
+    }
+  ]
+}

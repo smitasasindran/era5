@@ -1,0 +1,557 @@
+{
+  "shard_id": "shard-000016",
+  "content_hash": "sha256:c03a98c3c8b715abb4c8bf8b8e73f715faa6d1fa52775442cf276bf30aa86108",
+  "tokenizer_hash": "sha256:32f4aec77e728a6613c014374d6b3e5efa81b301640aab4a9157783ebeb1df83",
+  "capability_lane": "general_web",
+  "packing_policy": "greedy",
+  "token_count": 98678,
+  "document_count": 60,
+  "license_tier": "unspecified",
+  "dedup_status": "not_checked",
+  "contamination_status": "not_checked",
+  "eval_overlap_status": "none",
+  "cleaning_pipeline_hash": null,
+  "parent_shard_ids": [],
+  "document_spans": [
+    {
+      "document_id": "doc-000300",
+      "source_document_id": "https://www.cheapjerseysonsale.us/blonde-in-long-white-sort-of-knit-dress-with-black-jacket.html",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 0,
+      "end_token": 2480,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000301",
+      "source_document_id": "https://contlankcolrent.tk/12-07-20187/m5005248.html",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 2480,
+      "end_token": 3178,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000302",
+      "source_document_id": "https://beisitalna.web.app/1211.html",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 3178,
+      "end_token": 7224,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000303",
+      "source_document_id": "https://411properties.com/no-deposit-bonus-casino-blog/",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 7224,
+      "end_token": 10373,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000304",
+      "source_document_id": "https://canikfanatikforum.com/viewtopic.php?f=7&t=3350",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 10373,
+      "end_token": 11852,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000305",
+      "source_document_id": "https://ocs.stou.ac.th/Cvs-Viagra-Substitute/Pills-You-Take-After-Sex-To-Prevent_48e2ead8_Pregnancy",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 11852,
+      "end_token": 17471,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000306",
+      "source_document_id": "http://crownkingsolution.com/the-fresh-new-reality-of-relationships-more-65/",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 17471,
+      "end_token": 18291,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000307",
+      "source_document_id": "https://www.airforums.com/forums/f480/68tw-trunk-access-missing-something-67580.html",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 18291,
+      "end_token": 19140,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000308",
+      "source_document_id": "http://www.luvinthebubble.com/shopbop-favorites-a-sale/",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 19140,
+      "end_token": 19835,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000309",
+      "source_document_id": "https://explosaodeseguidores.info/cigarettes-after-sex-chords-in-victoria-50480.php",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 19835,
+      "end_token": 20663,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000310",
+      "source_document_id": "http://content.wisconsinhistory.org/cdm/ref/collection/p15932coll8/id/26405/",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 20663,
+      "end_token": 21527,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000311",
+      "source_document_id": "https://pragatischool.co.in/comedy-tinder-biography-instance-step-one-embark/",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 21527,
+      "end_token": 22912,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000312",
+      "source_document_id": "https://parafix.com/product-groups/single-sided-tapes/single-sided-foam-tape/",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 22912,
+      "end_token": 23759,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000313",
+      "source_document_id": "http://www.123employee.com/articles/telemarketing-outsourcing-tips.html",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 23759,
+      "end_token": 24942,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000314",
+      "source_document_id": "https://www.republicofyoublog.com/singles-east-vallejo.html",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 24942,
+      "end_token": 26398,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000315",
+      "source_document_id": "https://eatdrinkplay.com/bottega-1900/",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 26398,
+      "end_token": 27497,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000316",
+      "source_document_id": "https://karenplatt.co.uk/2021/07/",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 27497,
+      "end_token": 29381,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000317",
+      "source_document_id": "https://citsb.com/2016/02/12/tour-of-qatar-bans-women-from-competition/",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 29381,
+      "end_token": 31556,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000318",
+      "source_document_id": "https://dgcrack.com/eset-mobile-security-license-key-crack/",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 31556,
+      "end_token": 32486,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000319",
+      "source_document_id": "https://icrowdmarketing.com/foundation-repair-waterproofing-contractors/",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 32486,
+      "end_token": 33496,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000320",
+      "source_document_id": "https://clintonilgenweb.net/lazarusgb/?entry=100",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 33496,
+      "end_token": 34202,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000321",
+      "source_document_id": "http://emilianos04z3.blogdal.com/15190659/marketing-an-overview",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 34202,
+      "end_token": 35033,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000322",
+      "source_document_id": "https://www.crowdfarming.com/sv/farmer/maison-tamisier/up/kop-grona-applen-fran-maison-tamisier/overharvest",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 35033,
+      "end_token": 36584,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000323",
+      "source_document_id": "https://www.techmanga.com/2021/06/27/prerequisites-for-ugc-net-online-application-2021/",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 36584,
+      "end_token": 37366,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000324",
+      "source_document_id": "http://www.vogons.org/viewtopic.php?f=9&t=65544",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 37366,
+      "end_token": 38210,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000325",
+      "source_document_id": "https://joindefence.com/am-i-eligible-application-cds-2-ota-other-posts-how-apply-direct-ssb-army-22299.html",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 38210,
+      "end_token": 39111,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000326",
+      "source_document_id": "https://library.ehaweb.org/eha/2019/24th/266523/sudeep.karve.patient.characteristics.treatments.and.transplant.frequency.in.html?f=listing%3D3%2Abrowseby%3D8%2Asortby%3D1%2Amedia%3D1",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 39111,
+      "end_token": 40077,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000327",
+      "source_document_id": "https://twinbitlabs.com/mit-online-casino-geld-verdienen/how-to-understand-betting-odds.php",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 40077,
+      "end_token": 41517,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000328",
+      "source_document_id": "https://metasight.info/category/finance/best-survey-maker.html",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 41517,
+      "end_token": 42858,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000329",
+      "source_document_id": "https://fashionmea.com/stylish-outfits-to-wear-with-long-boots/",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 42858,
+      "end_token": 43632,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000330",
+      "source_document_id": "https://www.crazyspeedtech.com/fantasy-cricket/",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 43632,
+      "end_token": 44597,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000331",
+      "source_document_id": "http://www.funnyism.com/i/funnypics/407995",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 44597,
+      "end_token": 45996,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000332",
+      "source_document_id": "https://laguardiac.travellerspoint.com/15/",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 45996,
+      "end_token": 46948,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000333",
+      "source_document_id": "http://godforsaken-mist.ru/antivirus-program-not-updating.html",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 46948,
+      "end_token": 48463,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000334",
+      "source_document_id": "http://www.objektiv-mikrofinanzierung.de/css/library/download-fetal-development-research-on-brain-and-behavior-environmental-influences-and-emerging-technologies/",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 48463,
+      "end_token": 49891,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000335",
+      "source_document_id": "https://www.thestudiomd.com/midtown-nyc/weight-loss-prescriptions-plenity-midtown-nyc.html",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 49891,
+      "end_token": 50929,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000336",
+      "source_document_id": "https://www.jonetsuphotography.com/blog",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 50929,
+      "end_token": 54687,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000337",
+      "source_document_id": "https://developer.blackberry.com/native/reference/core/com.qnx.doc.bps.lib_ref/topic/overview.html",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 54687,
+      "end_token": 55753,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000338",
+      "source_document_id": "https://m.beta.reddit.com/user/bearkatsteve",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 55753,
+      "end_token": 56435,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000339",
+      "source_document_id": "https://forum.worldofwarships.com/topic/179786-usn-t10-super-cruiser-proposal-ca2-d-design-the-mini-montana/",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 56435,
+      "end_token": 57255,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000340",
+      "source_document_id": "https://manilashaker.com/oneplus-8-vs-xiaomi-mi-10-specs-comparison-philippines/",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 57255,
+      "end_token": 58617,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000341",
+      "source_document_id": "http://premiershipfootball.co.uk/book/download-Do-I-Count%3F-%3A-Stories-from-Mathematics/",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 58617,
+      "end_token": 63641,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000342",
+      "source_document_id": "https://www.trawlerforum.com/forums/s3/bleach-water-tanks-37771-3.html",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 63641,
+      "end_token": 65033,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000343",
+      "source_document_id": "https://www.producthunt.com/posts/flipidea",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 65033,
+      "end_token": 65977,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000344",
+      "source_document_id": "https://forums.paddling.com/t/missouri-breaks-shuttling/65636",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 65977,
+      "end_token": 66811,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000345",
+      "source_document_id": "https://creativedive.com/wordpress/premium-personal-blog-wordpress-themes/",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 66811,
+      "end_token": 68198,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000346",
+      "source_document_id": "http://www.fabiovisentin.com/blog/38.ashx",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 68198,
+      "end_token": 69152,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000347",
+      "source_document_id": "http://www.elite-reviews.com/lottery-winner/",
+      "source_id": "cc_tail",
+      "language": "en",
+      "start_token": 69152,
+      "end_token": 69952,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000365",
+      "source_document_id": "EN-8018-909",
+      "source_id": "megawika",
+      "language": "en",
+      "start_token": 69952,
+      "end_token": 71319,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000366",
+      "source_document_id": "43992083",
+      "source_id": "megawika",
+      "language": "en",
+      "start_token": 71319,
+      "end_token": 73355,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000367",
+      "source_document_id": "EN-1422-413",
+      "source_id": "megawika",
+      "language": "en",
+      "start_token": 73355,
+      "end_token": 78066,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000368",
+      "source_document_id": "EN-4012-277",
+      "source_id": "megawika",
+      "language": "en",
+      "start_token": 78066,
+      "end_token": 79138,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000369",
+      "source_document_id": "9387918",
+      "source_id": "megawika",
+      "language": "en",
+      "start_token": 79138,
+      "end_token": 90198,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000370",
+      "source_document_id": "36708614",
+      "source_id": "megawika",
+      "language": "en",
+      "start_token": 90198,
+      "end_token": 91128,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000394",
+      "source_document_id": "8coe6k",
+      "source_id": "reddit",
+      "language": "en",
+      "start_token": 91128,
+      "end_token": 91984,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000395",
+      "source_document_id": "b26f14e391e54c4ca2467ad8ed39a7c5",
+      "source_id": "reddit",
+      "language": "en",
+      "start_token": 91984,
+      "end_token": 92898,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000396",
+      "source_document_id": "161d0b12e82e4e3ca3a5ab64d5750213",
+      "source_id": "reddit",
+      "language": "en",
+      "start_token": 92898,
+      "end_token": 93482,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000397",
+      "source_document_id": "1rkwnt",
+      "source_id": "reddit",
+      "language": "en",
+      "start_token": 93482,
+      "end_token": 95963,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000398",
+      "source_document_id": "bce994bd8f9f44a8ba9be41c883b4b95",
+      "source_id": "reddit",
+      "language": "en",
+      "start_token": 95963,
+      "end_token": 96981,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000402",
+      "source_document_id": "a63d9abf417e456bf6b39fa14aa12b0a",
+      "source_id": "refinedweb",
+      "language": "en",
+      "start_token": 96981,
+      "end_token": 98678,
+      "response_start_token": null
+    }
+  ]
+}

@@ -1,0 +1,170 @@
+{
+  "shard_id": "shard-000021",
+  "content_hash": "sha256:76ed18b016b97b31f701073c1ba245644fe4f5b1eb538773acb478bd45ff3ad9",
+  "tokenizer_hash": "sha256:32f4aec77e728a6613c014374d6b3e5efa81b301640aab4a9157783ebeb1df83",
+  "capability_lane": "instruction",
+  "packing_policy": "greedy",
+  "token_count": 21907,
+  "document_count": 17,
+  "license_tier": "unspecified",
+  "dedup_status": "not_checked",
+  "contamination_status": "not_checked",
+  "eval_overlap_status": "none",
+  "cleaning_pipeline_hash": null,
+  "parent_shard_ids": [],
+  "document_spans": [
+    {
+      "document_id": "doc-000348",
+      "source_document_id": "a582b84a8920c06b4cc932adc81b8430",
+      "source_id": "flan",
+      "language": "en",
+      "start_token": 0,
+      "end_token": 1749,
+      "response_start_token": 0
+    },
+    {
+      "document_id": "doc-000349",
+      "source_document_id": "f6c573a2e27248d625572b8ad6799803",
+      "source_id": "flan",
+      "language": "en",
+      "start_token": 1749,
+      "end_token": 2691,
+      "response_start_token": 1749
+    },
+    {
+      "document_id": "doc-000350",
+      "source_document_id": "8818fb7babb6e12662e82f1d624cf79f",
+      "source_id": "flan",
+      "language": "en",
+      "start_token": 2691,
+      "end_token": 3417,
+      "response_start_token": 2691
+    },
+    {
+      "document_id": "doc-000351",
+      "source_document_id": "c5b20ffaa9f8c11b1795d66a2dcf8cb2",
+      "source_id": "flan",
+      "language": "en",
+      "start_token": 3417,
+      "end_token": 5035,
+      "response_start_token": 3417
+    },
+    {
+      "document_id": "doc-000352",
+      "source_document_id": "99c1f7408869a8767ac2b129059a13df",
+      "source_id": "flan",
+      "language": "en",
+      "start_token": 5035,
+      "end_token": 7206,
+      "response_start_token": 5771
+    },
+    {
+      "document_id": "doc-000353",
+      "source_document_id": "72fdf5cb1eaabb310a104ac35e267ddc",
+      "source_id": "flan",
+      "language": "en",
+      "start_token": 7206,
+      "end_token": 8218,
+      "response_start_token": 7558
+    },
+    {
+      "document_id": "doc-000354",
+      "source_document_id": "3bbf003cfd0f7dc7788303494de95268",
+      "source_id": "flan",
+      "language": "en",
+      "start_token": 8218,
+      "end_token": 8884,
+      "response_start_token": 8218
+    },
+    {
+      "document_id": "doc-000355",
+      "source_document_id": "c110be1631f094df55ca127fc3d2d462",
+      "source_id": "flan",
+      "language": "en",
+      "start_token": 8884,
+      "end_token": 9684,
+      "response_start_token": 8884
+    },
+    {
+      "document_id": "doc-000356",
+      "source_document_id": "298b3ec655d4dc4c74bea34ceded1684",
+      "source_id": "flan",
+      "language": "en",
+      "start_token": 9684,
+      "end_token": 11268,
+      "response_start_token": 9684
+    },
+    {
+      "document_id": "doc-000357",
+      "source_document_id": "05632b6d9eb188052385d8fc0e471ace",
+      "source_id": "flan",
+      "language": "en",
+      "start_token": 11268,
+      "end_token": 13176,
+      "response_start_token": 11268
+    },
+    {
+      "document_id": "doc-000358",
+      "source_document_id": "99807d95c8a420b4ea85bd953083b3e1",
+      "source_id": "flan",
+      "language": "en",
+      "start_token": 13176,
+      "end_token": 15770,
+      "response_start_token": 13176
+    },
+    {
+      "document_id": "doc-000359",
+      "source_document_id": "f26df536766e40993304a693758eb4b4",
+      "source_id": "flan",
+      "language": "en",
+      "start_token": 15770,
+      "end_token": 16725,
+      "response_start_token": 16608
+    },
+    {
+      "document_id": "doc-000360",
+      "source_document_id": "d05963f9deccba32c71edf1844c4adf0",
+      "source_id": "flan",
+      "language": "en",
+      "start_token": 16725,
+      "end_token": 17681,
+      "response_start_token": 16725
+    },
+    {
+      "document_id": "doc-000361",
+      "source_document_id": "64f4e74cde1674f40c800ba672d7523c",
+      "source_id": "flan",
+      "language": "en",
+      "start_token": 17681,
+      "end_token": 18318,
+      "response_start_token": 17721
+    },
+    {
+      "document_id": "doc-000362",
+      "source_document_id": "03e5c4b52c32430b5dee45ab755e7d15",
+      "source_id": "flan",
+      "language": "en",
+      "start_token": 18318,
+      "end_token": 19130,
+      "response_start_token": 18323
+    },
+    {
+      "document_id": "doc-000363",
+      "source_document_id": "76be84196260672470f5d31c5c58dc98",
+      "source_id": "flan",
+      "language": "en",
+      "start_token": 19130,
+      "end_token": 21206,
+      "response_start_token": 19130
+    },
+    {
+      "document_id": "doc-000364",
+      "source_document_id": "bbe2737d3c23e4932694fc0b9c7b810d",
+      "source_id": "flan",
+      "language": "en",
+      "start_token": 21206,
+      "end_token": 21907,
+      "response_start_token": 21206
+    }
+  ]
+}

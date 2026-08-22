@@ -1,0 +1,521 @@
+{
+  "shard_id": "shard-000014",
+  "content_hash": "sha256:2f01265d7a748d74c61a92695ee5be43e0f2081f09ddf9bee1add295ca6bfbf8",
+  "tokenizer_hash": "sha256:32f4aec77e728a6613c014374d6b3e5efa81b301640aab4a9157783ebeb1df83",
+  "capability_lane": "general_web",
+  "packing_policy": "greedy",
+  "token_count": 99415,
+  "document_count": 56,
+  "license_tier": "unspecified",
+  "dedup_status": "not_checked",
+  "contamination_status": "not_checked",
+  "eval_overlap_status": "none",
+  "cleaning_pipeline_hash": null,
+  "parent_shard_ids": [],
+  "document_spans": [
+    {
+      "document_id": "doc-000189",
+      "source_document_id": "https://nuwritersguild.wordpress.com/2015/10/10/lingt-editor/",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 0,
+      "end_token": 1077,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000190",
+      "source_document_id": "https://www.propertypartner.co/blog/6-myths-of-crowdfunding/",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 1077,
+      "end_token": 2252,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000191",
+      "source_document_id": "https://seanejacobs.wordpress.com/category/lincoln-assassination-series/",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 2252,
+      "end_token": 3592,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000192",
+      "source_document_id": "https://www.hotels-paris-rive-gauche.com/blog/2021/12/03/pantheon-free-entrance-nocturnal-visits-sting-concert-hotels/",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 3592,
+      "end_token": 4345,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000193",
+      "source_document_id": "https://www.businesstoday.in/storyprint/22074",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 4345,
+      "end_token": 6286,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000194",
+      "source_document_id": "https://newsheater.com/2020/09/01/kkr-co-inc-kkr-chart-is-flashing-mixed-signals/",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 6286,
+      "end_token": 7338,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000195",
+      "source_document_id": "https://www.dailytarheel.com/article/2013/02/qa-with-artist-damian-stamer",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 7338,
+      "end_token": 8166,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000196",
+      "source_document_id": "https://tribune.com.pk/story/1728474/the-right-time",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 8166,
+      "end_token": 9551,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000197",
+      "source_document_id": "https://richard-long.blogspot.com/",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 9551,
+      "end_token": 10883,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000198",
+      "source_document_id": "https://techsdroid.com/what-is-the-purpose-of-a-document-management-system/",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 10883,
+      "end_token": 11614,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000199",
+      "source_document_id": "https://sites.tcs.com/cloudstudy/demographics-and-research-approach",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 11614,
+      "end_token": 12628,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000200",
+      "source_document_id": "https://acaai.org/resources/connect/letters-editor/bullyingandfoodallergywhatcanallergistsdo",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 12628,
+      "end_token": 15094,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000201",
+      "source_document_id": "https://hansh51.com/2015/02/",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 15094,
+      "end_token": 20973,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000202",
+      "source_document_id": "https://www.nj.com/hobokennow/2009/09/hoboken_auction_results.html",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 20973,
+      "end_token": 21677,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000203",
+      "source_document_id": "https://readingmalone.com/2019/03/19/get-him-out-my-hair/",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 21677,
+      "end_token": 22814,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000204",
+      "source_document_id": "https://wisportsheroics.com/bucks-takeaways-from-upsetting-loss-against-denver-nuggets/",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 22814,
+      "end_token": 24131,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000205",
+      "source_document_id": "http://www.theoptimisticleftist.com/2020/03/that-centrist-joe-biden.html",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 24131,
+      "end_token": 24929,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000206",
+      "source_document_id": "https://quay.wordpress.com/2007/05/",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 24929,
+      "end_token": 28715,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000207",
+      "source_document_id": "https://intuitconsultancy.com/procurement-of-an-employment-visa-in-oman/",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 28715,
+      "end_token": 29362,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000208",
+      "source_document_id": "https://www.thestar.com/politics/provincial/2020/05/24/ontario-group-calls-for-task-force-about-how-schools-will-reopen-amid-covid-19.html",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 29362,
+      "end_token": 30049,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000209",
+      "source_document_id": "http://www.safe-learning.com/mind-quiz-your-brain-coach/",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 30049,
+      "end_token": 30662,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000210",
+      "source_document_id": "https://guardian.ng/politics/national-assembly-cannot-usurp-function-of-judiciary-okiye/",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 30662,
+      "end_token": 31675,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000211",
+      "source_document_id": "https://happyspicyhour.com/is-vietnamese-food-spicy/",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 31675,
+      "end_token": 33852,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000212",
+      "source_document_id": "http://spiritofeureka.org/index.php/news-a-articles/415-joan-coxsedge-s-speech-165th-eureka-anniversay",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 33852,
+      "end_token": 38554,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000213",
+      "source_document_id": "https://cocoongoods.com/blogs/news/a-positive-result",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 38554,
+      "end_token": 39732,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000214",
+      "source_document_id": "https://images.cdn.inside-out.xyz/business/a-trademinator-story-trading-as-one-of-my-passive-incomes.html",
+      "source_id": "cc_head",
+      "language": "en",
+      "start_token": 39732,
+      "end_token": 40761,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000215",
+      "source_document_id": "https://nutritionovereasy.com/2011/02/product-review-einkorn-pasta/",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 40761,
+      "end_token": 41766,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000216",
+      "source_document_id": "http://www.mattawamum.com/2012/12/brazilian-feijoada/",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 41766,
+      "end_token": 42651,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000217",
+      "source_document_id": "https://smurfitschoolblog.com/category/mba-clubs/",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 42651,
+      "end_token": 43672,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000218",
+      "source_document_id": "https://www.sailuxeboat.com/destinations/sardinia-corsica/",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 43672,
+      "end_token": 45113,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000219",
+      "source_document_id": "http://lea.org.uk/Can-You-Understand-More-About-Storytelling-Using-Data-Companies-.html",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 45113,
+      "end_token": 46087,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000220",
+      "source_document_id": "https://readwithme2018.com/2016/09/20/at-risk-by-s-g-redling/?replytocom=203",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 46087,
+      "end_token": 46824,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000221",
+      "source_document_id": "https://thegoldsister.com/kenya-part-three/",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 46824,
+      "end_token": 48224,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000222",
+      "source_document_id": "http://www.littlethoughtsfromlittlepeople.co.uk/2016/12/my-lead-up-to-christmas.html",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 48224,
+      "end_token": 49372,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000223",
+      "source_document_id": "https://www.automotivelogistics.media/government-and-policy/5224.tag",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 49372,
+      "end_token": 50863,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000224",
+      "source_document_id": "https://bitchwithwifi.wordpress.com/category/actor/summer-glau/",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 50863,
+      "end_token": 52070,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000225",
+      "source_document_id": "https://blog.damiva.com/5-self-care-tips-for-busy-moms/",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 52070,
+      "end_token": 53121,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000226",
+      "source_document_id": "https://www.bestculturaldestinations.com/blog/azores-holidays/",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 53121,
+      "end_token": 56746,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000227",
+      "source_document_id": "https://variety.com/2015/tv/reviews/telenovela-review-eva-longoria-comedy-nbc-1201648148/",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 56746,
+      "end_token": 57574,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000228",
+      "source_document_id": "https://community.roonlabs.com/t/roon-truncating-file-name-unnecessarily/218571",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 57574,
+      "end_token": 58542,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000229",
+      "source_document_id": "https://s3-eu-west-2.amazonaws.com/patients-a607416398844c93a2c1f412d5832785/page-636832288345022185.html",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 58542,
+      "end_token": 62016,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000230",
+      "source_document_id": "https://evolutionsix.com/mens-formula/",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 62016,
+      "end_token": 62918,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000231",
+      "source_document_id": "http://www.displayweek.org/2020/Press.aspx",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 62918,
+      "end_token": 64127,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000232",
+      "source_document_id": "https://spritzwerk-mercurio.ch/absolutely-free-newest-senior-online-dating-site/",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 64127,
+      "end_token": 73010,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000233",
+      "source_document_id": "https://www.kneeguru.co.uk/KNEEtalk/index.php?topic=63700.0",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 73010,
+      "end_token": 73596,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000234",
+      "source_document_id": "https://livenewsvault.com/up-journalist-dies-day-after-flagging-threat-from-liquor-mafia-police-calls-it-accident-india-news-firstpost/",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 73596,
+      "end_token": 75056,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000235",
+      "source_document_id": "http://www.pinnaclestrength.com/free-pokies-indian-dreaming/",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 75056,
+      "end_token": 78061,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000236",
+      "source_document_id": "https://wqth.wordpress.com/2020/08/13/dear-kag-20200813-open-thread/comment-page-2/",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 78061,
+      "end_token": 86478,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000237",
+      "source_document_id": "http://rotaryblogger.co.uk/tag/inner-wheel/",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 86478,
+      "end_token": 88229,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000238",
+      "source_document_id": "https://trendenews.com/ideas-to-integrate-social-media-in-your-live-events/",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 88229,
+      "end_token": 89136,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000239",
+      "source_document_id": "https://howtogrowaperson.weebly.com/blog/the-mental-burden-an-open-letter-to-my-husband",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 89136,
+      "end_token": 92354,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000240",
+      "source_document_id": "https://mattressgenius.com/best-mattress-for-seniors/",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 92354,
+      "end_token": 95069,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000241",
+      "source_document_id": "https://www.dfa.ns.ca:443/",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 95069,
+      "end_token": 96168,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000242",
+      "source_document_id": "https://loyarburok.com/2011/06/01/touting-lawyers-is-the-bar-council-making-things-up/",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 96168,
+      "end_token": 97268,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000243",
+      "source_document_id": "https://forum.cyclingnews.com/threads/bring-back-the-kilo.474/",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 97268,
+      "end_token": 98657,
+      "response_start_token": null
+    },
+    {
+      "document_id": "doc-000244",
+      "source_document_id": "https://www.gsma.com/futurenetworks/digest/sprint-rogers-deliver-fast-rcs-interconnection/",
+      "source_id": "cc_middle",
+      "language": "en",
+      "start_token": 98657,
+      "end_token": 99415,
+      "response_start_token": null
+    }
+  ]
+}
