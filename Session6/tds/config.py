@@ -123,6 +123,7 @@ class CurriculumConfig:
     output_path: str = "data/mixture_schedule.json"
     global_batch_size: int = 8
     microbatch_size: int = 0  # 0 -> defaults to global_batch_size (accum_steps=1); must divide it evenly
+    checkpoint_interval: int = 10  # scripts/run_demo.py: save a checkpoint every N steps, in addition to fork's own
     scarcity_policy: str = "reduce_share"  # see tds.mixture_compiler.compile_curriculum
     stages: List[MixtureStage] = field(default_factory=list)
 
@@ -172,6 +173,7 @@ class CurriculumConfig:
             output_path=resolve(self.output_path),
             global_batch_size=self.global_batch_size,
             microbatch_size=self.microbatch_size if self.microbatch_size > 0 else self.global_batch_size,
+            checkpoint_interval=self.checkpoint_interval,
             scarcity_policy=self.scarcity_policy,
             stages=self.stages,
         )

@@ -12,12 +12,13 @@ manifests_dir: data/manifests
 output_path: data/mixture_schedule.json
 global_batch_size: 8
 microbatch_size: 4 # gradient_accumulation_steps = global_batch_size / microbatch_size = 2
+checkpoint_interval: 10 # scripts/run_demo.py saves a checkpoint every N steps
 scarcity_policy: reduce_share # repeat | reduce_share | defer
 
 stages:
   - stage: foundation
     token_start: 0
-    token_end: 800000
+    token_end: 80000 #800000
     sequence_length: 128
     mixture:
       general_web: 0.30
@@ -31,8 +32,8 @@ stages:
     warmup_tokens: 0
 
   - stage: capability-expansion
-    token_start: 800000
-    token_end: 1500000
+    token_start: 80000 #800000
+    token_end: 150000 #1500000
     sequence_length: 128
     mixture:
       code: 0.25
@@ -44,11 +45,11 @@ stages:
     protected_floors:
       indic: 0.15
       instruction: 0.02
-    warmup_tokens: 100000
+    warmup_tokens: 10000 #100000
 
   - stage: anneal
-    token_start: 1500000
-    token_end: 1900000
+    token_start: 150000 #1500000
+    token_end: 190000 #1900000
     sequence_length: 256 # long-context annealing stage, per the design doc
     mixture:
       indic: 0.35
@@ -57,4 +58,4 @@ stages:
       general_web: 0.15
     protected_floors:
       indic: 0.20
-    warmup_tokens: 50000
+    warmup_tokens: 5000 #50000

@@ -273,12 +273,28 @@ def main():
     final_stage = effective_stages[-1]
 
     timings = []
+    pending_resume_step = None  # set at crash_step when resume_step is still in the future
+    resume_result = None  # rebound by verify_and_log_resume; read later when building the evidence bundle
+
+    def verify_and_log_resume(step_to_check):
+        nonlocal resume_result
+        resume_result = verify_resume(
+            run_id, branch_id, step_to_check, seed, schedule, filtered_pools, store, pipeline_config.shards_dir,
+            curriculum_config.microbatch_size, tok_manifest["tokenizer_hash"], consumption_ledger,
+        )
+        if resume_result.matched:
+            log.log(f"[PASS] resume_next_batch_matched step={step_to_check} batch_ids={expected_ids}")
+        else:
+            log.log(f"[FAIL] resume_next_batch_matched step={step_to_check} mismatches={resume_result.mismatches}")
+        stage_outcomes.append(f"crash/resume={'PASS' if resume_result.matched else 'FAIL'}")
 
     for stage in effective_stages:
         stage_name = stage.stage.stage
         stage_start = stage.step_start
         stage_end = min(stage.step_end, total_steps)
         log.log(f"[event] === entering curriculum stage {stage_name!r} (steps [{stage_start}, {stage_end})) ===")
+
+        stage_outcomes = []
 
         for step in range(stage_start, stage_end):
             start = time.perf_counter()
@@ -303,51 +319,85 @@ def main():
             ):
                 learning_ledger.append(entry)
 
+            # Periodic checkpointing (configurable), plus an explicit one at
+            # fork_step -- the point we deliberately choose to fork from, as
+            # opposed to crash_step below, which deliberately does *not* get
+            # its own forced checkpoint (see the crash block's own comment).
+            if step % curriculum_config.checkpoint_interval == 0 or step == fork_step:
+                checkpoints.save(model, optimizer, run_id, branch_id, step)
+                log.log(f"[PASS] checkpoint_saved step={step}")
+
+            # A deferred resume check lands here: verify_resume compares a
+            # fresh recompute against this step's *already-recorded* ledger
+            # entry, so it can only run once that entry exists -- which, if
+            # resume_step turned out to be in the future at crash time (the
+            # last checkpoint was taken exactly at crash_step itself, so
+            # nothing was lost), is only true once the live loop reaches
+            # this step for real, right here.
+            if step == pending_resume_step:
+                verify_and_log_resume(step)
+                pending_resume_step = None
+
             if step == crash_step:
-                checkpoints.save(model, optimizer, run_id, branch_id, step)
-                log.log(f"[PASS] checkpoint_saved step={step}")
-            if step == fork_step:
-                checkpoints.save(model, optimizer, run_id, branch_id, step)
-                log.log(f"[PASS] checkpoint_saved step={step}")
+                # --- Crash simulation, narrated in the order it actually
+                # happens in a real system: crash -> find the last durable
+                # checkpoint (deliberately *not* assumed to be crash_step
+                # itself -- periodic checkpointing means real work can be
+                # lost between the last save and the crash, exactly like a
+                # real system) -> resume from it -> identify the next batch
+                # to run -> verify it's correct -> replay the pre-crash
+                # history. The "live" model/optimizer/packer are never
+                # actually swapped out below: Packer/Cursor are pure
+                # functions of frozen inputs, so continuing this same live
+                # loop for the rest of the stage is computationally
+                # identical to what resuming onto a fresh Packer and
+                # continuing *would* produce -- this block exists to prove
+                # that equivalence, not to fork the process's own state. ---
+                log.log(f"[event] crash simulated after step {crash_step}")
+                log.log(f"[event] searching for the last saved checkpoint for branch={branch_id}...")
+                last_checkpoint_step = checkpoints.latest_step(run_id, branch_id)
+                if last_checkpoint_step is None:
+                    # checkpoint_interval never fired before crash_step -- force
+                    # one now so there's something real to resume from.
+                    checkpoints.save(model, optimizer, run_id, branch_id, crash_step)
+                    last_checkpoint_step = crash_step
+                log.log(f"[event] found checkpoint step={last_checkpoint_step}")
 
-        stage_outcomes = []
+                resumed_model = ToyTransformer(model_config, seed=999)  # deliberately different -- must be overwritten
+                resumed_optimizer = torch.optim.Adam(resumed_model.parameters(), lr=3e-3)
+                checkpoint_metadata = checkpoints.restore(
+                    run_id, branch_id, last_checkpoint_step, resumed_model, resumed_optimizer
+                )
+                log.log(f"[event] run resumed from checkpoint step={checkpoint_metadata.global_step}")
 
-        if stage is crash_stage:
-            # --- Crash simulation + resume: brand-new objects, never touching the live ones ---
-            log.log(f"[event] crash simulated after step {crash_step}")
-            resumed_model = ToyTransformer(model_config, seed=999)  # deliberately different -- must be overwritten
-            resumed_optimizer = torch.optim.Adam(resumed_model.parameters(), lr=3e-3)
-            checkpoint_metadata = checkpoints.restore(run_id, branch_id, crash_step, resumed_model, resumed_optimizer)
-            log.log(f"[event] run resumed from checkpoint step={checkpoint_metadata.global_step}")
+                resume_step = next_step_after_checkpoint(checkpoint_metadata)
+                log.log(f"[event] identified next batch to resume from: step={resume_step}")
+                expected_microbatches = recompute_step(
+                    seed, schedule, filtered_pools, store, pipeline_config.shards_dir,
+                    curriculum_config.microbatch_size, resume_step,
+                )
+                expected_ids = [f"mb-{mb.global_step}-{mb.microbatch_index}" for mb in expected_microbatches]
+                if last_checkpoint_step < crash_step:
+                    # Steps (last_checkpoint_step, crash_step] were already
+                    # trained and recorded before the crash was even
+                    # detected -- their ledger entries already exist, so the
+                    # check can run immediately instead of waiting.
+                    verify_and_log_resume(resume_step)
+                else:
+                    pending_resume_step = resume_step
 
-            resume_step = next_step_after_checkpoint(checkpoint_metadata)
-            expected_microbatches = recompute_step(
-                seed, schedule, filtered_pools, store, pipeline_config.shards_dir,
-                curriculum_config.microbatch_size, resume_step,
-            )
-            expected_ids = [f"mb-{mb.global_step}-{mb.microbatch_index}" for mb in expected_microbatches]
-            resume_result = verify_resume(
-                run_id, branch_id, resume_step, seed, schedule, filtered_pools, store, pipeline_config.shards_dir,
-                curriculum_config.microbatch_size, tok_manifest["tokenizer_hash"], consumption_ledger,
-            )
-            if resume_result.matched:
-                log.log(f"[PASS] resume_next_batch_matched step={resume_step} batch_ids={expected_ids}")
-            else:
-                log.log(f"[FAIL] resume_next_batch_matched step={resume_step} mismatches={resume_result.mismatches}")
-            stage_outcomes.append(f"crash/resume={'PASS' if resume_result.matched else 'FAIL'}")
-
-            # --- Replay this stage's pre-crash history ---
-            replay_result = replay_range(
-                run_id, branch_id, stage_start, crash_step, seed, schedule, filtered_pools, store,
-                pipeline_config.shards_dir, curriculum_config.microbatch_size, tok_manifest["tokenizer_hash"],
-                consumption_ledger,
-            )
-            log.log(f"[event] historical stream replayed (steps [{stage_start}, {crash_step}))")
-            if replay_result.matched:
-                log.log(f"[PASS] replay_hash_matched steps=[{stage_start},{crash_step})")
-            else:
-                log.log(f"[FAIL] replay_hash_matched mismatched_steps={replay_result.mismatched_steps}")
-            stage_outcomes.append(f"replay={'PASS' if replay_result.matched else 'FAIL'}")
+                # --- Replay this stage's pre-crash history ---
+                replay_result = replay_range(
+                    run_id, branch_id, stage_start, crash_step, seed, schedule, filtered_pools, store,
+                    pipeline_config.shards_dir, curriculum_config.microbatch_size, tok_manifest["tokenizer_hash"],
+                    consumption_ledger,
+                )
+                log.log(f"[event] historical stream replayed (steps [{stage_start}, {crash_step}))")
+                if replay_result.matched:
+                    log.log(f"[PASS] replay_hash_matched steps=[{stage_start},{crash_step})")
+                else:
+                    log.log(f"[FAIL] replay_hash_matched mismatched_steps={replay_result.mismatched_steps}")
+                stage_outcomes.append(f"replay={'PASS' if replay_result.matched else 'FAIL'}")
 
         if stage is fork_stage:
             # --- Fork a branch from this stage's checkpoint, diverging on a different seed ---
@@ -411,7 +461,22 @@ def main():
                 f"[event] performance measured (tokens/sec={perf_report['tokens_per_second']:.1f}, "
                 f"useful_tokens/sec={perf_report['useful_tokens_per_second']:.1f})"
             )
-            stage_outcomes.append(f"packing_utilization={audit_report['packing_utilization']:.3f}")
+
+        # --- Per-stage audit: how *this* stage went, read purely from the
+        # consumption ledger over just its own step range -- distinct from
+        # the whole-run audit above (final_stage only), which the evidence
+        # bundle is built from. Cheap (ledger-only, no recomputation), so
+        # safe to run after every stage, not just the last. ---
+        stage_audit = audit_range(run_id, branch_id, stage_start, stage_end, consumption_ledger, schedule)
+        stage_mixture = mixture_compliance_report(run_id, branch_id, stage_start, stage_end, consumption_ledger, schedule)
+        log.log(
+            f"[event] stage {stage_name!r} audit (lanes={stage_audit['lanes_touched']}, "
+            f"shards={len(stage_audit['shards_touched'])}, samples={stage_audit['total_samples']}, "
+            f"packing_utilization={stage_audit['packing_utilization']:.3f}, "
+            f"estimated_useful_tokens={stage_audit['estimated_useful_tokens']})"
+        )
+        log.log(f"[event] stage {stage_name!r} mixture compliance: {json.dumps(stage_mixture['lanes'])}")
+        stage_outcomes.append(f"audit: samples={stage_audit['total_samples']}, useful_tokens={stage_audit['estimated_useful_tokens']}")
 
         log.log(
             f"[event] === stage {stage_name!r} complete: {stage_end - stage_start} step(s) trained "

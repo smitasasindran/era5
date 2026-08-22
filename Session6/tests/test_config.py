@@ -148,6 +148,22 @@ class TestCurriculumConfig(unittest.TestCase):
             config = CurriculumConfig.from_yaml(path)
             self.assertEqual(config.microbatch_size, 0)
 
+    def test_checkpoint_interval_defaults_to_ten_and_round_trips_through_resolved(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "config.yaml"
+            path.write_text(CURRICULUM_YAML)
+            config = CurriculumConfig.from_yaml(path)
+            self.assertEqual(config.checkpoint_interval, 10)
+            self.assertEqual(config.resolved(root=Path("/some/root")).checkpoint_interval, 10)
+
+    def test_checkpoint_interval_override_round_trips_through_resolved(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "config.yaml"
+            path.write_text(CURRICULUM_YAML + "checkpoint_interval: 5\n")
+            config = CurriculumConfig.from_yaml(path)
+            self.assertEqual(config.checkpoint_interval, 5)
+            self.assertEqual(config.resolved(root=Path("/some/root")).checkpoint_interval, 5)
+
     def test_unknown_top_level_key_is_rejected(self):
         with tempfile.TemporaryDirectory() as d:
             path = Path(d) / "config.yaml"
