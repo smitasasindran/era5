@@ -78,7 +78,7 @@ Each box is a real, independently-tested module under `tds/`:
 
 ## Assumptions and known scope boundaries
 
-- **Corpus**: parquet with `id`, `source`, `domain`, `language`, `text` columns; capability lane is derived from `domain`/`language`, not assumed pre-tagged. A real vendored corpus (~850 admitted documents, 6 lanes) and a tiny hand-authored fixture (11 documents) are both checked in under `data/corpus/`.
+- **Corpus**: parquet with `id`, `source`, `domain`, `language`, `text` columns; capability lane is derived from `domain`/`language`, not assumed pre-tagged. A real vendored corpus (850 admitted documents, 5 lanes) and a tiny hand-authored fixture (11 documents) are both checked in under `data/corpus/`.
 - **Tokenizer and model are both small by design**: a fresh byte-level BPE tokenizer trained specifically for this corpus, and a hand-written, configurably tiny decoder-only transformer — large enough to produce real, non-fabricated loss numbers for the learning ledger, not a scale target.
 - **Single-GPU**: no rank/worker partitioning anywhere; gradient accumulation (`global_batch_size = microbatch_size × accum_steps`) is supported and configured in both shipped profiles.
 - **OPUS's scoring is a simplification, stated plainly**: each candidate is scored by its own average per-token loss under the current model snapshot — a self-referential "how surprising is this right now" signal. There is no separate curated reference/"golden" set and no excess-loss-against-a-reference-model comparison; a more faithful proxy-scoring implementation would add one. OPUS also runs as a single global pass rather than being re-run per curriculum stage against an evolving model snapshot — see *Known limitations* below.
@@ -106,14 +106,14 @@ This README is the short version; `IMPLEMENTATION_NOTES.md` is the long one, wit
 ```bash
 pip install -r requirements.txt
 
-python scripts/run_demo.py                  # real vendored corpus (default) -- trains the full schedule, ~3 minutes
+python scripts/run_demo.py                  # real vendored corpus (default) -- trains the full schedule, ~20 seconds
 python scripts/run_demo.py --corpus toy      # tiny fixture: fast, fully deterministic, human-checkable
-python scripts/run_demo.py --num-steps 200   # override the step count (default: the full compiled schedule)
+python scripts/run_demo.py --num-steps 50    # override the step count (default: the full compiled schedule)
 ```
 
 One command builds the tokenizer, shards, and manifests; compiles the mixture schedule; runs OPUS selection; trains the toy model for real steps across every curriculum stage; saves a checkpoint; deliberately simulates a crash and resumes from it; replays the pre-crash history; forks a branch; audits the run; measures throughput; and writes the evidence bundle. No manual steps in between.
 
-The real corpus's schedule has 3 curriculum stages (`foundation`, `capability-expansion`, `anneal`) spanning 1,659 steps; the demo trains through all of them by default rather than stopping early, so that crash/resume/replay/fork/audit each land in a genuinely different stage instead of all being crammed into one early window (see *Key design decisions* below for why reaching a later stage can't be done any faster than training every step up to it). That's the ~3 minutes; pass `--num-steps` for a faster, single-stage sanity check instead.
+The real corpus's schedule has 3 curriculum stages (`foundation`, `capability-expansion`, `anneal`) spanning 165 steps; the demo trains through all of them by default rather than stopping early, so that crash/resume/replay/fork/audit each land in a genuinely different stage instead of all being crammed into one early window (see *Key design decisions* below for why reaching a later stage can't be done any faster than training every step up to it). That's the ~20 seconds; pass `--num-steps` for an even faster, single-stage sanity check instead.
 
 To run the automated test suite:
 
@@ -139,38 +139,41 @@ submission_artifacts/
 `run.log` contains the full event sequence the assignment specifies, in the order they actually happen (the eval firewall runs before shard creation, since shards are only ever built from admitted documents), plus a `[step]` line per training step (step number, curriculum stage, branch, batch ids, lanes touched) and an `=== entering ... ===` / `=== stage ... complete ===` pair bracketing each curriculum stage, so crash/resume/replay/fork/audit are each easy to find under the stage they closed out rather than all appearing in one block:
 
 ```
-[event] evaluation data blocked (...)
-[PASS] eval_shard_blocked: ...
+[event] evaluation data blocked (2 document(s))
+[PASS] eval_shard_blocked: 2 document(s) blocked
 [PASS] tokenizer_hash_verified: sha256:...
-[event] shards created (N shards)
-[event] manifests validated (N shard manifests on record)
-[event] mixture compiled (3 stages, total_steps=1659)
-[event] OPUS decisions recorded (.../... accepted, enabled=True)
-[event] === entering curriculum stage 'foundation' (steps [0, 781)) ===
+[event] shards created (24 shards)
+[event] manifests validated (24 shard manifests on record)
+[event] mixture compiled (3 stages, total_steps=165)
+[event] OPUS decisions recorded (850/850 accepted, enabled=True)
+[event] === entering curriculum stage 'foundation' (steps [0, 78)) ===
 [step] step=0 stage='foundation' branch=main batch_ids=[...] lanes=[...]
 ...
-[PASS] checkpoint_saved step=390
+[PASS] checkpoint_saved step=30
 ...
-[event] crash simulated after step 390
-[event] run resumed from checkpoint step=390
-[PASS] resume_next_batch_matched step=391 batch_ids=[...]
-[event] historical stream replayed (steps [0, 390))
-[PASS] replay_hash_matched steps=[0,390)
-[event] === stage 'foundation' complete: 781 step(s) trained (crash/resume=PASS, replay=PASS) ===
-[event] === entering curriculum stage 'capability-expansion' (steps [781, 1464)) ===
+[event] crash simulated after step 39
+[event] found checkpoint step=30
+[event] run resumed from checkpoint step=30
+[event] retraining steps [31,39] on the resumed model -- lost since checkpoint step=30
+[PASS] resume_next_batch_matched step=31 batch_ids=[...]
+[event] historical stream replayed (steps [0, 39))
+[PASS] replay_hash_matched steps=[0,39)
+[event] === stage 'foundation' complete: 78 step(s) trained (crash/resume=PASS, replay=PASS, audit: samples=624, useful_tokens=79248) ===
+[event] === entering curriculum stage 'capability-expansion' (steps [78, 146)) ===
 ...
-[PASS] checkpoint_saved step=1122
-[event] branch forked parent=main fork_step=1122 new_branch=fork-1
-[step] step=1123 stage='capability-expansion' branch=fork-1 batch_ids=[...] lanes=[...]
-[event] branch lineage reconstructed (chain=['main', 'fork-1'], total_samples=...)
-[event] === stage 'capability-expansion' complete: 683 step(s) trained (fork=fork-1@step1122) ===
-[event] === entering curriculum stage 'anneal' (steps [1464, 1659)) ===
+[PASS] checkpoint_saved step=112
+[event] branch forked parent=main fork_step=112 new_branch=fork-1
+[step] step=113 stage='capability-expansion' branch=fork-1 batch_ids=[...] lanes=[...]
+[PASS] fork_diverged_from_parent steps=[113, 114, 115, 116]/[113, 114, 115, 116]
+[event] branch lineage reconstructed (chain=['main', 'fork-1'], total_samples=936)
+[event] === stage 'capability-expansion' complete: 68 step(s) trained (fork=fork-1@step112 diverged=4/4, audit: samples=544, useful_tokens=69088) ===
+[event] === entering curriculum stage 'anneal' (steps [146, 165)) ===
 ...
-[event] audit completed (lanes=[...], shards=..., packing_utilization=1.000)
-[event] exact useful tokens recomputed (estimated=..., exact=...)
-[event] performance measured (tokens/sec=..., useful_tokens/sec=...)
-[event] === stage 'anneal' complete: 195 step(s) trained (packing_utilization=1.000) ===
-[event] batches packed (1659 steps trained)
+[event] audit completed (lanes=[...], shards=21, packing_utilization=1.000)
+[event] exact useful tokens recomputed (estimated=187096, exact=185972)
+[event] performance measured (tokens/sec=10522.4, useful_tokens/sec=10385.9)
+[event] === stage 'anneal' complete: 19 step(s) trained (audit: samples=152, useful_tokens=38760) ===
+[event] batches packed (165 steps trained)
 === Demo complete: overall=PASS ===
 ```
 
@@ -181,16 +184,16 @@ For a run that never leaves a single stage (e.g. a small `--num-steps` override,
 | Requirement | Result | Evidence |
 |---|---|---|
 | Tokenizer integrity | PASS | tokenizer_manifest.json hash re-verified on load |
-| Evaluation firewall | PASS | N document(s) blocked by content hash |
+| Evaluation firewall | PASS | 2 document(s) blocked by content hash |
 | Packing correctness | PASS | packing_utilization=1.0000 (from consumption-ledger token spans) |
-| Useful token accounting | PASS | ledger-derived estimate vs. a full recompute — must agree on served tokens |
-| Mixture compliance | PASS | planned vs. actual per-lane shares |
-| OPUS audit trail | PASS | N/N candidates accepted, decisions_hash=sha256:... |
-| Crash recovery | PASS | expected batch ids at the resume step == resumed batch ids |
-| Replay | PASS | recomputed-from-scratch hashes match the original consumption ledger |
-| Learning trace | PASS | N learning-ledger entries, each linked to a real manifest shard_id |
-| Fork lineage | PASS | forked branch's full history reconstructed across its ancestor branches |
-| Throughput | PASS | tokens/sec and useful-tokens/sec from live wall-clock timing |
+| Useful token accounting | PASS | ledger-derived estimate=187096 vs. recomputed exact=185972 — served-token totals agree |
+| Mixture compliance | PASS | planned vs. actual per-lane shares, per stage |
+| OPUS audit trail | PASS | 850/850 candidates accepted, decisions_hash=sha256:... |
+| Crash recovery | PASS | expected batch ids at the resume step (31) == resumed batch ids |
+| Replay | PASS | recomputed-from-scratch hashes match the original consumption ledger, steps [0,39) |
+| Learning trace | PASS | 700 learning-ledger entries, each linked to a real manifest shard_id |
+| Fork lineage | PASS | branch 'fork-1' full history reconstructed across ['main', 'fork-1'], fork at step 112 |
+| Throughput | PASS | 10522.4 tokens/sec, 10385.9 useful tokens/sec, from live wall-clock timing |
 
 Exact hashes, shard counts, and step numbers will differ if the corpus, `shard_token_budget`, or curriculum config changes — that's expected. What shouldn't change is `overall: PASS`, and a determinism check (run the same corpus/config twice, diff `evidence.json`) should come back byte-for-byte identical everywhere except the throughput numbers, which are a live wall-clock measurement and are the one thing this system's reproducibility guarantee was never meant to cover.
 
