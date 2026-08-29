@@ -239,4 +239,114 @@ The two implementations produced identical loss values
 peak GPU memory by approximately 58%.
 
 
+# Part 2: Two-Step Prediction Head
+
+A second output head was added to predict token \(t+2\), while the original head predicts \(t+1\). Both heads receive the same Transformer hidden states.
+
+```text
+                         hidden [B,T,D]
+                              │
+                    ┌─────────┴─────────┐
+                    ↓                   ↓
+                t+1 head             t+2 head
+                    ↓                   ↓
+              predict t+1          predict t+2
+```
+
+### Target alignment
+
+For next-token prediction:
+
+```python
+logits_t1[:, :-1, :] ↔ tokens[:, 1:]
+```
+
+For two-step prediction:
+
+```python
+logits_t2[:, :-2, :] ↔ tokens[:, 2:]
+```
+
+Thus, for:
+
+```text
+The cat sat on the mat
+```
+
+the objectives are:
+
+```text
+t+1:
+The  → cat
+cat  → sat
+sat  → on
+on   → the
+the  → mat
+
+t+2:
+The  → sat
+cat  → on
+sat  → the
+on   → mat
+```
+
+The \(t+2\) head has one fewer prediction position because the final two input positions do not have corresponding \(t+2\) targets.
+
+### Loss
+
+The two cross-entropy losses are computed separately:
+
+```python
+loss_t1 = CE(logits_t1[:, :-1], tokens[:, 1:])
+loss_t2 = CE(logits_t2[:, :-2], tokens[:, 2:])
+```
+
+The training objective is their sum:
+
+$$
+L_{\text{total}} = L_{t+1} + L_{t+2}
+$$
+
+Both heads share the same Transformer, so gradients from both objectives update the shared representation.
+
+### Training results
+
+Both prediction heads learn during training, but the \(t+2\) loss remains consistently higher than the \(t+1\) loss.
+
+Using a fixed evaluation batch:
+
+```text
+Step    Eval t+1    Eval t+2
+-----------------------------
+0        10.5245     10.6075
+100       6.2274      6.4398
+200       5.6680      6.0904
+300       5.3530      5.9058
+400       5.0452      5.6938
+500       4.8260      5.5184
+600       4.6933      5.4221
+700       4.5637      5.3237
+800       4.4925      5.2529
+900       4.3972      5.2118
+```
+
+### Observation
+
+The \(t+1\) and \(t+2\) losses both decrease substantially, showing that both objectives are learned. However, the \(t+2\) loss remains higher throughout training.
+
+The \(t+2\) task is generally more difficult because the model must predict a token farther into the future:
+
+$$
+P(x_{t+1}\mid x_{\leq t})
+$$
+
+versus
+
+$$
+P(x_{t+2}\mid x_{\leq t})
+$$
+
+The farther prediction has less directly available information and therefore generally has greater uncertainty. The exact gap depends on the dataset, model, and training setup.
+
+The experiment demonstrates that the shared Transformer can learn representations useful for both immediate and slightly longer-range prediction, while the longer-horizon prediction remains the harder objective.
 
