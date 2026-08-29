@@ -223,21 +223,20 @@ Parameters saved by tying:
 
 ## Experiment 7 — Ordinary vs Chunked Cross Entropy
 
-Compare peak GPU memory usage between:
-1. ordinary cross entropy
-2. a manually implemented chunked cross entropy
+The ordinary implementation materializes the complete `[N,V]`
+logits tensor before computing cross entropy. The chunked
+implementation computes the vocabulary projection and loss in
+chunks, avoiding the full logits allocation.
 
-Report:
+With B=8, T=128, V=50,259 and chunk_size=32:
 
-```text
-Ordinary CE: 10.87849236
-Chunked CE:  10.87849331
-Difference:  0.0000009537
+Ordinary CE peak GPU memory: 651.49 MB
+Chunked CE peak GPU memory:  274.62 MB
+Memory ratio:                2.37×
 
-Ordinary CE peak memory: 651.49 MB
-Chunked CE peak memory:  274.62 MB
-Memory ratio:            2.37x
+The two implementations produced identical loss values
+(up to floating-point precision), while chunking reduced
+peak GPU memory by approximately 58%.
 
-```
 
-The goal is to demonstrate the memory advantage of computing the loss in chunks rather than materializing/processing all vocabulary logits at once.
+
