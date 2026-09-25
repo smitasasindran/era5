@@ -385,7 +385,8 @@ The losses initially track closely, then gradually diverge. After  ~2,000 optimi
 
 This continuues upto ~9,000 optimizer steps, after which the losses start converging.
 
-<img width="686" height="470" alt="Grad Acc Loss Curves" src="https://github.com/user-attachments/assets/78405d15-86ad-43d9-af25-6f9eec067680" />
+<img width="686" height="470" alt="image" src="https://github.com/user-attachments/assets/e96fd2fc-41c3-4b26-9732-6043fa3c4a16" />
+
 
 ---
 
@@ -400,20 +401,23 @@ Because the raw gradient norm is noisy, the analysis uses a smoothed gradient si
 The initial transient portion of training (1000 steps) is excluded from candidate selection because both the gradient norm and loss change substantially during this phase. The goal is to identify a later training step where the gradient signal changes while the loss remains relatively unchanged, followed by a subsequent loss response.
 
 **Smoothed Gradient-norm/loss plot**
-<img width="1189" height="790" alt="Grad Norm and Loss - smooth" src="https://github.com/user-attachments/assets/3f29d620-50cb-4a11-b974-cd2a3a8c5371" />
+<img width="1189" height="790" alt="image" src="https://github.com/user-attachments/assets/782664df-b8fa-4f22-8dee-2346cabb0a6a" />
 
 
 ## 4.1 Gradnorm / Loss plots 
 
+The gradient norm is 
+$∥g_{t}∥  =  ∥∇_{θ}L(θ_{t})∥$   
+It tells us the magnitude of the gradient, not its direction.  
+
 Things to note: 
-- A larger gradient norm does not necessarily mean loss will increase or decrease;
-- A smaller gradient norm does not necessarily mean loss will move in a particular direction;
-- What matters for the loss change is the direction of the update, optimizer state, curvature, and the data being evaluated;
-
-<img width="998" height="690" alt="gradnorm-8122" src="https://github.com/user-attachments/assets/2447209f-1796-4c86-8ca1-110b2916aead" />
+- A larger gradient norm does not necessarily mean loss will increase or decrease
+- A smaller gradient norm does not necessarily mean loss will move in a particular direction
+- What matters for the loss change is the direction of the update, optimizer state, curvature, and the data being evaluated
 
 
-> **Graph placeholder:** Add more candidate-step local plots here.
+<img width="989" height="690" alt="image" src="https://github.com/user-attachments/assets/c4bdcfdc-07d1-44d1-97ad-c5d65f7305cd" />
+
 
 ---
 
@@ -624,15 +628,13 @@ For a tiny model, Python-level and framework overhead can become a significant f
 
 ---
 
-# 6. Number Formats: FP32, BF16, and FP8 E4M3
+# 6. Number Formats
 
-The assignment asks us to take the number `0.1`, represent it in:
-
+Take the number `0.1`, represent it in:
 - FP32
 - BF16
 - FP8 E4M3
-
-and show the bits. Then we choose a training format and explain why.
+and show the bits. Then choose a training format and explain why.
 
 ## 6.1 Binary representation of 0.1
 
@@ -713,11 +715,13 @@ Collecting the binary digits:
 Therefore:
 
 $$
-\[
-0.1_{10}
-=0.000110011001100110011\ldots_2
-\]
+\[0.1_{10}=0.000110011001100110011\ldots_2\]
 $$
+
+$$
+=1.10011001100110011\ldots_2 × 2^{−4} 
+$$
+
 
 ### Why doesn't the representation terminate?
 
@@ -747,4 +751,110 @@ This is analogous to:
 1/3 = 0.333333...
 ```
 
-> **Graph/table placeholder:** Add FP32, BF16, and FP8 E4M3 bit representations here.
+## 6.2 FP32, BF16 and FP8 E4M3 Formats
+
+A number is represented by three parts:
+1. Sign: Positive or negative
+2. Exponent: How large the number is
+3. Mantissa: The actual value
+
+Some formats also have a Bias field.  
+The bias is a trick used to store both positive and negative exponents using an unsigned binary field.  
+Instead of storing `E`, we store `Estored​ = E + bias`  
+
+
+| Format    | Bits | Exponent | Mantissa | Bias | Smallest  Value |
+| --------- | ---- | -------- | -------- | ---- | --------------- |
+| fp32      | 32   |     8    |    23    | 127  | $1.18×10^{−38}$ |
+| fp16      | 16   |     5    |    10    | 15   | $6.1×10^{−5} $  |
+| bf16      | 16   |     8    |     7    | 127  | $1.18×10^{−38}$ |
+| fp8 E4M3  |  8   |     4    |     3    | 7    | $1.56×10^{−2}$  |
+| fp8 E5M2  |  8   |     5    |     2    | 15   | $6.10×10^{−5}$  |
+| fp4 E2M1  |  4   |     2    |     1    |  1   | 1.0             | 
+
+## 6.3 Write 0.1 in different formats  
+
+0.1 in binary can be written as: 
+
+$ 0.1 = 1.10011001100110011…2​×2^{-4} $
+
+### FP32 
+FP32 has 8 bits for exponent, 23 bits for mantissa, and a `Bias` of 127 bits.  
+
+So for 0.1:   
+- Sign = 0  
+- Actual exponent = -4  
+- Stored exponent = -4 + 127 = 123   
+
+123 in binary = 01111011   
+Mantissa comes from the 23 bits after the leading 1:   `10011001100110011001100...`     
+
+Take 23 bits of the Mantissa and apply rounding.  So the FP32 representation is:  
+```text
+Sign       Exponent          Mantissa
+ ↓            ↓                 ↓
+[0]       [01111011] [10011001100110011001101]
+```   
+
+which gives   `00111101110011001100110011001101`    
+
+### BF16  
+
+Bf16 has a `Bias` field of 127 bits.  
+It has the same 8-bit exponent as FP32, but only 7 Mantissa bits.
+The exponent therefore stays exactly the same, and the mantissa is truncated:
+
+```text
+Sign       Exponent          Mantissa
+ ↓            ↓                 ↓
+[0]       [01111011]        [1001100]
+```   
+which gives `0011110111001100`
+
+BF16 sacrifices precision, not exponent range.  It can still represent very large and very small values similarly to FP32, even though it has much less precision. 
+
+### FP8 E4M3
+The usual E4M3 format uses an exponent bias of 7 bits. It uses 4 bits for exponent, and 3 bits for Mantissa
+
+So for 0.1:   
+- Sign = 0  
+- Actual exponent = -4  
+- Stored exponent = -4 + 7 = 3   
+
+3 in binary = 0011  
+Mantissa comes from the 3 bits after the leading 1:  `100`
+
+0.1 cannot be represented exactly, and with only 3 fraction bits we need to round.   
+The next bit after the three mantissa bits is 1, so the mantissa rounds upward:   
+`100 → 101`  
+
+So we represent it as:   
+```text
+Sign       Exponent          Mantissa
+ ↓            ↓                 ↓
+[0]         [0011]            [101]
+```   
+which gives `00011101`   
+
+
+### Summary  
+
+0.1 is represented as:   
+
+| Format   | Bits                                 | Approx. value represented | Precision |
+| -------- | ------------------------------------ | ------------------------: | --------- |
+| FP32     | `0 01111011 10011001100110011001101` |              0.1000000015 | High      |
+| BF16     | `0 01111011 1001100`                 |             0.10009765625 | Medium    |
+| FP8 E4M3 | `0 0011 101`                         |                 0.1015625 | Low       |
+
+
+## 6.4 Format to train on 
+
+FP32 has the highest precision and a large exponent range. It can handle very small gradient values. However it is expensive in memory and compute, and this can quickly add up while training. 
+
+BF16 has the same range as FP32, but it has only 7 mantissa bits, giving it a lower precision compared to FP32. It has lower memory and compute cost. 
+
+FP8 E4M3 has only 3 mantissa bits, so it is a much coarser representation. It has very low memory and compute, making it more efficient. However training becomes more sensitive to scaling and numerical errors.
+
+
+Overall, BF16 provides much of FP32's dynamic range while using half the storage, making it a good balance between numerical stability, memory usage, and computational efficiency.
