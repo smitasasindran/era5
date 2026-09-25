@@ -33,10 +33,6 @@ n_embd     = 256
 ## Shape analysis
 
 ```text
-========================
-Shape Analysis
-========================
-
 Input:
 tokens                                  (8, 128)             # (B, T)
 embeddings (tok+pos)                    (8, 128, 256)        # (B, T, C)
@@ -119,11 +115,7 @@ Selected original value:
 
 ## 2.1 Compute the autograd gradient
 
-Run `backward()` and record PyTorch's gradient:
-
-\[
-\frac{\partial L}{\partial w}
-\]
+Run `backward()` and record PyTorch's gradient $\( \frac{\partial L}{\partial w} \)$ for the selected weight parameter  
 
 ```text
 loss: 10.829090118408203
@@ -146,11 +138,16 @@ w = w + epsilon
 
 Then compute the loss again using the **same tokens**.
 
-The finite-difference estimate is:
+The finite-difference estimate is:  
 
+$$
 \[
 \frac{L(w+\epsilon)-L(w)}{\epsilon}
 \]
+$$
+
+
+## 2.3 Compare the gradients
 
 The two gradients come from independent mechanisms:
 
@@ -171,31 +168,34 @@ numerical_grad:
           ΔL/ε
 ```
 
-## 2.3 Compare the gradients
 
 For `ε = 0.02`:
 
 ```text
-Original weight w:    0.0196425449
-Epsilon:              2.0e-02
+Original weight w:          0.0196425449
+Epsilon:                    2.0e-02
 
-Loss(w):              10.82909011840820312500
-Loss(w + epsilon):    10.82908916473388671875
-Δloss:                -9.53674316406250000000e-07
+Loss(w):                    10.82909011840820312500
+Loss(w + epsilon):          10.82908916473388671875
+Δloss:                      -9.53674316406250000000e-07
 
-Autograd gradient:    -0.000078229277278
-Numerical gradient:   -0.000047683715820
-Absolute error:        3.054556145798415e-05
-Relative error:       3.904620178110540e-01
+Autograd gradient (∂L/∂w):  -0.000078229277278
+Numerical gradient (ΔL/​ϵ):  -0.000047683715820
+Absolute error:             3.054556145798415e-05
+Relative error:             3.904620178110540e-01
 ```
+
+The Autograd gradient and Numerical gradient have a relative difference of 39%  
 
 ## 2.4 Understanding the difference
 
-The gradient reported by PyTorch is:
+The gradient reported by PyTorch is:  
 
+$$
 \[
 \frac{\partial L}{\partial w} = -7.8229\times10^{-5}
 \]
+$$
 
 This is the derivative of the loss with respect to the selected weight at its original value. In other words, it describes the instantaneous rate at which the loss changes for a very small change in the weight.
 
@@ -210,26 +210,29 @@ $$
 \]
 $$    
 
-With \(\epsilon=0.02\):
+With `ε = 0.02` and `(∂L/∂w) = -0.000078229277278`:
 
+$$
 \[
 \Delta L
 \approx
 -7.8229\times10^{-5}\times0.02
 \approx -1.56458\times10^{-6}
 \]
+$$
 
 This is the **expected** change in loss based on the autograd gradient.
 
+
 The actual observed change was:
 
-\[
-\Delta L
-=
-L(w+\epsilon)-L(w)
-=
--9.5367431640625\times10^{-7}
+$$  
+\[\Delta L
+=L(w+\epsilon)-L(w)
+=-9.5367431640625\times10^{-7}
 \]
+$$
+
 
 The observed change has the same sign as the predicted change: both are negative. Increasing this weight decreases the loss, which is consistent with the negative autograd gradient. However, the magnitudes differ.
 
@@ -239,11 +242,12 @@ This difference is expected because the first-order approximation assumes that t
 
 The forward finite-difference estimate is:
 
+$$
 \[
 \text{Numerical gradient}
-=
-\frac{\Delta L}{\epsilon}
+=\frac{\Delta L}{\epsilon}
 \]
+$$
 
 Therefore:
 
@@ -266,17 +270,17 @@ The finite-difference estimate has approximately **39% relative error**.
 
 The numerical gradient is an approximation to the derivative. With a forward difference,
 
+$$
 \[
 \frac{L(w+\epsilon)-L(w)}{\epsilon}
 \]
+$$
 
-we are measuring the average slope of the loss between \(w\) and \(w+\epsilon\), rather than the exact instantaneous slope at \(w\).
+we are measuring the average slope of the loss between $\(w\)$ and $\(w+\epsilon\)$, rather than the exact instantaneous slope at $\(w\)$.
 
-If the loss were perfectly linear over this interval, the two would be identical. In practice, the loss surface has curvature, so the slope changes as the weight moves from \(w\) to \(w+\epsilon\).
+If the loss were perfectly linear over this interval, the two would be identical. In practice, the loss surface has curvature, so the slope changes as the weight moves from $\(w\)$ to $\(w+\epsilon\)$.
 
-A larger \(\epsilon\) therefore introduces more finite-difference approximation error. Reducing \(\epsilon\) should generally make the numerical gradient approach the autograd gradient until floating-point precision starts to dominate.
-
-> **Graph placeholder:** Add gradient-check visualization here if desired.
+A larger $\(\epsilon\)$ therefore introduces more finite-difference approximation error. Reducing $\(\epsilon\)$ should generally make the numerical gradient approach the autograd gradient until floating-point precision starts to dominate.
 
 ---
 
@@ -302,17 +306,20 @@ batch 2 loss = 4.0
 
 The naive average of the two micro-batch losses is:
 
+$$
 \[
 \frac{2.0+4.0}{2}=3.0
 \]
+$$
 
 But if every token should have equal importance, the correct combined loss is:
 
+$$
 \[
 \frac{100\times2.0+20\times4.0}{100+20}
-=
-2.333\ldots
+=2.333\ldots
 \]
+$$
 
 The first approach gives the 20-token micro-batch the same weight as the 100-token micro-batch:
 
@@ -332,15 +339,12 @@ Create two models:
 - one using correct gradient accumulation
 - one using intentionally incorrect accumulation
 
-Both models start with exactly the same weights.
-
-For each optimizer step, generate deterministic micro-batches. Each micro-batch can have a different sequence length `T`.
-
-The same micro-batches are passed to both models so that the comparison isolates the accumulation strategy.
+Both models start with exactly the same weights.  
+For each optimizer step, generate deterministic micro-batches. Each micro-batch can have a different sequence length `T ∈ [32, 128]`.   
+The same micro-batches are passed to both models so that the comparison isolates the accumulation strategy.   
+A fixed evaluation batch is generated once and reused throughout the experiment.   
 
 ## 3.3 Training loop
-
-A fixed evaluation batch is generated once and reused throughout the experiment.
 
 For each optimizer step:
 
@@ -377,11 +381,11 @@ The plot compares the loss curves from the two training runs.
 
 The models start from identical weights and see identical micro-batches, but use different weighting when accumulating gradients. One uses token-weighted loss, while the other uses average-of-averages for gradient accumulation.
 
-The losses initially track closely, then gradually diverge. After approximately 2,000 optimizer steps, the token-weighted run has a lower loss on the fixed diagnostic batch than the average-of-averages run.
+The losses initially track closely, then gradually diverge. After  ~2,000 optimizer steps, the token-weighted run has a lower loss on the fixed diagnostic batch than the average-of-averages run.
 
-The experiment was continued to approximately 9,000 optimizer steps, after which the losses started converging.
+This continuues upto ~9,000 optimizer steps, after which the losses start converging.
 
-> **Graph placeholder:** Add the full training curve here.
+<img width="686" height="470" alt="Grad Acc Loss Curves" src="https://github.com/user-attachments/assets/78405d15-86ad-43d9-af25-6f9eec067680" />
 
 ---
 
@@ -393,11 +397,23 @@ The gradient norm is measured **after all micro-batch `backward()` calls and bef
 
 Because the raw gradient norm is noisy, the analysis uses a smoothed gradient signal to identify candidate regions. The raw gradient values are then inspected around the selected candidate steps.
 
-The initial transient portion of training is excluded from candidate selection because both the gradient norm and loss change substantially during this phase. The goal is to identify a later training step where the gradient signal changes while the loss remains relatively unchanged, followed by a subsequent loss response.
+The initial transient portion of training (1000 steps) is excluded from candidate selection because both the gradient norm and loss change substantially during this phase. The goal is to identify a later training step where the gradient signal changes while the loss remains relatively unchanged, followed by a subsequent loss response.
 
-> **Graph placeholder:** Add full gradient-norm/loss plot here.
+**Smoothed Gradient-norm/loss plot**
+<img width="1189" height="790" alt="Grad Norm and Loss - smooth" src="https://github.com/user-attachments/assets/3f29d620-50cb-4a11-b974-cd2a3a8c5371" />
 
-> **Graph placeholder:** Add candidate-step local plots here.
+
+## 4.1 Gradnorm / Loss plots 
+
+Things to note: 
+- A larger gradient norm does not necessarily mean loss will increase or decrease;
+- A smaller gradient norm does not necessarily mean loss will move in a particular direction;
+- What matters for the loss change is the direction of the update, optimizer state, curvature, and the data being evaluated;
+
+<img width="998" height="690" alt="gradnorm-8122" src="https://github.com/user-attachments/assets/2447209f-1796-4c86-8ca1-110b2916aead" />
+
+
+> **Graph placeholder:** Add more candidate-step local plots here.
 
 ---
 
@@ -405,12 +421,13 @@ The initial transient portion of training is excluded from candidate selection b
 
 MFU is:
 
+$$
 \[
 \text{MFU}
-=
-\frac{\text{FLOPs the training actually performs per second}}
+=\frac{\text{FLOPs the training actually performs per second}}
 {\text{GPU's theoretical peak FLOPs per second}}
 \]
+$$
 
 There are three things to determine:
 
@@ -422,11 +439,13 @@ There are three things to determine:
 
 For a GPT-style transformer, a common approximation is:
 
+$$
 \[
 \text{FLOPs/token}\approx6N
 \]
+$$
 
-where \(N\) is the number of non-embedding model parameters.
+where $\(N\)$ is the number of non-embedding model parameters.
 
 The `6N` approximation comes from:
 
@@ -435,41 +454,49 @@ The `6N` approximation comes from:
 
 Therefore:
 
+$$
 \[
 2N+4N\approx6N
 \]
+$$
 
 There is also an additional FLOP contribution from self-attention that depends on sequence length.
 
 Karpathy's nanoGPT MFU calculation uses approximately:
 
+$$
 \[
 \text{FLOPs/token}
-=
-6N+12Lhd_hT
+=6N+12Lhd_hT
 \]
+$$
 
 where:
 
-- \(N\) = non-embedding parameters
-- \(L\) = number of transformer layers
-- \(h\) = number of attention heads
-- \(d_h\) = dimension of each attention head
-- \(T\) = sequence length
+- $\(N\)$ = non-embedding parameters
+- $\(L\)$ = number of transformer layers
+- $\(h\)$ = number of attention heads
+- $\(d_h\)$ = dimension of each attention head
+- $\(T\)$ = sequence length
 
-Since:
-
-\[
-hd_h=C
-\]
+Since: $\[hd_h=C\]$, 
 
 this can also be written as:
 
+$$
 \[
 \text{FLOPs/token}
-=
-6N+12LCT
+=6N+12LCT
 \]
+$$
+
+**Measured Values**:
+```text
+Total parameters:       16,058,112
+Embedding parameters:   12,898,560
+Non-embedding params:   3,159,552
+FLOPs/token:            20,530,176
+```
 
 ## 5.2 Measure tokens/second
 
@@ -477,7 +504,13 @@ Measure the actual training throughput in tokens/second during the training loop
 
 Because the experiment uses variable sequence lengths, the number of processed tokens is calculated from the actual micro-batches rather than assuming a fixed `T`.
 
-> **Graph/table placeholder:** Add throughput measurement here.
+**Measured Value**:
+```text
+FLOPs/token:     20,530,176
+Tokens/sec:      21,027
+Achieved FLOPs:  431,681,520,854
+Achieved TFLOPs: 0.4316815208535321```
+
 
 ## 5.3 GPU peak FLOPs
 
@@ -507,24 +540,30 @@ For this experiment, the model weights are FP32 and autocast was configured for 
 
 Therefore:
 
+$$
 \[
 P_{\text{peak}}=8.1\text{ TFLOP/s}
 \]
+$$
 
 and:
 
+$$
 \[
 \text{MFU}
 =
 \frac{0.4365}{8.1}
 \approx0.0539
 \]
+$$
 
 Therefore:
 
+$$
 \[
 \boxed{\text{MFU}\approx5.4\%}
 \]
+$$
 
 ### Why is MFU far below 40%?
 
@@ -599,14 +638,9 @@ and show the bits. Then we choose a training format and explain why.
 
 ## 6.1 Binary representation of 0.1
 
-Decimal numbers such as:
+Decimal numbers such as: $\[0.123\] represent powers of 10:
 
-\[
-0.123
-\]
-
-represent powers of 10:
-
+$$
 \[
 0\times10^{-1}
 +
@@ -614,19 +648,15 @@ represent powers of 10:
 +
 2\times10^{-3}
 \]
+$$
 
 Binary works the same way, except the powers are powers of 2.
 
 ### Binary to decimal
 
-For example:
+For example: $\[0.101_2\]$ means:
 
-\[
-0.101_2
-\]
-
-means:
-
+$$
 \[
 1\times2^{-1}
 +
@@ -634,16 +664,17 @@ means:
 +
 1\times2^{-3}
 \]
+$$
 
 which is:
 
+$$
 \[
 \frac12+0+\frac18
-=
-0.5+0.125
-=
-0.625
+=0.5+0.125
+=0.625
 \]
+$$
 
 Therefore:
 
@@ -655,9 +686,11 @@ Therefore:
 
 We want to find:
 
+$$
 \[
 0.1_{10}=?_2
 \]
+$$
 
 To convert a fraction from decimal to binary, repeatedly multiply the fractional part by 2. The integer part becomes the next binary digit.
 
@@ -681,11 +714,12 @@ Collecting the binary digits:
 
 Therefore:
 
+$$
 \[
 0.1_{10}
-=
-0.000110011001100110011\ldots_2
+=0.000110011001100110011\ldots_2
 \]
+$$
 
 ### Why doesn't the representation terminate?
 
@@ -695,9 +729,11 @@ A number can be represented exactly as a finite binary fraction only if its deno
 
 But:
 
+$$
 \[
 0.1=\frac{1}{10}
 \]
+$$
 
 and 10 contains a factor of 5. Binary fractions can only represent finite sums of powers of \(1/2\), so \(1/10\) cannot be represented exactly.
 
