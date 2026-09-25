@@ -509,7 +509,8 @@ Because the experiment uses variable sequence lengths, the number of processed t
 FLOPs/token:     20,530,176
 Tokens/sec:      21,027
 Achieved FLOPs:  431,681,520,854
-Achieved TFLOPs: 0.4316815208535321```
+Achieved TFLOPs: 0.4316815208535321
+```
 
 
 ## 5.3 GPU peak FLOPs
@@ -551,8 +552,7 @@ and:
 $$
 \[
 \text{MFU}
-=
-\frac{0.4365}{8.1}
+=\frac{0.4365}{8.1}
 \approx0.0539
 \]
 $$
@@ -561,7 +561,7 @@ Therefore:
 
 $$
 \[
-\boxed{\text{MFU}\approx5.4\%}
+\text{MFU}\approx5.4\%
 \]
 $$
 
@@ -621,8 +621,6 @@ This can contribute significantly to the gap, particularly with a small model.
 #### 5. Python and framework overhead
 
 For a tiny model, Python-level and framework overhead can become a significant fraction of total runtime.
-
-> **Graph/table placeholder:** Add MFU calculation and/or throughput visualization here.
 
 ---
 
